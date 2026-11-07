@@ -45,7 +45,11 @@ def tokenize_prompt(tokenizer, question: str, description: str | None = None) ->
 
 def surface_forms(answer: str) -> dict[str, str]:
     """The exact strings scored for a semantic answer. Each form applies to true and alt alike."""
-    return {"lower": answer.lower(), "capitalized": answer[:1].upper() + answer[1:].lower()}
+    return {
+        "lower": answer.lower(),
+        "capitalized": answer[:1].upper() + answer[1:].lower(),
+        "upper": answer.upper(),
+    }
 
 
 def candidate_ids(tokenizer, prompt: str, surface: str) -> list[int]:

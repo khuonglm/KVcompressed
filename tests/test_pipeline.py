@@ -105,7 +105,7 @@ def test_rows_store_every_candidate_form(bundle, loaded):
     item, image = loaded[0]
     result, _ = run_item(bundle, item, image, [Unit("full", 576, False, "none", "Q")])
     scores = result["rows"][0]["scores"]
-    assert set(scores) == {"true", "alt"} and set(scores["true"]) == {"lower", "capitalized"}
+    assert set(scores) == {"true", "alt"} and set(scores["true"]) == {"lower", "capitalized", "upper"}
 
 
 def test_confirmatory_items_are_refused():
@@ -122,7 +122,7 @@ def test_run_resumes_and_report_renders(bundle, dataset, tmp_path):
     assert first.stat().st_mtime_ns == stamp
     assert json.loads(first.read_text())["item_id"] == "q0"
     text = report(tmp_path, "lower", resamples=100)
-    for expected in ("S_H^(mis)", "E_harm^(mis)", "T_match", "T_irr", "Mean Jaccard", "Window composition"):
+    for expected in ("S_H^(mis)", "E_harm^(mis)", "T_match", "T_irr", "Mean Jaccard", "Window composition", "Mean margin by run"):
         assert expected in text
 
 
@@ -149,3 +149,12 @@ def test_diagnose_e2_reports_both_suffixes_and_exact_compact_equality(bundle, lo
         assert result["compact_vs_dense_max"] == 0
         assert result["full_vs_compact_max"] < 1e-3
         assert len(result["worst_items"]) == 2 and result["worst_items"][0]["max_at_input_token"] is not None
+
+
+def test_tokenization_check_reads_a_run(bundle, dataset, tmp_path):
+    from kvsel.validate import check_tokenization
+
+    items, directory = dataset
+    run_screen(bundle, items[:2], directory, tmp_path)
+    result = check_tokenization(bundle.tokenizer, items, tmp_path)
+    assert result["checked"] <= 2 and set(result) == {"checked", "agree", "share", "mismatches"}

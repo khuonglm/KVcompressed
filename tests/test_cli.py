@@ -28,7 +28,7 @@ def test_report_writes_its_output_file(monkeypatch, tmp_path, capsys):
 
 @pytest.mark.parametrize("command", [
     "build-gqa", "build-textvqa", "fetch-model", "fetch-images", "check-serialization",
-    "validate", "diagnose-e2", "screen", "pilot", "verify", "report",
+    "validate", "diagnose-e2", "check-tokenization", "screen", "pilot", "verify", "report",
 ])
 def test_every_command_parses_its_help(monkeypatch, command):
     with pytest.raises(SystemExit) as stopped:

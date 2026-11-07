@@ -102,14 +102,13 @@ def holm(p_values: dict[str, float], alpha: float = 0.05) -> dict[str, bool]:
 
 
 def read_interval(low: float, high: float, delta: float = DELTA) -> str:
-    """The interval patterns in section 10 of the proposal."""
-    if -delta <= low and high <= delta and not (low > 0 or high < 0):
-        return "practically small"
+    """The interval patterns in section 10 of the proposal. An interval can match two of them."""
+    small = -delta <= low and high <= delta
     if low > 0:
-        return "positive"
+        return "positive, practically small" if small else "positive"
     if high < 0:
-        return "opposite direction"
-    return "inconclusive"
+        return "opposite direction, practically small" if small else "opposite direction"
+    return "practically small" if small else "inconclusive"
 
 
 def _estimate_line(name: str, result: dict) -> str:
@@ -154,6 +153,15 @@ def _overlap_section(rows: list[dict], selector: str, k: int) -> list[str]:
     return lines + [""]
 
 
+def _margin_section(wide: pd.DataFrame) -> list[str]:
+    """Margin levels per run, so differences can be read against where each condition sits."""
+    lines = ["### Mean margin by run", "", "| Run | Mean M (nats) | Median | Share M > 0 |", "| --- | ---: | ---: | ---: |"]
+    for column in sorted(wide.columns):
+        values = wide[column].dropna()
+        lines.append(f"| {column} | {values.mean():+.3f} | {values.median():+.3f} | {(values > 0).mean():.3f} |")
+    return lines + [""]
+
+
 def _behaviour_section(rows: list[dict]) -> list[str]:
     frame = pd.DataFrame([{"run": column_name(r), "outcome": r["outcome"], "truncated": r["truncated"]} for r in rows])
     table = frame.groupby("run")["outcome"].value_counts(normalize=True).unstack(fill_value=0)
@@ -185,7 +193,7 @@ def _window_section(rows: list[dict]) -> list[str]:
 
 def _surface_section(rows: list[dict]) -> list[str]:
     """Which casing greedy answers use, as input to the surface-form decision."""
-    forms = {"lower": 0, "capitalized": 0, "other": 0}
+    forms = {"lower": 0, "capitalized": 0, "upper": 0, "other": 0}
     for row in rows:
         if row["cell"] != "Q" or row["selector"] != "full":
             continue
@@ -194,12 +202,14 @@ def _surface_section(rows: list[dict]) -> list[str]:
             forms["lower"] += 1
         elif text == text[:1].upper() + text[1:].lower():
             forms["capitalized"] += 1
+        elif text == text.upper():
+            forms["upper"] += 1
         else:
             forms["other"] += 1
     total = max(1, sum(forms.values()))
     lines = ["### Greedy answer casing, Full_Q", "", "| Form | Share |", "| --- | ---: |"]
     lines += [f"| {form} | {count / total:.3f} |" for form, count in forms.items()]
-    return lines + ["", "Digits and other caseless answers count as lower.", ""]
+    return lines + ["", "Digits and other caseless answers count as lower; one-letter capitals as capitalized.", ""]
 
 
 def keep_verified(rows: list[dict], decisions_path: Path) -> list[dict]:
@@ -230,7 +240,8 @@ def report(run_dir: Path, surface: str = "lower", resamples: int = RESAMPLES, ve
     if selectors:
         for selector in selectors:
             lines += _estimand_section(wide, images, selector, conditions, surface, resamples)
-            for sensitivity in ("capitalized", "logsum"):
+            stored = set(rows[0]["scores"]["true"])
+            for sensitivity in [form for form in ("lower", "capitalized", "upper") if form in stored] + ["logsum"]:
                 if sensitivity != surface:
                     other, other_images = margins_wide(rows, sensitivity)
                     values = estimands(other, selector, conditions[0])["S_H"]
@@ -238,6 +249,7 @@ def report(run_dir: Path, surface: str = "lower", resamples: int = RESAMPLES, ve
                     lines += [f"Sensitivity, S_H^({conditions[0]}) with `{sensitivity}`: {result['estimate']:+.3f} "
                               f"[{result['ci95'][0]:+.3f}, {result['ci95'][1]:+.3f}]", ""]
             lines += _overlap_section(rows, selector, next(r["k"] for r in rows if r["selector"] == selector))
+    lines += _margin_section(wide)
     lines += _behaviour_section(rows)
     lines += _surface_section(rows)
     lines += _window_section(rows)

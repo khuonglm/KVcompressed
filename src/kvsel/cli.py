@@ -67,7 +67,11 @@ def cmd_validate(args) -> None:
 
     items = load_items(args.items)
     require_development(items)
+    from . import validate as validate_module
+
+    validate_module.SURFACE = args.surface
     report = validate(_bundle(args), items, args.images, args.noise_items, args.sparse_items, args.repeat_items)
+    report["surface"] = args.surface
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(report, indent=2))
     for name in ("E1", "E2", "E3", "E4", "E5", "E7"):
@@ -96,17 +100,28 @@ def cmd_diagnose_e2(args) -> None:
     print(f"full report: {args.out}")
 
 
+def cmd_check_tokenization(args) -> None:
+    from .model import load_tokenizer
+    from .runner import load_items
+    from .validate import check_tokenization
+
+    print(json.dumps(check_tokenization(load_tokenizer(args.model_dir), load_items(args.items), args.run), indent=2))
+
+
 def cmd_screen(args) -> None:
     from .runner import eligible, load_items, run_screen
 
     items = load_items(args.items)
     run_screen(_bundle(args), items, args.images, args.out)
-    for surface in ("lower", "capitalized"):
+    for surface in ("lower", "capitalized", "upper"):
         results = [json.loads(path.read_text()) for path in (args.out / "items").glob("*.json")]
         passed = sum(eligible(result["rows"][0], surface) for result in results)
         print(f"eligible under `{surface}`: {passed} of {len(results)}")
     answers = [json.loads(path.read_text())["rows"][0]["greedy_text"] for path in (args.out / "items").glob("*.json")]
     print("sample greedy answers:", answers[:20])
+    from .analysis import _surface_section, load_rows
+
+    print("\n".join(_surface_section(load_rows(args.out))))
 
 
 def cmd_pilot(args) -> None:
@@ -217,6 +232,8 @@ def main() -> None:
     sub.add_argument("--noise-items", type=int, default=50)
     sub.add_argument("--sparse-items", type=int, default=20, help="items for E3-E5")
     sub.add_argument("--repeat-items", type=int, default=5, help="items for E7")
+    sub.add_argument("--surface", default="capitalized", choices=["lower", "capitalized", "upper"],
+                     help="surface form for the margin checks (default: %(default)s)")
     sub.add_argument("--out", type=Path, default=Path("results/validate.json"))
     sub.set_defaults(handler=cmd_validate)
 
@@ -226,6 +243,12 @@ def main() -> None:
     sub.add_argument("--noise-items", type=int, default=50)
     sub.add_argument("--out", type=Path, default=Path("results/diagnose_e2.json"))
     sub.set_defaults(handler=cmd_diagnose_e2)
+
+    sub = commands.add_parser("check-tokenization", help="do scored tokens match generated tokens? No GPU")
+    sub.add_argument("run", type=Path, help="a run directory, for example results/pilot")
+    sub.add_argument("--items", type=Path, required=True)
+    add_model_dir(sub)
+    sub.set_defaults(handler=cmd_check_tokenization)
 
     sub = commands.add_parser("screen", help="Full_Q on development items, for eligibility")
     add_item_options(sub)
@@ -237,7 +260,7 @@ def main() -> None:
     add_item_options(sub)
     add_model_options(sub)
     sub.add_argument("--screen", type=Path, default=Path("results/screen_dev"))
-    sub.add_argument("--surface", default="lower", choices=["lower", "capitalized"])
+    sub.add_argument("--surface", default="lower", choices=["lower", "capitalized", "upper"])
     sub.add_argument("--limit", type=int, default=200)
     sub.add_argument("--k", type=int, default=144, choices=[288, 144, 72])
     sub.add_argument("--out", type=Path, default=Path("results/pilot"))
@@ -247,7 +270,7 @@ def main() -> None:
     add_item_options(sub)
     sub.add_argument("--decisions", type=Path, required=True, help="append-only JSONL, for example verification/gqa_dev.jsonl")
     sub.add_argument("--screen", type=Path, help="queue only items eligible in this screen directory")
-    sub.add_argument("--surface", default="capitalized", choices=["lower", "capitalized"])
+    sub.add_argument("--surface", default="capitalized", choices=["lower", "capitalized", "upper"])
     sub.add_argument("--limit", type=int)
     sub.add_argument("--verifier", default=getpass.getuser())
     sub.add_argument("--port", type=int, default=8765)
@@ -255,7 +278,7 @@ def main() -> None:
 
     sub = commands.add_parser("report", help="estimands and tables from a run directory")
     sub.add_argument("run", type=Path)
-    sub.add_argument("--surface", default="lower", choices=["lower", "capitalized", "logsum"])
+    sub.add_argument("--surface", default="lower", choices=["lower", "capitalized", "upper", "logsum"])
     sub.add_argument("--resamples", type=int, default=10_000)
     sub.add_argument("--verified", type=Path, help="keep only items that passed in this decisions file")
     sub.add_argument("--out", type=Path)

@@ -18,7 +18,7 @@ from .runner import Q, contexts_for, open_image, pilot_units, run_item
 from .selectors import pw_attn, top_k
 
 SAMPLE_PER_COMPARISON = 20_000
-SURFACE = "lower"
+SURFACE = "capitalized"  # the form frozen for GQA; set per run with --surface
 
 
 def sample_differences(difference: torch.Tensor, generator: np.random.Generator) -> np.ndarray:
@@ -268,6 +268,32 @@ def diagnose_e2(bundle: Bundle, loaded) -> dict:
             "worst_items": sorted(rows, key=lambda row: -row["full_vs_compact_max"])[:5],
         }
     return report
+
+
+def check_tokenization(tokenizer, items: list[dict], run_dir: Path) -> dict:
+    """Whether scoring a string uses the same tokens the model emits when it generates that string.
+
+    Uses Full_Q rows. A mismatch means M scores a tokenization the model does not produce.
+    """
+    by_id = {item["item_id"]: item for item in items}
+    agree, checked, examples = 0, 0, []
+    for path in sorted((Path(run_dir) / "items").glob("*.json")):
+        result = json.loads(path.read_text())
+        item = by_id.get(result["item_id"])
+        if item is None:
+            continue
+        prompt = contexts_for(item, tokenizer)[Q].prompt
+        for row in result["rows"]:
+            if row["selector"] != "full" or row["cell"] != "Q" or not row["greedy_text"] or row["truncated"]:
+                continue
+            checked += 1
+            rescored = candidate_ids(tokenizer, prompt, row["greedy_text"])[:-1]
+            if rescored == row["greedy_ids"]:
+                agree += 1
+            elif len(examples) < 10:
+                examples.append({"item": item["item_id"], "text": row["greedy_text"],
+                                 "generated": row["greedy_ids"], "rescored": rescored})
+    return {"checked": checked, "agree": agree, "share": agree / checked if checked else None, "mismatches": examples}
 
 
 def native_head(bundle: Bundle) -> Bundle:

@@ -102,6 +102,8 @@ def test_holm_hand_worked():
     (-0.5, -0.2, "opposite direction"),
     (-0.05, 0.05, "practically small"),
     (-0.1, 0.4, "inconclusive"),
+    (0.01, 0.06, "positive, practically small"),
+    (-0.06, -0.01, "opposite direction, practically small"),
 ])
 def test_interval_reading(low, high, expected):
     assert read_interval(low, high) == expected
