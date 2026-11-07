@@ -12,9 +12,10 @@ import torch
 from PIL import Image
 
 from .engine import greedy, probe, replay, score_sequence
+from .families import LLAVA, Family
 from .model import Bundle, pixel_values, prefill
 from .normalize import outcome
-from .prompts import TEMPLATE_VERSION, Tokens, candidate_ids, surface_forms, tokenize_prompt, window_composition
+from .prompts import Tokens, candidate_ids, surface_forms, tokenize_prompt, window_composition
 from .selectors import pw_attn, question_span_attn, top_k, uniform_grid, with_reserve
 
 ALL_CONDITIONS = ("mis", "match", "irr")
@@ -64,10 +65,10 @@ def cell_name(unit: Unit) -> str:
     return f"D_{unit.selection}"
 
 
-def contexts_for(item: dict, tokenizer) -> dict[str, Tokens]:
-    tokens = {Q: tokenize_prompt(tokenizer, item["question"])}
+def contexts_for(item: dict, tokenizer, family: Family = LLAVA) -> dict[str, Tokens]:
+    tokens = {Q: tokenize_prompt(tokenizer, item["question"], family=family)}
     for condition, description in item["descriptions"].items():
-        tokens[condition] = tokenize_prompt(tokenizer, item["question"], description)
+        tokens[condition] = tokenize_prompt(tokenizer, item["question"], description, family)
     return tokens
 
 
@@ -94,7 +95,7 @@ def score_candidates(bundle: Bundle, state, prompt: str, a_true: str, a_alt: str
         seen: dict[str, list[float]] = {}
         for form, surface in surface_forms(answer).items():
             if surface not in seen:
-                ids = candidate_ids(bundle.tokenizer, prompt, surface)
+                ids = candidate_ids(bundle.tokenizer, prompt, surface, bundle.family)
                 seen[surface] = score_sequence(bundle.decoder, state, ids)
             by_form[form] = seen[surface]
         scores[name] = by_form
@@ -121,7 +122,7 @@ def run_unit(bundle: Bundle, item: dict, unit: Unit, prefix, kept: np.ndarray, t
 
 
 def run_item(bundle: Bundle, item: dict, image: Image.Image, units: list[Unit]) -> tuple[dict, dict[str, np.ndarray]]:
-    tokens = contexts_for(item, bundle.tokenizer)
+    tokens = contexts_for(item, bundle.tokenizer, bundle.family)
     prefix = prefill(bundle, tokens[Q].prefix_ids, pixel_values(bundle, image))
     selection_contexts = sorted({u.selection for u in units if u.selector in ATTENTION_SELECTORS})
     attention = {
@@ -135,7 +136,8 @@ def run_item(bundle: Bundle, item: dict, image: Image.Image, units: list[Unit]) 
         "dataset": item["dataset"],
         "a_true": item["a_true"],
         "a_alt": item["a_alt"],
-        "template": TEMPLATE_VERSION,
+        "model": bundle.family.name,
+        "template": bundle.family.template_version,
         "head_precision": bundle.decoder.head_precision,
         "contexts": {
             name: {

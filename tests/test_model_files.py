@@ -5,14 +5,14 @@ import json
 import pytest
 
 from kvsel import MODEL_ID
-from kvsel.model_files import CONFIG_FILES, TOKENIZER_FILES, WEIGHT_INDEX, fetch_model, missing_files, resolve_model
+from kvsel.model_files import REQUIRED_FILES, WEIGHT_INDEX, fetch_model, missing_files, resolve_model
 
 SHARDS = ["model-00001-of-00002.safetensors", "model-00002-of-00002.safetensors"]
 
 
 def populate(directory, shards=SHARDS):
     directory.mkdir(parents=True, exist_ok=True)
-    for name in (*TOKENIZER_FILES, *CONFIG_FILES):
+    for name in REQUIRED_FILES[MODEL_ID]:
         (directory / name).write_text("{}")
     (directory / WEIGHT_INDEX).write_text(json.dumps({"weight_map": {"a": SHARDS[0], "b": SHARDS[1], "c": SHARDS[1]}}))
     for name in shards:
@@ -55,4 +55,15 @@ def test_fetch_reports_what_is_still_missing(tmp_path, monkeypatch):
     monkeypatch.setattr("huggingface_hub.snapshot_download", fake_download)
     assert fetch_model(tmp_path, workers=4) == [SHARDS[1]]
     assert calls["repo_id"] == MODEL_ID and calls["local_dir"] == tmp_path and calls["max_workers"] == 4
+    assert "merges.txt" in calls["allow_patterns"]
     assert "*.safetensors" in calls["allow_patterns"]
+
+
+def test_qwen_copy_is_checked_against_its_own_file_list(tmp_path):
+    qwen = "Qwen/Qwen2.5-VL-7B-Instruct"
+    for name in REQUIRED_FILES[qwen]:
+        (tmp_path / name).write_text("{}")
+    assert resolve_model(tmp_path, qwen, weights=False) == str(tmp_path)
+    (tmp_path / "merges.txt").unlink()
+    with pytest.raises(SystemExit, match="merges.txt"):
+        resolve_model(tmp_path, qwen, weights=False)

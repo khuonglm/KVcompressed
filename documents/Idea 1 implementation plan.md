@@ -127,6 +127,38 @@ Separate Holm families are fine in themselves, but each must state which conclus
 | Mitigation on neutral items | Only S\_Q and S\_Q + reserve exist, because without a description complete-prompt selection equals S\_Q |
 | Batching | Batch size 1 everywhere, so padding can never affect results |
 
+### Decision record: second model (7 November 2026)
+
+**Decision.** Add Qwen2.5-VL-7B-Instruct as a second model. LLaVA-1.5-7B stays primary.
+
+**Why, fixed before any Qwen outcome was seen.** The GQA pilot showed LLaVA-1.5 adopting the
+misleading description on 99.5% of items even with the full cache, which leaves selection no room to
+change answers. Published measurements put Qwen at the other end: text preference under conflicting
+text of 29.2% for Qwen2-VL-7B against 85.5% for LLaVA-NeXT-7B ([Words or Vision](https://arxiv.org/html/2503.02199v1)),
+and the most robust open model in [ConText-VQA](https://arxiv.org/html/2601.19202) (Qwen2.5-VL-7B,
+64.4% accuracy kept). Qwen2.5-VL-7B is also used in the compression literature ([COAST](https://arxiv.org/html/2605.09429)).
+The pair tests whether selection harm depends on how strongly a model follows text. The choice must
+never be revisited because of which model shows the larger effect.
+
+**What differs for Qwen.**
+
+| | LLaVA-1.5-7B | Qwen2.5-VL-7B |
+| --- | --- | --- |
+| Image | Padded, 336 px, 14 px patches | Padded, 672 px, 14 px patches merged 2 x 2 |
+| Visual tokens | 576 on a 24 x 24 grid | 576 on a 24 x 24 grid |
+| Prefix | 581 entries; 5 non-visual | 591 entries; 15 non-visual (system prompt) |
+| Replay start | Position 581 | M-RoPE position 39: the grid uses only 24 positions |
+| Template | v3.0 | v3.0-qwen: the same user text inside Qwen's chat template |
+| Candidate | `" " + answer`, then `</s>` | `answer`, then `<|im_end|>` |
+| PW-attn window | 16 fixed instruction tokens | 15 fixed tokens plus the question's last token (`'?\n'`) |
+| Probe layers | 2-31 | 2-27 (Qwen has 28 layers) |
+| Precision | fp16, fp32 head | bf16, native head |
+
+Items are shared: both models run the same manifests, built with LLaVA's tokenizer.
+
+**Open.** Whether Qwen is inside the freeze or a labelled follow-up depends on whether its validation
+and pilot fit the schedule.
+
 ## 4. Repository layout
 
 ```

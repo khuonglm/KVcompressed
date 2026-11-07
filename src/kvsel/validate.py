@@ -12,8 +12,9 @@ import torch
 
 from .cache import entries_hash
 from .engine import Decoder, greedy, probe, replay, score_sequence
+from .families import LLAVA, Family
 from .model import Bundle, full_forward_logits, pixel_values, prefill
-from .prompts import build_prompt, candidate_ids, surface_forms, window_composition
+from .prompts import candidate_ids, surface_forms, window_composition
 from .runner import Q, contexts_for, open_image, pilot_units, run_item
 from .selectors import pw_attn, top_k
 
@@ -31,7 +32,7 @@ def sample_differences(difference: torch.Tensor, generator: np.random.Generator)
 def margin_incremental(bundle: Bundle, state, prompt: str, a_true: str, a_alt: str) -> float:
     total = {}
     for name, answer in (("true", a_true), ("alt", a_alt)):
-        ids = candidate_ids(bundle.tokenizer, prompt, surface_forms(answer)[SURFACE])
+        ids = candidate_ids(bundle.tokenizer, prompt, surface_forms(answer)[SURFACE], bundle.family)
         total[name] = sum(score_sequence(bundle.decoder, state, ids))
     return total["true"] - total["alt"]
 
@@ -40,19 +41,19 @@ def margin_full_forward(bundle: Bundle, tokens, pixels, a_true: str, a_alt: str)
     total = {}
     base = tokens.prefix_ids + tokens.suffix_ids
     for name, answer in (("true", a_true), ("alt", a_alt)):
-        ids = candidate_ids(bundle.tokenizer, tokens.prompt, surface_forms(answer)[SURFACE])
+        ids = candidate_ids(bundle.tokenizer, tokens.prompt, surface_forms(answer)[SURFACE], bundle.family)
         logits = full_forward_logits(bundle, base + ids[:-1], pixels, len(base) - 1)
         log_probs = torch.log_softmax(logits[0], dim=-1)
         total[name] = sum(float(log_probs[i, token]) for i, token in enumerate(ids))
     return total["true"] - total["alt"]
 
 
-def check_serialization(tokenizer, items: list[dict]) -> dict:
+def check_serialization(tokenizer, items: list[dict], family: Family = LLAVA) -> dict:
     """E1 on all development items. Tokenizer only."""
     failures: list[str] = []
     compositions = {}
     for item in items:
-        tokens = contexts_for(item, tokenizer)
+        tokens = contexts_for(item, tokenizer, family)
         if len({tuple(t.prefix_ids) for t in tokens.values()}) != 1:
             failures.append(f"{item['item_id']}: prefix differs between contexts")
         spans = {tuple(t.suffix_ids[t.question_span[0] : t.question_span[1]]) for t in tokens.values()}
@@ -62,7 +63,7 @@ def check_serialization(tokenizer, items: list[dict]) -> dict:
             for surface in surface_forms(answer).values():
                 for t in tokens.values():
                     try:
-                        candidate_ids(tokenizer, t.prompt, surface)
+                        candidate_ids(tokenizer, t.prompt, surface, family)
                     except ValueError as error:
                         failures.append(f"{item['item_id']}: {error}")
         for name, t in tokens.items():
@@ -78,7 +79,7 @@ def noise_floor(bundle: Bundle, loaded: list[tuple[dict, object]], context: str 
     samples, maxima, margins = [], [], []
     keep_all = torch.arange(576)
     for item, image in loaded:
-        tokens = contexts_for(item, bundle.tokenizer)[context]
+        tokens = contexts_for(item, bundle.tokenizer, bundle.family)[context]
         pixels = pixel_values(bundle, image)
         ids = tokens.prefix_ids + tokens.suffix_ids
         full = full_forward_logits(bundle, ids, pixels, len(tokens.prefix_ids))
@@ -112,7 +113,7 @@ def run_e2(bundle: Bundle, loaded, floors: dict[str, dict]) -> dict:
     for name, floor in floors.items():
         worst_full, worst_dense = 0.0, 0.0
         for item, image in loaded:
-            tokens = contexts_for(item, bundle.tokenizer)[name]
+            tokens = contexts_for(item, bundle.tokenizer, bundle.family)[name]
             pixels = pixel_values(bundle, image)
             full = full_forward_logits(bundle, tokens.prefix_ids + tokens.suffix_ids, pixels, len(tokens.prefix_ids))
             prefix = prefill(bundle, tokens.prefix_ids, pixels)
@@ -143,7 +144,7 @@ def run_e3_e4(bundle: Bundle, loaded, floor: dict, budgets=(288, 144, 72), progr
     for position, (item, image) in enumerate(loaded):
         if progress:
             progress(f"  E3 item {position + 1}/{len(loaded)}")
-        tokens = contexts_for(item, bundle.tokenizer)
+        tokens = contexts_for(item, bundle.tokenizer, bundle.family)
         prefix = prefill(bundle, tokens[Q].prefix_ids, pixel_values(bundle, image))
         before = entries_hash(prefix.entries)
         for name in (Q, "mis"):
@@ -195,7 +196,7 @@ def run_e5(bundle: Bundle, loaded, floor: dict) -> dict:
     """Placebo: the same kept indices and suffix through the B and C code path."""
     worst, different_answers = 0.0, 0
     for position, (item, image) in enumerate(loaded):
-        tokens = contexts_for(item, bundle.tokenizer)
+        tokens = contexts_for(item, bundle.tokenizer, bundle.family)
         prefix = prefill(bundle, tokens[Q].prefix_ids, pixel_values(bundle, image))
         suffix = torch.tensor([tokens["mis"].suffix_ids])
         kept = torch.from_numpy(kept_sets(144, position, probe(bundle.decoder, prefix, suffix))["scored"])
@@ -228,7 +229,7 @@ def diagnose_e2(bundle: Bundle, loaded) -> dict:
     for name in (Q, "mis"):
         rows = []
         for item, image in loaded:
-            tokens = contexts_for(item, bundle.tokenizer)[name]
+            tokens = contexts_for(item, bundle.tokenizer, bundle.family)[name]
             pixels = pixel_values(bundle, image)
             full = full_forward_logits(bundle, tokens.prefix_ids + tokens.suffix_ids, pixels, len(tokens.prefix_ids))
             prefix = prefill(bundle, tokens.prefix_ids, pixels)
@@ -270,7 +271,7 @@ def diagnose_e2(bundle: Bundle, loaded) -> dict:
     return report
 
 
-def check_tokenization(tokenizer, items: list[dict], run_dir: Path) -> dict:
+def check_tokenization(tokenizer, items: list[dict], run_dir: Path, family: Family = LLAVA) -> dict:
     """Whether scoring a string uses the same tokens the model emits when it generates that string.
 
     Uses Full_Q rows. A mismatch means M scores a tokenization the model does not produce.
@@ -282,12 +283,12 @@ def check_tokenization(tokenizer, items: list[dict], run_dir: Path) -> dict:
         item = by_id.get(result["item_id"])
         if item is None:
             continue
-        prompt = contexts_for(item, tokenizer)[Q].prompt
+        prompt = contexts_for(item, tokenizer, family)[Q].prompt
         for row in result["rows"]:
             if row["selector"] != "full" or row["cell"] != "Q" or not row["greedy_text"] or row["truncated"]:
                 continue
             checked += 1
-            rescored = candidate_ids(tokenizer, prompt, row["greedy_text"])[:-1]
+            rescored = candidate_ids(tokenizer, prompt, row["greedy_text"], family)[:-1]
             if rescored == row["greedy_ids"]:
                 agree += 1
             elif len(examples) < 10:
@@ -297,7 +298,7 @@ def check_tokenization(tokenizer, items: list[dict], run_dir: Path) -> dict:
 
 
 def native_head(bundle: Bundle) -> Bundle:
-    decoder = Decoder(bundle.decoder.language_model, bundle.decoder.lm_head, "native")
+    decoder = Decoder(bundle.decoder.language_model, bundle.decoder.lm_head, "native", bundle.decoder.stop_ids)
     return dataclasses.replace(bundle, decoder=decoder)
 
 
@@ -309,15 +310,18 @@ def validate(
     def stage(name: str) -> None:
         print(f"[{(time.time() - start) / 60:5.1f} min] {name}", flush=True)
 
-    report: dict = {"head_precision": bundle.decoder.head_precision}
+    report: dict = {"model": bundle.family.name, "head_precision": bundle.decoder.head_precision}
     stage(f"E1: serialization, {len(items)} items")
-    report["E1"] = check_serialization(bundle.tokenizer, items)
+    report["E1"] = check_serialization(bundle.tokenizer, items, bundle.family)
     loaded = [(item, open_image(images_dir, item)) for item in items[:noise_items]]
     stage(f"noise floor, fp32 head, {len(loaded)} items")
     floor = noise_floor(bundle, loaded)
     report["noise_floor"] = floor
-    stage(f"noise floor, native head, {len(loaded)} items")
-    report["noise_floor_native_head"] = noise_floor(native_head(bundle), loaded)
+    if bundle.decoder.head_precision == "native":
+        report["noise_floor_native_head"] = floor  # the default head is already the native one
+    else:
+        stage(f"noise floor, native head, {len(loaded)} items")
+        report["noise_floor_native_head"] = noise_floor(native_head(bundle), loaded)
     stage(f"noise floor, fp32 head, QH_mis suffix, {len(loaded)} items")
     floor_mis = noise_floor(bundle, loaded, "mis")
     report["noise_floor_mis"] = floor_mis

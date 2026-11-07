@@ -7,13 +7,17 @@ import getpass
 import json
 from pathlib import Path
 
-from .model_files import DEFAULT_MODEL_DIR
+from .families import FAMILIES, LLAVA, get_family
+
+
+def _family(args):
+    return get_family(getattr(args, "model", LLAVA.name))
 
 
 def _bundle(args):
     from .model import load_bundle
 
-    return load_bundle(device=args.device, head_precision=args.head_precision, model_dir=args.model_dir)
+    return load_bundle(device=args.device, head_precision=args.head_precision, model_dir=args.model_dir, family=_family(args))
 
 
 def cmd_build_gqa(args) -> None:
@@ -35,10 +39,12 @@ def cmd_build_textvqa(args) -> None:
 def cmd_fetch_model(args) -> None:
     from .model_files import fetch_model
 
-    missing = fetch_model(args.out, args.workers)
+    family = _family(args)
+    out = args.out or family.default_dir
+    missing = fetch_model(out, args.workers, family.model_id)
     if missing:
         raise SystemExit(f"still missing {', '.join(missing)}; rerun the command to resume")
-    print(f"model complete at {args.out}")
+    print(f"model complete at {out}")
 
 
 def cmd_fetch_images(args) -> None:
@@ -55,7 +61,8 @@ def cmd_check_serialization(args) -> None:
     from .runner import load_items
     from .validate import check_serialization
 
-    result = check_serialization(load_tokenizer(args.model_dir), load_items(args.items))
+    family = _family(args)
+    result = check_serialization(load_tokenizer(args.model_dir, family), load_items(args.items), family)
     print(json.dumps(result, indent=2))
     if not result["pass"]:
         raise SystemExit(1)
@@ -105,7 +112,9 @@ def cmd_check_tokenization(args) -> None:
     from .runner import load_items
     from .validate import check_tokenization
 
-    print(json.dumps(check_tokenization(load_tokenizer(args.model_dir), load_items(args.items), args.run), indent=2))
+    family = _family(args)
+    result = check_tokenization(load_tokenizer(args.model_dir, family), load_items(args.items), args.run, family)
+    print(json.dumps(result, indent=2))
 
 
 def cmd_screen(args) -> None:
@@ -177,16 +186,20 @@ def main() -> None:
     parser = argparse.ArgumentParser(prog="kvsel", description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
 
-    def add_model_dir(sub) -> None:
+    def add_model_dir(sub, choose_model: bool = True) -> None:
+        if choose_model:
+            sub.add_argument("--model", default=LLAVA.name, choices=sorted(FAMILIES), help="model family (default: %(default)s)")
         sub.add_argument(
-            "--model-dir", type=Path, default=DEFAULT_MODEL_DIR,
-            help="local model copy, used if present; otherwise the Hugging Face Hub (default: %(default)s)",
+            "--model-dir", type=Path, default=None,
+            help="local model copy, used if present; otherwise the Hugging Face Hub "
+            f"(default: {LLAVA.default_dir} for llava, models/qwen2.5-vl-7b-instruct for qwen)",
         )
 
     def add_model_options(sub) -> None:
         add_model_dir(sub)
         sub.add_argument("--device", default="cuda")
-        sub.add_argument("--head-precision", default="fp32", choices=["fp32", "native"])
+        sub.add_argument("--head-precision", default=None, choices=["fp32", "native"],
+                         help="output head precision (default: fp32 for llava, native for qwen)")
 
     def add_item_options(sub) -> None:
         sub.add_argument("--items", type=Path, required=True, help="development manifest (JSONL)")
@@ -197,7 +210,7 @@ def main() -> None:
     sub.add_argument("--scene-graphs", type=Path, required=True)
     sub.add_argument("--out-dir", type=Path, default=Path("manifests"))
     sub.add_argument("--dev-items", type=int, default=600, help="candidates before eligibility and verification")
-    add_model_dir(sub)
+    add_model_dir(sub, choose_model=False)
     sub.set_defaults(handler=cmd_build_gqa)
 
     sub = commands.add_parser("build-textvqa", help="build TextVQA item manifests and print the funnel")
@@ -205,11 +218,12 @@ def main() -> None:
     sub.add_argument("--ocr", type=Path, nargs="+", required=True)
     sub.add_argument("--out-dir", type=Path, default=Path("manifests"))
     sub.add_argument("--dev-items", type=int, default=1500, help="candidates before eligibility and verification")
-    add_model_dir(sub)
+    add_model_dir(sub, choose_model=False)
     sub.set_defaults(handler=cmd_build_textvqa)
 
     sub = commands.add_parser("fetch-model", help="download the model for local use; resumes if rerun")
-    sub.add_argument("--out", type=Path, default=DEFAULT_MODEL_DIR)
+    sub.add_argument("--model", default=LLAVA.name, choices=sorted(FAMILIES))
+    sub.add_argument("--out", type=Path, default=None, help="default: the family's models/ directory")
     sub.add_argument("--workers", type=int, default=8)
     sub.set_defaults(handler=cmd_fetch_model)
 

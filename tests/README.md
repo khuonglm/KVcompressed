@@ -79,6 +79,30 @@ requires compact to equal dense exactly. That second condition is new and strict
 at K = 576 would repeat the noise-floor computation and could not fail. The failing limit was not
 raised on the Q suffix, and E3 and E5 keep the Q floor. Every test reruns under `kvsel validate`.
 
+## Qwen2.5-VL-7B (second model, added 7 November 2026)
+
+Written before any Qwen test ran on the real model. The same rules and the same E1-E7 criteria apply;
+every limit that comes from a noise floor uses **Qwen's own** noise floor, measured the same way.
+
+**Numerical policy for Qwen.**
+
+- Backbone, cache and attention in **bf16**, the model's training precision. Qwen2.5-VL is known to be
+  unstable in fp16, so the LLaVA rule of fp16 does not carry over.
+- Output head: **native** (bf16 projection, logits cast to fp32). An fp32 copy of the 152k-row head is
+  2.2 GB and does not fit beside 16.6 GB of weights on the 20 GB GPU.
+- Log-probabilities and their sums in fp32, as for LLaVA.
+
+**Known risk, stated in advance.** bf16 keeps 8 bits of mantissa against fp16's 11, so Qwen's noise
+floor will be larger than LLaVA's. E3's margin limit (mean below 0.01 nats) is absolute, not relative
+to the noise floor, so it is the criterion most likely to fail. If it does, the rules above apply: the
+tolerance is not loosened, and the failure closes only once its cause is identified.
+
+**CPU evidence so far** (`tests/test_qwen.py`, tiny random Qwen2.5-VL in fp32, real tokenizer and image
+processor): prefix-then-replay equals one full forward pass, which computes M-RoPE itself; replaying
+from the physical entry count instead of the M-RoPE position fails, as it should; compact equals dense
+at K = 288, 144 and 72 with generated tokens; the prefix is not mutated; E1 passes on all 600 GQA and
+1,500 TextVQA development items.
+
 ## Not yet covered in the minimal version
 
 E6's coverage plots (the radius is checked), hand verification (D1, D2) and the timing test R1.

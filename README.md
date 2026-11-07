@@ -117,6 +117,32 @@ uv run kvsel check-tokenization results/textvqa/screen_dev --items manifests/tex
   | tee results/textvqa/check_tokenization.json
 ```
 
+## Qwen2.5-VL-7B runbook
+
+The second model. It reuses the same manifests and images. Everything it writes goes under
+`results/qwen/`. Stop at the first step that fails and send me its output.
+
+```bash
+mkdir -p results/qwen/gqa results/qwen/textvqa
+set -o pipefail
+
+# 1. Weights: 16.6 GB into models/qwen2.5-vl-7b-instruct (resumes if rerun)
+uv run kvsel fetch-model --model qwen
+
+# 2. GQA: validate, then screen only if every test passes
+uv run kvsel validate --model qwen --items manifests/gqa_dev.jsonl --images data/gqa/images \
+  --surface capitalized --out results/qwen/gqa/validate.json 2>&1 | tee results/qwen/gqa/validate.log \
+&& uv run kvsel screen --model qwen --items manifests/gqa_dev.jsonl --images data/gqa/images \
+  --out results/qwen/gqa/screen_dev 2>&1 | tee results/qwen/gqa/screen.log
+
+# 3. No GPU: do scored tokens match generated tokens?
+uv run kvsel check-tokenization --model qwen results/qwen/gqa/screen_dev --items manifests/gqa_dev.jsonl \
+  | tee results/qwen/gqa/check_tokenization.json
+```
+
+Qwen runs in bf16 with the native output head by default; see the acceptance policy in
+[tests/README.md](tests/README.md).
+
 ## Hand verification
 
 Run the tool on the server and open it through an SSH tunnel from your own machine. Or run it on any

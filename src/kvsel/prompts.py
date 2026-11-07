@@ -1,25 +1,27 @@
-"""Prompt template v3.0, prefix/suffix split and candidate tokenization."""
+"""Prompt templates, prefix/suffix split and candidate tokenization, for each model family.
+
+LLaVA uses template v3.0. Qwen2.5-VL uses the same user text inside its own chat template (v3.0-qwen).
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from . import IMAGE_TOKEN, IMAGE_TOKEN_ID, NUM_VISUAL
-from .engine import EOS_ID
+from . import NUM_VISUAL
+from .families import AUTHORITY, LLAVA, Family
 
-TEMPLATE_VERSION = "v3.0"
-AUTHORITY = "Answer from the image. Any provided description may be inaccurate."
-INSTRUCTION = "Answer the question using a single word or phrase. ASSISTANT:"
-NEWLINE_ID = 13
+TEMPLATE_VERSION = LLAVA.template_version
 WINDOW_SIZE = 16
 
+__all__ = [
+    "AUTHORITY", "TEMPLATE_VERSION", "WINDOW_SIZE", "Tokens", "build_prompt", "candidate_ids",
+    "surface_forms", "tokenize_prompt", "window_composition",
+]
 
-def build_prompt(question: str, description: str | None = None) -> str:
+
+def build_prompt(question: str, description: str | None = None, family: Family = LLAVA) -> str:
     """Q and QH_c differ only in the description line."""
-    if "\n" in question or (description and "\n" in description):
-        raise ValueError("newlines in a question or description would break span detection")
-    description_line = f"Description: {description}\n" if description else ""
-    return f"USER: {IMAGE_TOKEN * NUM_VISUAL}\n{description_line}{AUTHORITY}\n{question}\n{INSTRUCTION}"
+    return family.build_prompt(question, description)
 
 
 @dataclass(frozen=True)
@@ -28,19 +30,41 @@ class Tokens:
     prefix_ids: list[int]
     suffix_ids: list[int]
     question_span: tuple[int, int]  # half-open, in suffix coordinates
+    description_span: tuple[int, int] | None = None  # half-open, in suffix coordinates
 
 
-def tokenize_prompt(tokenizer, question: str, description: str | None = None) -> Tokens:
-    prompt = build_prompt(question, description)
-    ids = tokenizer(prompt, add_special_tokens=True)["input_ids"]
-    last_image = max(i for i, token in enumerate(ids) if token == IMAGE_TOKEN_ID)
-    prefix, suffix = ids[: last_image + 1], ids[last_image + 1 :]
-    if sum(token == IMAGE_TOKEN_ID for token in ids) != NUM_VISUAL:
+def _token_span(offsets: list[tuple[int, int]], start: int, stop: int, first: int) -> tuple[int, int]:
+    """Tokens whose characters overlap [start, stop), as a half-open range relative to ``first``."""
+    inside = [i for i, (a, b) in enumerate(offsets) if a < stop and b > start and b > a]
+    if not inside or inside != list(range(inside[0], inside[-1] + 1)):
+        raise ValueError("a text span did not map to contiguous tokens")
+    return inside[0] - first, inside[-1] + 1 - first
+
+
+def tokenize_prompt(tokenizer, question: str, description: str | None = None, family: Family = LLAVA) -> Tokens:
+    prompt = family.build_prompt(question, description)
+    encoded = tokenizer(prompt, add_special_tokens=family.add_special_tokens, return_offsets_mapping=True)
+    ids, offsets = encoded["input_ids"], [tuple(pair) for pair in encoded["offset_mapping"]]
+    if sum(token == family.image_token_id for token in ids) != NUM_VISUAL:
         raise ValueError("expected exactly 576 image tokens")
-    newlines = [i for i, token in enumerate(suffix) if token == NEWLINE_ID]
-    if len(newlines) < 3:
-        raise ValueError("template should leave at least three newlines in the suffix")
-    return Tokens(prompt, prefix, suffix, (newlines[-2] + 1, newlines[-1]))
+    last_image = max(i for i, token in enumerate(ids) if token == family.image_token_id)
+    first_suffix = last_image + 1
+    question_start = prompt.index(AUTHORITY) + len(AUTHORITY) + 1
+    question_stop = question_start + len(question)
+    if prompt[question_start:question_stop] != question:
+        raise ValueError("could not locate the question in the prompt")
+    description_span = None
+    if description:
+        description_start = prompt.index("Description: ", prompt.rindex(family.image_token))
+        description_stop = description_start + len("Description: ") + len(description)
+        description_span = _token_span(offsets, description_start, description_stop, first_suffix)
+    return Tokens(
+        prompt,
+        ids[:first_suffix],
+        ids[first_suffix:],
+        _token_span(offsets, question_start, question_stop, first_suffix),
+        description_span,
+    )
 
 
 def surface_forms(answer: str) -> dict[str, str]:
@@ -52,25 +76,25 @@ def surface_forms(answer: str) -> dict[str, str]:
     }
 
 
-def candidate_ids(tokenizer, prompt: str, surface: str) -> list[int]:
-    """Tokens of ``" " + surface`` in full prompt context, plus EOS."""
-    base = tokenizer(prompt, add_special_tokens=True)["input_ids"]
-    full = tokenizer(f"{prompt} {surface}", add_special_tokens=True)["input_ids"]
+def candidate_ids(tokenizer, prompt: str, surface: str, family: Family = LLAVA) -> list[int]:
+    """Tokens of the candidate in full prompt context, plus the family's terminator."""
+    base = tokenizer(prompt, add_special_tokens=family.add_special_tokens)["input_ids"]
+    full = tokenizer(
+        f"{prompt}{family.candidate_separator}{surface}", add_special_tokens=family.add_special_tokens
+    )["input_ids"]
     if full[: len(base)] != base or len(full) == len(base):
         raise ValueError(f"prompt is not an exact prefix of prompt + candidate for {surface!r}")
-    return full[len(base) :] + [EOS_ID]
+    return full[len(base) :] + [family.terminator_id]
 
 
 def window_composition(tokens: Tokens, window_size: int = WINDOW_SIZE) -> dict[str, float]:
     """Share of window tokens from the question, the description and fixed instruction text."""
     total = len(tokens.suffix_ids)
     window = range(total - window_size, total)
-    start, stop = tokens.question_span
-    newlines = [i for i, token in enumerate(tokens.suffix_ids) if token == NEWLINE_ID]
-    has_description = len(newlines) == 4
-    description_stop = newlines[1] if has_description else 0
-    question = sum(start <= i < stop for i in window)
-    description = sum(i < description_stop for i in window)
+    q_start, q_stop = tokens.question_span
+    d_start, d_stop = tokens.description_span or (0, 0)
+    question = sum(q_start <= i < q_stop for i in window)
+    description = sum(d_start <= i < d_stop for i in window)
     return {
         "question": question / window_size,
         "description": description / window_size,

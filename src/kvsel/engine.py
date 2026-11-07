@@ -15,7 +15,7 @@ from torch import nn
 
 from .cache import Entries, additive_mask, cache_from_entries, compact, dropped_columns, entries_from_cache
 
-EOS_ID = 2
+EOS_ID = 2  # LLaVA's </s>; a Decoder carries its family's stop ids
 
 
 @dataclass(frozen=True)
@@ -37,12 +37,19 @@ class Decoder:
     computed in fp32 either way. Neither repairs rounding already present in fp16 hidden states.
     """
 
-    def __init__(self, language_model: nn.Module, lm_head: nn.Module, head_precision: str = "fp32"):
+    def __init__(
+        self,
+        language_model: nn.Module,
+        lm_head: nn.Module,
+        head_precision: str = "fp32",
+        stop_ids: tuple[int, ...] = (EOS_ID,),
+    ):
         if head_precision not in {"fp32", "native"}:
             raise ValueError(f"unknown head_precision {head_precision!r}")
         self.language_model = language_model
         self.lm_head = lm_head
         self.head_precision = head_precision
+        self.stop_ids = tuple(stop_ids)
         self.fp32_head = copy.deepcopy(lm_head).float() if head_precision == "fp32" else None
         self.dtype = next(language_model.parameters()).dtype
         self.device = next(language_model.parameters()).device
@@ -80,13 +87,25 @@ class Decoder:
 
 @dataclass(frozen=True)
 class Prefix:
+    """The shared prefix cache.
+
+    ``length`` counts physical entries. ``logical_length`` is the rotary position of the first suffix
+    token. They are equal for LLaVA. Qwen2.5-VL's M-RoPE gives the whole image grid only 24
+    positions, so its text continues from far less than the number of entries.
+    """
+
     entries: Entries
     num_nonvisual: int
     num_visual: int
+    logical_length: int | None = None
 
     @property
     def length(self) -> int:
         return self.num_nonvisual + self.num_visual
+
+    @property
+    def logical_start(self) -> int:
+        return self.length if self.logical_length is None else self.logical_length
 
 
 def probe(decoder: Decoder, prefix: Prefix, suffix_ids: torch.Tensor) -> np.ndarray:
@@ -95,7 +114,9 @@ def probe(decoder: Decoder, prefix: Prefix, suffix_ids: torch.Tensor) -> np.ndar
     Returns float32 of shape (suffix_tokens, num_visual). Probabilities are over all available
     keys and are not renormalised. The probe's cache is discarded on return.
     """
-    _, _, attentions = decoder.step(suffix_ids, prefix.entries, prefix.length, prefix.length, output_attentions=True)
+    _, _, attentions = decoder.step(
+        suffix_ids, prefix.entries, prefix.logical_start, prefix.length, output_attentions=True
+    )
     start, stop = prefix.num_nonvisual, prefix.length
     total = None
     for attention in attentions[2:]:
@@ -122,10 +143,10 @@ def replay(
     else:
         raise ValueError(f"unknown mode {mode!r}")
     physical = entries[0][0].shape[2]
-    hidden, new_entries, _ = decoder.step(suffix_ids, entries, prefix.length, physical, dropped)
+    hidden, new_entries, _ = decoder.step(suffix_ids, entries, prefix.logical_start, physical, dropped)
     logits = decoder.logits(hidden)
     tokens = suffix_ids.shape[1]
-    state = State(new_entries, prefix.length + tokens, physical + tokens, dropped, logits[0, -1])
+    state = State(new_entries, prefix.logical_start + tokens, physical + tokens, dropped, logits[0, -1])
     return state, logits
 
 
@@ -157,7 +178,7 @@ class Greedy:
 
 
 def greedy(decoder: Decoder, state: State, max_new: int = 16, stop_at_eos: bool = True) -> Greedy:
-    """Greedy decode. The returned ids exclude EOS; ``truncated`` means no EOS within ``max_new``."""
+    """Greedy decode. The returned ids exclude the stop token; ``truncated`` means none within ``max_new``."""
     tokens: list[int] = []
     gaps: list[float] = []
     step_logits: list[torch.Tensor] = []
@@ -167,7 +188,7 @@ def greedy(decoder: Decoder, state: State, max_new: int = 16, stop_at_eos: bool 
         top = torch.topk(state.last_logits, 2)
         gaps.append(float(top.values[0] - top.values[1]))
         token = int(top.indices[0])
-        if token == EOS_ID and stop_at_eos:
+        if token in decoder.stop_ids and stop_at_eos:
             finished = True
             break
         tokens.append(token)

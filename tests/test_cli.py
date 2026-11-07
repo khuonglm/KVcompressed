@@ -36,12 +36,21 @@ def test_every_command_parses_its_help(monkeypatch, command):
     assert stopped.value.code == 0
 
 
-def test_check_serialization_dispatches(monkeypatch, tmp_path, capsys):
+@pytest.mark.parametrize("arguments,expected", [([], "llava"), (["--model", "qwen"], "qwen")])
+def test_check_serialization_dispatches_with_the_chosen_family(monkeypatch, tmp_path, capsys, arguments, expected):
     items = tmp_path / "items.jsonl"
     items.write_text("")
-    monkeypatch.setattr("kvsel.model.load_tokenizer", lambda model_dir: None)
-    run_cli(monkeypatch, "check-serialization", "--items", str(items))
-    assert '"pass": true' in capsys.readouterr().out
+    seen = {}
+    monkeypatch.setattr("kvsel.model.load_tokenizer", lambda model_dir, family: seen.setdefault("family", family.name))
+    run_cli(monkeypatch, "check-serialization", "--items", str(items), *arguments)
+    assert '"pass": true' in capsys.readouterr().out and seen["family"] == expected
+
+
+def test_fetch_model_uses_the_family_repository_and_directory(monkeypatch):
+    calls = {}
+    monkeypatch.setattr("kvsel.model_files.fetch_model", lambda out, workers, model_id: calls.update(out=out, model_id=model_id) or [])
+    run_cli(monkeypatch, "fetch-model", "--model", "qwen")
+    assert calls == {"out": __import__("pathlib").Path("models/qwen2.5-vl-7b-instruct"), "model_id": "Qwen/Qwen2.5-VL-7B-Instruct"}
 
 
 def test_screen_prints_eligibility_and_casing(monkeypatch, tmp_path, capsys):
