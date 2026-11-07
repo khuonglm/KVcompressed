@@ -57,6 +57,20 @@ items. The distribution of logit and margin differences is the fp16 noise floor.
 - Every greedy mismatch is investigated. It is accepted only as a near tie: the top-two logit gap at
   the diverging step is below twice the noise floor's maximum. Any other mismatch is a failure.
 
+## Open failure: E2, first GPU run (7 November 2026)
+
+Max logit difference 0.208 against a limit of 0.110. All other tests passed. Possible cause: E2 ran on
+the QH_mis suffix, but its limit came from a noise floor measured on the Q suffix.
+
+`kvsel diagnose-e2` measures compact K = 576, dense with nothing dropped, and one full forward pass,
+on both suffixes and the same items. This reading was fixed before the diagnostic first ran:
+
+| Observed | Conclusion | Action |
+| --- | --- | --- |
+| Compact equals dense exactly on every item and suffix, and the Q and QH_mis noise-floor maxima fall in line with 0.11 and 0.21 | Cause identified: the limit came from a different suffix. Gathering adds no error | Compare E2 with a noise floor from the same suffix, keeping the same criterion, and rerun `kvsel validate` |
+| Compact differs from dense on any item | Compaction itself adds error at K = 576 | Stays failed; debug the gather |
+| Compact equals dense, but the suffix difference doesn't explain the size | Cause not identified | Stays failed; investigate further |
+
 ## Not yet covered in the minimal version
 
 E6's coverage plots (the radius is checked), hand verification (D1, D2) and the timing test R1.

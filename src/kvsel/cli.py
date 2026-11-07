@@ -70,6 +70,22 @@ def cmd_validate(args) -> None:
         raise SystemExit(1)
 
 
+def cmd_diagnose_e2(args) -> None:
+    from .runner import load_items, open_image, require_development
+    from .validate import diagnose_e2
+
+    items = load_items(args.items)
+    require_development(items)
+    loaded = [(item, open_image(args.images, item)) for item in items[: args.noise_items]]
+    report = diagnose_e2(_bundle(args), loaded)
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    args.out.write_text(json.dumps(report, indent=2))
+    for name, result in report.items():
+        summary = {key: value for key, value in result.items() if key != "worst_items"}
+        print(f"{name}: {json.dumps(summary)}")
+    print(f"full report: {args.out}")
+
+
 def cmd_screen(args) -> None:
     from .runner import eligible, load_items, run_screen
 
@@ -162,6 +178,13 @@ def main() -> None:
     sub.add_argument("--repeat-items", type=int, default=5, help="items for E7")
     sub.add_argument("--out", type=Path, default=Path("results/validate.json"))
     sub.set_defaults(run=cmd_validate)
+
+    sub = commands.add_parser("diagnose-e2", help="separate the sources of the E2 logit difference")
+    add_item_options(sub)
+    add_model_options(sub)
+    sub.add_argument("--noise-items", type=int, default=50)
+    sub.add_argument("--out", type=Path, default=Path("results/diagnose_e2.json"))
+    sub.set_defaults(run=cmd_diagnose_e2)
 
     sub = commands.add_parser("screen", help="Full_Q on development items, for eligibility")
     add_item_options(sub)

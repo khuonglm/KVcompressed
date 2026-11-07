@@ -134,3 +134,14 @@ def test_whole_validate_on_tiny_model_produces_a_report(bundle, dataset):
     result = validate(bundle, items, directory, noise_items=2, sparse_items=1, repeat_items=1)
     assert {"E1", "E2", "E3", "E4", "E5", "E7", "noise_floor", "noise_floor_native_head", "all_pass"} <= set(result)
     assert result["E1"]["pass"] and result["E4"]["pass"] and result["E7"]["pass"]
+
+
+def test_diagnose_e2_reports_both_suffixes_and_exact_compact_equality(bundle, loaded):
+    from kvsel.validate import diagnose_e2
+
+    report = diagnose_e2(bundle, loaded[:2])
+    assert set(report) == {"Q", "mis"}
+    for result in report.values():
+        assert result["compact_vs_dense_max"] == 0
+        assert result["full_vs_compact_max"] < 1e-3
+        assert len(result["worst_items"]) == 2 and result["worst_items"][0]["max_at_input_token"] is not None

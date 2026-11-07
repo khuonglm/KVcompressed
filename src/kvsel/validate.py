@@ -205,6 +205,55 @@ def run_e7(bundle: Bundle, loaded) -> dict:
     return {"pass": not different, "different_items": different}
 
 
+def diagnose_e2(bundle: Bundle, loaded) -> dict:
+    """Separates three comparisons per suffix: full vs dense, full vs compact, compact vs dense."""
+    keep_all = torch.arange(576)
+    report: dict = {}
+    for name in (Q, "mis"):
+        rows = []
+        for item, image in loaded:
+            tokens = contexts_for(item, bundle.tokenizer)[name]
+            pixels = pixel_values(bundle, image)
+            full = full_forward_logits(bundle, tokens.prefix_ids + tokens.suffix_ids, pixels, len(tokens.prefix_ids))
+            prefix = prefill(bundle, tokens.prefix_ids, pixels)
+            suffix = torch.tensor([tokens.suffix_ids])
+            state_c, compact_logits = replay(bundle.decoder, prefix, keep_all, suffix, "compact")
+            _, dense_logits = replay(bundle.decoder, prefix, keep_all, suffix, "dense")
+            difference = (full - compact_logits).abs()[0]
+            position, vocabulary = np.unravel_index(int(difference.argmax()), difference.shape)
+            top = full[0].topk(10, dim=-1).indices
+            rows.append({
+                "item": item["item_id"],
+                "suffix_tokens": len(tokens.suffix_ids),
+                "full_vs_compact_max": float(difference.max()),
+                "full_vs_dense_max": float((full - dense_logits).abs().max()),
+                "compact_vs_dense_max": float((compact_logits - dense_logits).abs().max()),
+                "max_top10_logits": float(difference.gather(1, top).max()),
+                "max_at_suffix_position": int(position),
+                "max_at_input_token": bundle.tokenizer.decode(tokens.suffix_ids[int(position)]),
+                "max_at_vocabulary_token": bundle.tokenizer.decode(int(vocabulary)),
+                "logit_there": float(full[0, int(position), int(vocabulary)]),
+                "margin_full_vs_compact": abs(
+                    margin_full_forward(bundle, tokens, pixels, item["a_true"], item["a_alt"])
+                    - margin_incremental(bundle, state_c, tokens.prompt, item["a_true"], item["a_alt"])
+                ),
+            })
+        maxima = [row["full_vs_compact_max"] for row in rows]
+        report[name] = {
+            "items": len(rows),
+            "full_vs_compact_max": max(maxima),
+            "full_vs_dense_max": max(row["full_vs_dense_max"] for row in rows),
+            "compact_vs_dense_max": max(row["compact_vs_dense_max"] for row in rows),
+            "per_item_max_median": float(np.median(maxima)),
+            "per_item_max_p90": float(np.percentile(maxima, 90)),
+            "max_among_top10_logits": max(row["max_top10_logits"] for row in rows),
+            "margin_mean_abs": float(np.mean([row["margin_full_vs_compact"] for row in rows])),
+            "margin_max_abs": max(row["margin_full_vs_compact"] for row in rows),
+            "worst_items": sorted(rows, key=lambda row: -row["full_vs_compact_max"])[:5],
+        }
+    return report
+
+
 def native_head(bundle: Bundle) -> Bundle:
     decoder = Decoder(bundle.decoder.language_model, bundle.decoder.lm_head, "native")
     return dataclasses.replace(bundle, decoder=decoder)
