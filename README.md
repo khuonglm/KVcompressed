@@ -23,16 +23,18 @@ Stop at the first step that fails, and send me its output.
 
 ### 1. Get the GQA data
 
+Download only the images the manifests use (1,799 files, about 325 MB), not the 21.8 GB archive:
+
 ```bash
-mkdir -p data/gqa && cd data/gqa
-BASE=https://downloads.cs.stanford.edu/nlp/data/gqa
-curl -LO $BASE/images.zip             # 21.8 GB; contains every manifest image
-unzip -q images.zip                   # creates images/
-cd ../..
+uv run kvsel fetch-images manifests/gqa_dev.jsonl manifests/gqa_confirm.jsonl
 ```
 
+Files go to `data/gqa/images`, and each is checked against the archive's CRC. If it's interrupted or
+some files fail, rerun the same command and it fetches only what's missing. Use `--workers` to change
+the parallelism; the default is 3 because the server returned 503 errors at 8.
+
 The item manifests are already in `manifests/`, so you don't need the question files on the GPU.
-Use `images.zip`, not the 79 GB `allImages.zip`.
+If you rebuild them with different filters, rerun this command for any new images.
 
 ### 2. Validate the pipeline
 

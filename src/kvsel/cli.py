@@ -21,6 +21,15 @@ def cmd_build_gqa(args) -> None:
     print(json.dumps(funnel, indent=2))
 
 
+def cmd_fetch_images(args) -> None:
+    from .fetch_images import fetch
+
+    summary = fetch(args.manifests, args.out, args.url, args.workers, args.limit)
+    print(json.dumps(summary, indent=2))
+    if summary["failed"]:
+        raise SystemExit(f"{len(summary['failed'])} files failed; rerun the command to retry them")
+
+
 def cmd_check_serialization(args) -> None:
     from .model import load_tokenizer
     from .runner import load_items
@@ -107,6 +116,14 @@ def main() -> None:
     sub.add_argument("--out-dir", type=Path, default=Path("manifests"))
     sub.add_argument("--dev-items", type=int, default=600, help="candidates before eligibility and verification")
     sub.set_defaults(run=cmd_build_gqa)
+
+    sub = commands.add_parser("fetch-images", help="download only the images a manifest needs")
+    sub.add_argument("manifests", type=Path, nargs="+")
+    sub.add_argument("--out", type=Path, default=Path("data/gqa/images"))
+    sub.add_argument("--url", default="https://downloads.cs.stanford.edu/nlp/data/gqa/images.zip")
+    sub.add_argument("--workers", type=int, default=3, help="the server returns 503 errors at 8")
+    sub.add_argument("--limit", type=int, help="fetch at most this many files, to try it out")
+    sub.set_defaults(run=cmd_fetch_images)
 
     sub = commands.add_parser("check-serialization", help="test E1; tokenizer only, no GPU")
     sub.add_argument("--items", type=Path, required=True)
