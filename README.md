@@ -92,6 +92,31 @@ uv run kvsel report results/pilot --surface lower --out results/pilot/report.md
 Development items only, so nothing in this report supports a claim. Its first use is to settle the
 open decisions: rung 1 for PW-attn, answer casing, and the clustered SD for planning.
 
+## TextVQA runbook
+
+Same rule: stop at the first step that fails, and send me its output. Results go under
+`results/textvqa/`, so nothing overwrites the GQA files (`results/validate.json`,
+`results/screen_dev`, `results/pilot`).
+
+```bash
+mkdir -p results/textvqa
+set -o pipefail   # so a failure inside `| tee` still stops the && chain
+
+# 1. Development images only (about 0.4 GB)
+uv run kvsel fetch-images manifests/textvqa_dev.jsonl --out data/textvqa/images \
+  --url https://dl.fbaipublicfiles.com/textvqa/images/train_val_images.zip --workers 4
+
+# 2. Validate, then screen only if every test passes (about 35 minutes together)
+uv run kvsel validate --items manifests/textvqa_dev.jsonl --images data/textvqa/images \
+  --surface capitalized --out results/textvqa/validate.json 2>&1 | tee results/textvqa/validate.log \
+&& uv run kvsel screen --items manifests/textvqa_dev.jsonl --images data/textvqa/images \
+  --out results/textvqa/screen_dev 2>&1 | tee results/textvqa/screen.log
+
+# 3. No GPU: do scored tokens match generated tokens?
+uv run kvsel check-tokenization results/textvqa/screen_dev --items manifests/textvqa_dev.jsonl \
+  | tee results/textvqa/check_tokenization.json
+```
+
 ## Hand verification
 
 Run the tool on the server and open it through an SSH tunnel from your own machine. Or run it on any
