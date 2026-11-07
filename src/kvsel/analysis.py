@@ -202,17 +202,30 @@ def _surface_section(rows: list[dict]) -> list[str]:
     return lines + ["", "Digits and other caseless answers count as lower.", ""]
 
 
-def report(run_dir: Path, surface: str = "lower", resamples: int = RESAMPLES) -> str:
+def keep_verified(rows: list[dict], decisions_path: Path) -> list[dict]:
+    """Rows of items whose latest hand-verification decision is a pass."""
+    from .verify import passed_items
+
+    passed = passed_items(decisions_path)
+    return [row for row in rows if row["item_id"] in passed]
+
+
+def report(run_dir: Path, surface: str = "lower", resamples: int = RESAMPLES, verified: Path | None = None) -> str:
     rows = load_rows(run_dir)
+    total_items = len({row["item_id"] for row in rows})
+    if verified is not None:
+        rows = keep_verified(rows, verified)
     if not rows:
-        raise SystemExit(f"no item files under {run_dir}")
+        raise SystemExit(f"no item files under {run_dir}" if verified is None else f"no items passed in {verified}")
     wide, images = margins_wide(rows, surface)
     selectors = sorted({r["selector"] for r in rows} - {"full", "uniform"})
     conditions = [c for c in ("mis", "match", "irr") if any(r["answering"] == c for r in rows)]
     lines = [
         f"# Development report: {Path(run_dir).name}", "",
         "**Development items only. Nothing here supports a claim.**", "",
-        f"{wide.shape[0]} items on {images.nunique()} images.", "",
+        f"{wide.shape[0]} items on {images.nunique()} images."
+        + (f" Hand-verified passes only, out of {total_items} items run." if verified is not None else " Not filtered by hand verification."),
+        "",
     ]
     if selectors:
         for selector in selectors:

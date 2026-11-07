@@ -35,9 +35,12 @@ Sections 4–10 describe the full design. Module names in the first version are 
 
 **GQA funnel on `val_balanced` (builder `gqa-2`):** 4,503 questions with the required program → 4,100 in the closed vocabulary → 2,253 with a usable irrelevant object → 2,234 within the ±3 token rule, on 1,799 images and 92% colour. That is 600 development candidates and a 1,634-item confirmatory pool, before eligibility and verification.
 
-Two builder choices refine §7 and should go into `PREREG.md`:
+**TextVQA funnel, train and val pooled (builder `textvqa-2`):** 39,602 questions → 36,178 with at least 3 votes for the modal answer → 7,220 items on 6,359 images, split into 1,500 development candidates and a 5,720-item confirmatory pool, before eligibility and verification. Eligibility is unknown until the screen runs. All images are in the archive.
+
+Builder choices that refine §7 and should go into `PREREG.md`:
 
 - **Closed vocabulary.** a\_true, a\_alt and irrelevant values come from 11 clear colours and 8 materials. Raw GQA answers include activities (`brushing teeth`), vague values (`dark`) and near neighbours (`tan`, `light blue`), which could make a\_alt acceptable.
+- **TextVQA fragments.** a\_alt and irrelevant strings can't contain, or be contained in, an accepted answer or a\_alt. §7's rules alone allowed `a_true = toyota` with `a_alt = yota`, an OCR fragment of the right answer.
 - **Verb agreement.** Descriptions use "are" when the dataset's question or full answer does, because about 15% of objects look plural and "The pants in this image is white" would fail verification. Irrelevant descriptions use singular objects only. Matching and misleading still differ only in the value.
 
 ## 2. What I checked

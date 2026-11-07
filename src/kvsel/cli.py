@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import getpass
 import json
 from pathlib import Path
 
@@ -20,6 +21,14 @@ def cmd_build_gqa(args) -> None:
     from .model import load_tokenizer
 
     funnel = build(args.questions, args.scene_graphs, args.out_dir, load_tokenizer(args.model_dir), args.dev_items)
+    print(json.dumps(funnel, indent=2))
+
+
+def cmd_build_textvqa(args) -> None:
+    from .model import load_tokenizer
+    from .textvqa import build
+
+    funnel = build(args.questions, args.ocr, args.out_dir, load_tokenizer(args.model_dir), args.dev_items)
     print(json.dumps(funnel, indent=2))
 
 
@@ -116,10 +125,33 @@ def cmd_pilot(args) -> None:
     run_items(_bundle(args), chosen, args.images, args.out, pilot_units(k=args.k))
 
 
+def cmd_verify(args) -> None:
+    from .runner import eligible, load_items
+    from .verify import build_queue, load_decisions, make_server, summarize
+
+    items = load_items(args.items)
+    eligible_ids = None
+    if args.screen:
+        eligible_ids = set()
+        for item in items:
+            path = args.screen / "items" / f"{item['item_id']}.json"
+            if path.exists() and eligible(json.loads(path.read_text())["rows"][0], args.surface):
+                eligible_ids.add(item["item_id"])
+    queue = build_queue(items, eligible_ids, args.limit)
+    server = make_server(queue, args.images, args.decisions, args.verifier, args.port)
+    print(f"{len(queue)} items queued; decisions go to {args.decisions}")
+    print(f"open http://127.0.0.1:{server.server_address[1]}  (Ctrl-C to stop)", flush=True)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    print(json.dumps(summarize(load_decisions(args.decisions, queue)[0], queue), indent=2))
+
+
 def cmd_report(args) -> None:
     from .analysis import report
 
-    text = report(args.run, args.surface, args.resamples)
+    text = report(args.run, args.surface, args.resamples, args.verified)
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(text)
@@ -151,12 +183,20 @@ def main() -> None:
     sub.add_argument("--out-dir", type=Path, default=Path("manifests"))
     sub.add_argument("--dev-items", type=int, default=600, help="candidates before eligibility and verification")
     add_model_dir(sub)
-    sub.set_defaults(run=cmd_build_gqa)
+    sub.set_defaults(handler=cmd_build_gqa)
+
+    sub = commands.add_parser("build-textvqa", help="build TextVQA item manifests and print the funnel")
+    sub.add_argument("--questions", type=Path, nargs="+", required=True)
+    sub.add_argument("--ocr", type=Path, nargs="+", required=True)
+    sub.add_argument("--out-dir", type=Path, default=Path("manifests"))
+    sub.add_argument("--dev-items", type=int, default=1500, help="candidates before eligibility and verification")
+    add_model_dir(sub)
+    sub.set_defaults(handler=cmd_build_textvqa)
 
     sub = commands.add_parser("fetch-model", help="download the model for local use; resumes if rerun")
     sub.add_argument("--out", type=Path, default=DEFAULT_MODEL_DIR)
     sub.add_argument("--workers", type=int, default=8)
-    sub.set_defaults(run=cmd_fetch_model)
+    sub.set_defaults(handler=cmd_fetch_model)
 
     sub = commands.add_parser("fetch-images", help="download only the images a manifest needs")
     sub.add_argument("manifests", type=Path, nargs="+")
@@ -164,12 +204,12 @@ def main() -> None:
     sub.add_argument("--url", default="https://downloads.cs.stanford.edu/nlp/data/gqa/images.zip")
     sub.add_argument("--workers", type=int, default=3, help="the server returns 503 errors at 8")
     sub.add_argument("--limit", type=int, help="fetch at most this many files, to try it out")
-    sub.set_defaults(run=cmd_fetch_images)
+    sub.set_defaults(handler=cmd_fetch_images)
 
     sub = commands.add_parser("check-serialization", help="test E1; tokenizer only, no GPU")
     sub.add_argument("--items", type=Path, required=True)
     add_model_dir(sub)
-    sub.set_defaults(run=cmd_check_serialization)
+    sub.set_defaults(handler=cmd_check_serialization)
 
     sub = commands.add_parser("validate", help="noise floor and tests E1-E5, E7 on the real model")
     add_item_options(sub)
@@ -178,20 +218,20 @@ def main() -> None:
     sub.add_argument("--sparse-items", type=int, default=20, help="items for E3-E5")
     sub.add_argument("--repeat-items", type=int, default=5, help="items for E7")
     sub.add_argument("--out", type=Path, default=Path("results/validate.json"))
-    sub.set_defaults(run=cmd_validate)
+    sub.set_defaults(handler=cmd_validate)
 
     sub = commands.add_parser("diagnose-e2", help="separate the sources of the E2 logit difference")
     add_item_options(sub)
     add_model_options(sub)
     sub.add_argument("--noise-items", type=int, default=50)
     sub.add_argument("--out", type=Path, default=Path("results/diagnose_e2.json"))
-    sub.set_defaults(run=cmd_diagnose_e2)
+    sub.set_defaults(handler=cmd_diagnose_e2)
 
     sub = commands.add_parser("screen", help="Full_Q on development items, for eligibility")
     add_item_options(sub)
     add_model_options(sub)
     sub.add_argument("--out", type=Path, default=Path("results/screen_dev"))
-    sub.set_defaults(run=cmd_screen)
+    sub.set_defaults(handler=cmd_screen)
 
     sub = commands.add_parser("pilot", help="the full grid of cells on eligible development items")
     add_item_options(sub)
@@ -201,17 +241,28 @@ def main() -> None:
     sub.add_argument("--limit", type=int, default=200)
     sub.add_argument("--k", type=int, default=144, choices=[288, 144, 72])
     sub.add_argument("--out", type=Path, default=Path("results/pilot"))
-    sub.set_defaults(run=cmd_pilot)
+    sub.set_defaults(handler=cmd_pilot)
+
+    sub = commands.add_parser("verify", help="hand-verify items in a local web page")
+    add_item_options(sub)
+    sub.add_argument("--decisions", type=Path, required=True, help="append-only JSONL, for example verification/gqa_dev.jsonl")
+    sub.add_argument("--screen", type=Path, help="queue only items eligible in this screen directory")
+    sub.add_argument("--surface", default="capitalized", choices=["lower", "capitalized"])
+    sub.add_argument("--limit", type=int)
+    sub.add_argument("--verifier", default=getpass.getuser())
+    sub.add_argument("--port", type=int, default=8765)
+    sub.set_defaults(handler=cmd_verify)
 
     sub = commands.add_parser("report", help="estimands and tables from a run directory")
     sub.add_argument("run", type=Path)
     sub.add_argument("--surface", default="lower", choices=["lower", "capitalized", "logsum"])
     sub.add_argument("--resamples", type=int, default=10_000)
+    sub.add_argument("--verified", type=Path, help="keep only items that passed in this decisions file")
     sub.add_argument("--out", type=Path)
-    sub.set_defaults(run=cmd_report)
+    sub.set_defaults(handler=cmd_report)
 
     args = parser.parse_args()
-    args.run(args)
+    args.handler(args)
 
 
 if __name__ == "__main__":

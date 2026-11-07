@@ -92,6 +92,50 @@ uv run kvsel report results/pilot --surface lower --out results/pilot/report.md
 Development items only, so nothing in this report supports a claim. Its first use is to settle the
 open decisions: rung 1 for PW-attn, answer casing, and the clustered SD for planning.
 
+## Hand verification
+
+Run the tool on the server and open it through an SSH tunnel from your own machine. Or run it on any
+machine that has the repo and the images.
+
+```bash
+# On the server: queues eligible development items only
+uv run kvsel verify --items manifests/gqa_dev.jsonl --images data/gqa/images \
+  --screen results/screen_dev --surface capitalized --limit 200 --decisions verification/gqa_dev.jsonl
+
+# On your own machine
+ssh -L 8765:127.0.0.1:8765 root@YOUR_SERVER
+# then open http://127.0.0.1:8765
+```
+
+| Key | Action |
+| --- | --- |
+| `y` | Pass |
+| `1`–`6` | Fail, with the reason shown on the page |
+| `g` | Next evidence overlay: primary, fallback, centre, expanded, box only |
+| `n` | Add a note to the next decision |
+| `←` `→` / `u` | Move / jump to the next undecided item |
+
+Decisions save immediately to an append-only file, so you can stop any time. Press a key again on an
+item to change its decision; the latest one counts. Commit `verification/` regularly: it's the only
+record of this work. The page shows no model outcomes.
+
+To rerun the report on items that passed:
+
+```bash
+uv run kvsel report results/pilot --surface capitalized --verified verification/gqa_dev.jsonl \
+  --out results/pilot/report_verified.md
+```
+
+## TextVQA data
+
+The manifests are in `manifests/`. Only the images are needed, not the 7 GB archive: about 0.4 GB for
+the 1,320 development images, or about 1.8 GB with the confirmatory images:
+
+```bash
+uv run kvsel fetch-images manifests/textvqa_dev.jsonl --out data/textvqa/images \
+  --url https://dl.fbaipublicfiles.com/textvqa/images/train_val_images.zip --workers 4
+```
+
 ## Layout
 
 | Path | Contents |
@@ -100,7 +144,9 @@ open decisions: rung 1 for PW-attn, answer casing, and the clustered SD for plan
 | `src/kvsel/engine.py` | Probe, replay, candidate scoring, greedy decoding |
 | `src/kvsel/selectors.py` | PW-attn, question-span, uniform, coverage reserve |
 | `src/kvsel/prompts.py` | Template v3.0, prefix/suffix split, candidate tokenization |
-| `src/kvsel/gqa.py` | GQA builder |
+| `src/kvsel/gqa.py`, `textvqa.py` | Dataset builders |
+| `src/kvsel/geometry.py` | Image transform and box-to-grid mapping rules |
+| `src/kvsel/verify.py` | Hand-verification tool |
 | `src/kvsel/runner.py` | Work units; one result file per item |
 | `src/kvsel/validate.py` | Level 2 acceptance tests |
 | `src/kvsel/analysis.py` | Estimands, clustered bootstrap, development report |
