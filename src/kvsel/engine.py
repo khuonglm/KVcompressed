@@ -32,10 +32,17 @@ class State:
 class Decoder:
     """Language model plus output head, with explicit positions and masks on every call.
 
-    ``head_precision``: "fp32" projects the fp32-cast hidden state through an fp32 copy of the
-    head. "native" uses the model's head and casts its logits afterwards. Log-probabilities are
-    computed in fp32 either way. Neither repairs rounding already present in fp16 hidden states.
+    ``head_precision``: "fp32" projects the fp32-cast hidden state through the head in fp32.
+    "native" uses the model's head and casts its logits afterwards, so they keep the rounding of
+    the model's dtype (in bf16, steps of 0.125 for logits between 16 and 32). Log-probabilities are
+    computed in fp32 either way. Neither repairs rounding already present in the hidden states.
+
+    ``fp32_head_copy``: keep an fp32 copy of the head (fast, but 4 bytes per weight), or upcast the
+    head a slice of rows at a time on every call (no copy; same arithmetic, since fp16 and bf16
+    weights are exact in fp32).
     """
+
+    HEAD_ROWS_PER_SLICE = 16384
 
     def __init__(
         self,
@@ -43,6 +50,7 @@ class Decoder:
         lm_head: nn.Module,
         head_precision: str = "fp32",
         stop_ids: tuple[int, ...] = (EOS_ID,),
+        fp32_head_copy: bool = True,
     ):
         if head_precision not in {"fp32", "native"}:
             raise ValueError(f"unknown head_precision {head_precision!r}")
@@ -50,15 +58,27 @@ class Decoder:
         self.lm_head = lm_head
         self.head_precision = head_precision
         self.stop_ids = tuple(stop_ids)
-        self.fp32_head = copy.deepcopy(lm_head).float() if head_precision == "fp32" else None
+        self.fp32_head_copy = fp32_head_copy
+        copy_head = head_precision == "fp32" and fp32_head_copy
+        self.fp32_head = copy.deepcopy(lm_head).float() if copy_head else None
         self.dtype = next(language_model.parameters()).dtype
         self.device = next(language_model.parameters()).device
 
     @torch.inference_mode()
     def logits(self, hidden: torch.Tensor) -> torch.Tensor:
+        if self.head_precision == "native":
+            return self.lm_head(hidden).float()
         if self.fp32_head is not None:
             return self.fp32_head(hidden.float())
-        return self.lm_head(hidden).float()
+        hidden = hidden.float()
+        weight, bias = self.lm_head.weight, self.lm_head.bias
+        slices = []
+        for start in range(0, weight.shape[0], self.HEAD_ROWS_PER_SLICE):
+            stop = start + self.HEAD_ROWS_PER_SLICE
+            slices.append(nn.functional.linear(
+                hidden, weight[start:stop].float(), None if bias is None else bias[start:stop].float()
+            ))
+        return torch.cat(slices, dim=-1)
 
     @torch.inference_mode()
     def step(

@@ -83,7 +83,7 @@ def cmd_validate(args) -> None:
     args.out.write_text(json.dumps(report, indent=2))
     for name in ("E1", "E2", "E3", "E4", "E5", "E7"):
         print(f"{name}: {'PASS' if report[name]['pass'] else 'FAIL'}")
-    print(f"noise floor, fp32 head:   {report['noise_floor']}")
+    print(f"noise floor, {report['head_precision']} head:   {report['noise_floor']}")
     print(f"noise floor, QH_mis:      {report['noise_floor_mis']}")
     print(f"noise floor, native head: {report['noise_floor_native_head']}")
     print(f"full report: {args.out}")
@@ -199,7 +199,7 @@ def main() -> None:
         add_model_dir(sub)
         sub.add_argument("--device", default="cuda")
         sub.add_argument("--head-precision", default=None, choices=["fp32", "native"],
-                         help="output head precision (default: fp32 for llava, native for qwen)")
+                         help="output head precision (default: fp32)")
 
     def add_item_options(sub) -> None:
         sub.add_argument("--items", type=Path, required=True, help="development manifest (JSONL)")

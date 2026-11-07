@@ -13,7 +13,7 @@ import torch
 from PIL import Image
 
 from kvsel.cache import entries_hash
-from kvsel.engine import advance, probe, replay
+from kvsel.engine import Decoder, advance, probe, replay
 from kvsel.families import QWEN
 from kvsel.model import bundle_from_model, full_forward_logits, load_image_processor, load_tokenizer, pixel_values, prefill
 from kvsel.prompts import candidate_ids, tokenize_prompt, window_composition
@@ -46,7 +46,23 @@ def setup(bundle, image):
 
 
 def test_bundle_uses_the_qwen_family_defaults(bundle):
-    assert bundle.decoder.head_precision == "native" and bundle.decoder.stop_ids == (151645, 151643)
+    decoder = bundle.decoder
+    assert decoder.head_precision == "fp32" and decoder.fp32_head is None  # sliced, no 2.2 GB copy
+    assert decoder.stop_ids == (151645, 151643)
+
+
+def test_sliced_fp32_head_matches_a_full_fp32_copy(tiny_qwen):
+    """Same arithmetic as the copy, and unlike the bf16 head its logits are not on a 0.125 grid."""
+    head = torch.nn.Linear(64, 151936, bias=False)
+    head.weight.data = tiny_qwen.lm_head.weight.data.to(torch.bfloat16)
+    language_model = tiny_qwen.model.language_model
+    hidden = (torch.randn(3, 64) * 8).to(torch.bfloat16)
+    sliced = Decoder(language_model, head, "fp32", fp32_head_copy=False).logits(hidden)
+    copied = Decoder(language_model, head, "fp32", fp32_head_copy=True).logits(hidden)
+    native = Decoder(language_model, head, "native").logits(hidden)
+    assert sliced.dtype == torch.float32 and sliced.shape == (3, 151936)
+    assert torch.allclose(sliced, copied, atol=1e-5, rtol=0)
+    assert not torch.equal(sliced, native)
 
 
 def test_prefix_layout_and_logical_start(setup):

@@ -79,6 +79,15 @@ requires compact to equal dense exactly. That second condition is new and strict
 at K = 576 would repeat the noise-floor computation and could not fail. The failing limit was not
 raised on the Q suffix, and E3 and E5 keep the Q floor. Every test reruns under `kvsel validate`.
 
+## Level 2 outcomes, LLaVA (development items)
+
+| Run | Result |
+| --- | --- |
+| GQA validate (7 Nov 2026, after the E2 fix) | E1-E7 pass |
+| TextVQA validate (7 Nov 2026) | E1-E7 pass. Noise floor: Q margin mean 0.0055, QH_mis 0.0056, max logit 0.121. E3 margin mean 0.0048; 2 greedy mismatches, both near ties |
+| TextVQA screen | 888 of 1,500 eligible under `capitalized`; greedy Full_Q answers 87.9% capitalized, 11.0% lower, 0.1% upper |
+| check-tokenization | GQA pilot 200 of 200 agree. TextVQA screen 1,491 of 1,500 (99.4%); the 9 disagreements are rare names (Olivetti, Expedia, Powerade) the model spells with a non-canonical token split |
+
 ## Qwen2.5-VL-7B (second model, added 7 November 2026)
 
 Written before any Qwen test ran on the real model. The same rules and the same E1-E7 criteria apply;
@@ -89,13 +98,49 @@ every limit that comes from a noise floor uses **Qwen's own** noise floor, measu
 - Backbone, cache and attention in **bf16**, the model's training precision. Qwen2.5-VL is known to be
   unstable in fp16, so the LLaVA rule of fp16 does not carry over.
 - Output head: **native** (bf16 projection, logits cast to fp32). An fp32 copy of the 152k-row head is
-  2.2 GB and does not fit beside 16.6 GB of weights on the 20 GB GPU.
+  2.2 GB and does not fit beside 16.6 GB of weights on the 20 GB GPU. *Superseded by the amendment below.*
 - Log-probabilities and their sums in fp32, as for LLaVA.
 
 **Known risk, stated in advance.** bf16 keeps 8 bits of mantissa against fp16's 11, so Qwen's noise
 floor will be larger than LLaVA's. E3's margin limit (mean below 0.01 nats) is absolute, not relative
 to the noise floor, so it is the criterion most likely to fail. If it does, the rules above apply: the
 tolerance is not loosened, and the failure closes only once its cause is identified.
+
+**Amendment (7 November 2026, after the failure below).** Output head changed to **fp32**, computed
+by upcasting the bf16 head 16,384 rows at a time, so no 2.2 GB copy is stored. The arithmetic is the
+same as an fp32 copy, since bf16 weights are exact in fp32 (`test_sliced_fp32_head_matches_a_full_fp32_copy`).
+This is a numerical-policy change under rule 2; no tolerance changed.
+
+### Open failure: Qwen E3, first GPU run (7 November 2026)
+
+**Failure.** E3 margin mean 0.204 against the 0.01 limit. E1, E2, E4, E5 and E7 passed, and E3's
+logit p99 (1.69) was within its limit (4.25). Noise floor: margin mean 0.224, logit p99 2.13, logit
+max 17.3, against LLaVA's 0.003, 0.017 and 0.12.
+
+**Weakness found in the test.** All 73 greedy mismatches counted as near ties, but the near-tie limit
+is twice the noise floor's maximum, 34.6 nats, so that check could not fail. It regains its power only
+once the noise floor is small. The criterion is unchanged.
+
+**Two candidate causes, stated before the rerun.**
+
+1. *The bf16 output head.* Every greedy gap in the report is 0, 0.125, 0.25 or 0.375. That is the
+   bf16 spacing for logits between 16 and 32, and gaps of exactly 0 are ties that exist only because
+   the logits were rounded. The amendment above removes this source.
+2. *bf16 attention.* The head alone cannot explain a logit p99 of 2.13, because rounding in the head
+   is at most 0.0625 for logits below 32. Qwen's eager attention rounds the QK^T scores to bf16
+   before the softmax, and the attention weights to bf16 before multiplying by V. Compact and dense
+   differ only inside attention (different key lengths, so a different summation order), so E3's
+   difference must start there. At scores above 128, one bf16 step is 1.0 before the softmax. The
+   model was trained with flash attention, which keeps scores in fp32.
+
+**Predictions for the rerun (fp32 head, otherwise unchanged).**
+
+- The native-head noise floor, now measured separately, reproduces the first run exactly (margin mean
+  0.2240, logit max 17.3047). If it does not, something else changed, and that is investigated first.
+- Greedy gaps are no longer multiples of 0.125.
+- If the fp32-head E3 margin mean falls below 0.01, cause 1 was enough and the failure closes.
+- If it stays above 0.01, which is the expected outcome given the logit p99, cause 2 is next: an
+  attention that keeps scores and weights in fp32, tested the same way. The 0.01 limit does not change.
 
 **CPU evidence so far** (`tests/test_qwen.py`, tiny random Qwen2.5-VL in fp32, real tokenizer and image
 processor): prefix-then-replay equals one full forward pass, which computes M-RoPE itself; replaying

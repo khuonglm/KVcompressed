@@ -48,7 +48,7 @@ def load_image_processor(model_dir: Path | None = None, family: Family = LLAVA):
 
 def bundle_from_model(model, tokenizer, image_processor, head_precision: str | None = None, family: Family = LLAVA) -> Bundle:
     precision = head_precision or family.default_head_precision
-    decoder = Decoder(model.model.language_model, model.lm_head, precision, family.stop_ids)
+    decoder = Decoder(model.model.language_model, model.lm_head, precision, family.stop_ids, family.fp32_head_copy)
     return Bundle(model, decoder, tokenizer, image_processor, family)
 
 

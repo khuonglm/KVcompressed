@@ -298,7 +298,8 @@ def check_tokenization(tokenizer, items: list[dict], run_dir: Path, family: Fami
 
 
 def native_head(bundle: Bundle) -> Bundle:
-    decoder = Decoder(bundle.decoder.language_model, bundle.decoder.lm_head, "native", bundle.decoder.stop_ids)
+    old = bundle.decoder
+    decoder = Decoder(old.language_model, old.lm_head, "native", old.stop_ids, old.fp32_head_copy)
     return dataclasses.replace(bundle, decoder=decoder)
 
 
@@ -314,7 +315,8 @@ def validate(
     stage(f"E1: serialization, {len(items)} items")
     report["E1"] = check_serialization(bundle.tokenizer, items, bundle.family)
     loaded = [(item, open_image(images_dir, item)) for item in items[:noise_items]]
-    stage(f"noise floor, fp32 head, {len(loaded)} items")
+    head = bundle.decoder.head_precision
+    stage(f"noise floor, {head} head, {len(loaded)} items")
     floor = noise_floor(bundle, loaded)
     report["noise_floor"] = floor
     if bundle.decoder.head_precision == "native":
@@ -322,7 +324,7 @@ def validate(
     else:
         stage(f"noise floor, native head, {len(loaded)} items")
         report["noise_floor_native_head"] = noise_floor(native_head(bundle), loaded)
-    stage(f"noise floor, fp32 head, QH_mis suffix, {len(loaded)} items")
+    stage(f"noise floor, {head} head, QH_mis suffix, {len(loaded)} items")
     floor_mis = noise_floor(bundle, loaded, "mis")
     report["noise_floor_mis"] = floor_mis
     stage(f"E2: full fidelity, both suffixes, {len(loaded)} items")
