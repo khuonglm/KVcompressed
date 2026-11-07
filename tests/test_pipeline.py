@@ -66,7 +66,11 @@ def test_image_is_padded_without_cropping():
 def test_noise_floor_and_equivalence_tests_on_real_classes(bundle, loaded):
     floor = noise_floor(bundle, loaded)
     assert floor["logit_max"] < 1e-3 and floor["margin_max_abs"] < 1e-2
-    assert e2(bundle, loaded, floor)["max_logit_diff"] < 1e-3
+    floor_mis = noise_floor(bundle, loaded, "mis")
+    result = e2(bundle, loaded, {"Q": floor, "mis": floor_mis})
+    assert set(result["by_suffix"]) == {"Q", "mis"}
+    for suffix_result in result["by_suffix"].values():
+        assert suffix_result["max_logit_diff"] < 1e-3 and suffix_result["compact_vs_dense_max"] == 0
     sparse, hashes = e3_e4(bundle, loaded[:1], floor)
     assert hashes["pass"]
     assert sparse["margin_mean_abs"] < 0.01 and sparse["greedy_mismatches_not_near_tie"] == 0
@@ -132,7 +136,7 @@ def test_screen_runs_only_full_q(bundle, dataset, tmp_path):
 def test_whole_validate_on_tiny_model_produces_a_report(bundle, dataset):
     items, directory = dataset
     result = validate(bundle, items, directory, noise_items=2, sparse_items=1, repeat_items=1)
-    assert {"E1", "E2", "E3", "E4", "E5", "E7", "noise_floor", "noise_floor_native_head", "all_pass"} <= set(result)
+    assert {"E1", "E2", "E3", "E4", "E5", "E7", "noise_floor", "noise_floor_mis", "noise_floor_native_head", "all_pass"} <= set(result)
     assert result["E1"]["pass"] and result["E4"]["pass"] and result["E7"]["pass"]
 
 

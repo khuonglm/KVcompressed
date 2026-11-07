@@ -72,13 +72,13 @@ def check_serialization(tokenizer, items: list[dict]) -> dict:
     return {"pass": not failures, "items": len(items), "failures": failures[:50], "window_composition": compositions}
 
 
-def noise_floor(bundle: Bundle, loaded: list[tuple[dict, object]]) -> dict:
-    """Full forward vs prefix-then-suffix with the full cache, on the Q suffix."""
+def noise_floor(bundle: Bundle, loaded: list[tuple[dict, object]], context: str = Q) -> dict:
+    """Full forward vs prefix-then-suffix with the full cache, on one suffix."""
     generator = np.random.default_rng(0)
     samples, maxima, margins = [], [], []
     keep_all = torch.arange(576)
     for item, image in loaded:
-        tokens = contexts_for(item, bundle.tokenizer)[Q]
+        tokens = contexts_for(item, bundle.tokenizer)[context]
         pixels = pixel_values(bundle, image)
         ids = tokens.prefix_ids + tokens.suffix_ids
         full = full_forward_logits(bundle, ids, pixels, len(tokens.prefix_ids))
@@ -101,17 +101,33 @@ def noise_floor(bundle: Bundle, loaded: list[tuple[dict, object]]) -> dict:
     }
 
 
-def run_e2(bundle: Bundle, loaded, floor: dict) -> dict:
-    worst = 0.0
+def run_e2(bundle: Bundle, loaded, floors: dict[str, dict]) -> dict:
+    """Compact K = 576 on each suffix, against one full pass and that suffix's own noise floor.
+
+    Compact must also equal dense with nothing dropped exactly: that is the part of this test the
+    noise floor cannot show, since at K = 576 the two compute the same thing.
+    """
     keep_all = torch.arange(576)
-    for item, image in loaded:
-        tokens = contexts_for(item, bundle.tokenizer)["mis"]
-        pixels = pixel_values(bundle, image)
-        full = full_forward_logits(bundle, tokens.prefix_ids + tokens.suffix_ids, pixels, len(tokens.prefix_ids))
-        prefix = prefill(bundle, tokens.prefix_ids, pixels)
-        _, compact_logits = replay(bundle.decoder, prefix, keep_all, torch.tensor([tokens.suffix_ids]), "compact")
-        worst = max(worst, float((full - compact_logits).abs().max()))
-    return {"pass": worst <= floor["logit_max"], "max_logit_diff": worst, "limit": floor["logit_max"]}
+    by_suffix = {}
+    for name, floor in floors.items():
+        worst_full, worst_dense = 0.0, 0.0
+        for item, image in loaded:
+            tokens = contexts_for(item, bundle.tokenizer)[name]
+            pixels = pixel_values(bundle, image)
+            full = full_forward_logits(bundle, tokens.prefix_ids + tokens.suffix_ids, pixels, len(tokens.prefix_ids))
+            prefix = prefill(bundle, tokens.prefix_ids, pixels)
+            suffix = torch.tensor([tokens.suffix_ids])
+            _, compact_logits = replay(bundle.decoder, prefix, keep_all, suffix, "compact")
+            _, dense_logits = replay(bundle.decoder, prefix, keep_all, suffix, "dense")
+            worst_full = max(worst_full, float((full - compact_logits).abs().max()))
+            worst_dense = max(worst_dense, float((compact_logits - dense_logits).abs().max()))
+        by_suffix[name] = {
+            "pass": worst_full <= floor["logit_max"] and worst_dense == 0,
+            "max_logit_diff": worst_full,
+            "limit": floor["logit_max"],
+            "compact_vs_dense_max": worst_dense,
+        }
+    return {"pass": all(result["pass"] for result in by_suffix.values()), "by_suffix": by_suffix}
 
 
 def kept_sets(k: int, seed: int, attention: np.ndarray) -> dict[str, np.ndarray]:
@@ -276,8 +292,11 @@ def validate(
     report["noise_floor"] = floor
     stage(f"noise floor, native head, {len(loaded)} items")
     report["noise_floor_native_head"] = noise_floor(native_head(bundle), loaded)
-    stage(f"E2: full fidelity, {len(loaded)} items")
-    report["E2"] = run_e2(bundle, loaded, floor)
+    stage(f"noise floor, fp32 head, QH_mis suffix, {len(loaded)} items")
+    floor_mis = noise_floor(bundle, loaded, "mis")
+    report["noise_floor_mis"] = floor_mis
+    stage(f"E2: full fidelity, both suffixes, {len(loaded)} items")
+    report["E2"] = run_e2(bundle, loaded, {Q: floor, "mis": floor_mis})
     stage(f"E3 and E4: sparse equivalence and cache hashes, {len(loaded[:sparse_items])} items (the slowest stage)")
     report["E3"], report["E4"] = run_e3_e4(bundle, loaded[:sparse_items], floor, progress=stage)
     stage("E5: placebo")

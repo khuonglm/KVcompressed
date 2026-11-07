@@ -38,12 +38,13 @@ Added to the proposal's Level 1, to show the test can detect the bugs it targets
 ## Level 2: LLaVA pipeline (`kvsel validate`, GPU, fp16)
 
 **Noise floor.** One full forward pass vs prefix-then-suffix with the full cache, on 50 development
-items. The distribution of logit and margin differences is the fp16 noise floor.
+items, on each of Q and QH_mis. The distribution of logit and margin differences is the fp16 noise
+floor. E3 and E5 keep the Q floor, which was the tighter limit on the first GPU run.
 
 | ID | Test | Pass |
 | --- | --- | --- |
 | E1 | Identical prefix tokens for Q and every QH_c; prompt tokens an exact prefix of prompt + candidate; window span logged | Exact, on all development items |
-| E2 | Compact replay at K = 576 vs one full forward pass | Max logit difference at most the noise floor's maximum |
+| E2 | Compact replay at K = 576 on Q and QH_mis, vs one full forward pass and vs dense with nothing dropped | Max logit difference at most the maximum of that suffix's own noise floor, and compact equal to dense exactly |
 | E3 | Compact vs dense for irregular random, spatially concentrated and scored kept sets; K = 288, 144, 72; Q and QH_mis; 10 generated tokens | See below |
 | E4 | Hash the shared prefix before and after each probe and replay | Unchanged |
 | E5 | Placebo: B_c and C_c with kept indices forced equal | Within the noise floor's maximum; identical answers |
@@ -57,19 +58,26 @@ items. The distribution of logit and margin differences is the fp16 noise floor.
 - Every greedy mismatch is investigated. It is accepted only as a near tie: the top-two logit gap at
   the diverging step is below twice the noise floor's maximum. Any other mismatch is a failure.
 
-## Open failure: E2, first GPU run (7 November 2026)
+## Closed failure: E2, first GPU run (7 November 2026)
 
-Max logit difference 0.208 against a limit of 0.110. All other tests passed. Possible cause: E2 ran on
-the QH_mis suffix, but its limit came from a noise floor measured on the Q suffix.
+**Failure.** Max logit difference 0.208 against a limit of 0.110. All other tests passed.
 
-`kvsel diagnose-e2` measures compact K = 576, dense with nothing dropped, and one full forward pass,
-on both suffixes and the same items. This reading was fixed before the diagnostic first ran:
+**Cause.** E2 ran on the QH_mis suffix, but its limit came from a noise floor measured on the Q
+suffix. The reading of the diagnostic was fixed before it first ran, and `kvsel diagnose-e2` matched
+its first row:
 
-| Observed | Conclusion | Action |
-| --- | --- | --- |
-| Compact equals dense exactly on every item and suffix, and the Q and QH_mis noise-floor maxima fall in line with 0.11 and 0.21 | Cause identified: the limit came from a different suffix. Gathering adds no error | Compare E2 with a noise floor from the same suffix, keeping the same criterion, and rerun `kvsel validate` |
-| Compact differs from dense on any item | Compaction itself adds error at K = 576 | Stays failed; debug the gather |
-| Compact equals dense, but the suffix difference doesn't explain the size | Cause not identified | Stays failed; investigate further |
+| Suffix | Full vs compact, max | Full vs dense, max | Compact vs dense, max |
+| --- | ---: | ---: | ---: |
+| Q | 0.1104 | 0.1104 | 0 |
+| QH_mis | 0.2084 | 0.2084 | 0 |
+
+Gathering adds no error at K = 576. The 0.2084 is the same fp16 difference between one full pass and
+prefix-then-suffix that the noise floor measures, and it occurs on one item.
+
+**Change.** E2 now compares each suffix with its own noise floor, under the same criterion, and also
+requires compact to equal dense exactly. That second condition is new and stricter. Without it, E2
+at K = 576 would repeat the noise-floor computation and could not fail. The failing limit was not
+raised on the Q suffix, and E3 and E5 keep the Q floor. Every test reruns under `kvsel validate`.
 
 ## Not yet covered in the minimal version
 

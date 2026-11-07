@@ -64,6 +64,7 @@ def cmd_validate(args) -> None:
     for name in ("E1", "E2", "E3", "E4", "E5", "E7"):
         print(f"{name}: {'PASS' if report[name]['pass'] else 'FAIL'}")
     print(f"noise floor, fp32 head:   {report['noise_floor']}")
+    print(f"noise floor, QH_mis:      {report['noise_floor_mis']}")
     print(f"noise floor, native head: {report['noise_floor_native_head']}")
     print(f"full report: {args.out}")
     if not report["all_pass"]:
