@@ -21,7 +21,23 @@ fp32 output head. A 20 GB GPU is enough.
 
 Stop at the first step that fails, and send me its output.
 
-### 1. Get the GQA data
+### 1. Get the model
+
+```bash
+uv run kvsel fetch-model
+```
+
+This downloads 14.1 GB into `models/llava-1.5-7b-hf`, one connection per weight file. Run it inside
+`tmux` or `screen` so it survives a dropped SSH session. Rerun it to resume after an interruption.
+
+Every command then uses that copy and doesn't go online for the model. With no copy there, commands
+fall back to the Hub; a partial copy stops with an error, so a 14 GB download can't start by accident.
+Use `--model-dir` to point at another location, such as a shared disk.
+
+Plain HTTP is the default because it was about 3x faster than Hugging Face's Xet downloader in a
+test from a Mac. To try Xet on your network, run `HF_HUB_DISABLE_XET=0 HF_XET_HIGH_PERFORMANCE=1 uv run kvsel fetch-model`.
+
+### 2. Get the GQA data
 
 Download only the images the manifests use (1,799 files, about 325 MB), not the 21.8 GB archive:
 
@@ -36,7 +52,7 @@ the parallelism; the default is 3 because the server returned 503 errors at 8.
 The item manifests are already in `manifests/`, so you don't need the question files on the GPU.
 If you rebuild them with different filters, rerun this command for any new images.
 
-### 2. Validate the pipeline
+### 3. Validate the pipeline
 
 This is the gate: the noise floor plus tests E1–E5 and E7 on the real model in fp16. The criteria
 are in [tests/README.md](tests/README.md).
@@ -49,7 +65,7 @@ Please send me the output and `results/validate.json` before going further, whet
 fails. It also reports the noise floor under both output heads, which settles whether the fp32
 head is worth keeping. Tolerances aren't changed after a failure; the cause gets identified.
 
-### 3. Screen development items
+### 4. Screen development items
 
 Runs Full_Q on all 600 development candidates and prints how many are eligible and a sample of
 greedy answers. Answer casing decides the `--surface` value below.
@@ -58,7 +74,7 @@ greedy answers. Answer casing decides the `--surface` value below.
 uv run kvsel screen --items manifests/gqa_dev.jsonl --images data/gqa/images
 ```
 
-### 4. Run the pilot
+### 5. Run the pilot
 
 Runs every cell on the first 200 eligible items: A–D, Full anchors, uniform, the reserve variants,
 and question-span selection. Safe to stop and rerun, since finished items are skipped.
@@ -67,7 +83,7 @@ and question-span selection. Safe to stop and rerun, since finished items are sk
 uv run kvsel pilot --items manifests/gqa_dev.jsonl --images data/gqa/images --surface lower
 ```
 
-### 5. Report
+### 6. Report
 
 ```bash
 uv run kvsel report results/pilot --surface lower --out results/pilot/report.md

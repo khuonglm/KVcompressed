@@ -4,15 +4,17 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from pathlib import Path
 
 import torch
 from PIL import Image
 from transformers import AutoTokenizer, CLIPImageProcessor, LlavaForConditionalGeneration
 
-from . import IMAGE_TOKEN_ID, MODEL_ID, NUM_VISUAL
+from . import IMAGE_TOKEN_ID, NUM_VISUAL
 from .cache import entries_from_cache
 from .engine import Decoder, Prefix
 from .geometry import pad_to_square
+from .model_files import DEFAULT_MODEL_DIR, resolve_model
 
 
 @dataclass
@@ -27,29 +29,29 @@ class Bundle:
         return self.decoder.device
 
 
-def load_tokenizer(model_id: str = MODEL_ID):
-    return AutoTokenizer.from_pretrained(model_id)
+def load_tokenizer(model_dir: Path = DEFAULT_MODEL_DIR):
+    return AutoTokenizer.from_pretrained(resolve_model(model_dir, weights=False))
 
 
-def load_image_processor(model_id: str = MODEL_ID) -> CLIPImageProcessor:
-    return CLIPImageProcessor.from_pretrained(model_id, do_center_crop=False)
+def load_image_processor(model_dir: Path = DEFAULT_MODEL_DIR) -> CLIPImageProcessor:
+    return CLIPImageProcessor.from_pretrained(resolve_model(model_dir, weights=False), do_center_crop=False)
 
 
 def bundle_from_model(model: LlavaForConditionalGeneration, tokenizer, image_processor, head_precision="fp32") -> Bundle:
     return Bundle(model, Decoder(model.model.language_model, model.lm_head, head_precision), tokenizer, image_processor)
 
 
-def load_bundle(device: str = "cuda", head_precision: str = "fp32", model_id: str = MODEL_ID) -> Bundle:
+def load_bundle(device: str = "cuda", head_precision: str = "fp32", model_dir: Path = DEFAULT_MODEL_DIR) -> Bundle:
     # Rerunning an item must reproduce its rows (E7). The variable must be set before CUDA starts.
     os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
     torch.use_deterministic_algorithms(True)
     model = LlavaForConditionalGeneration.from_pretrained(
-        model_id, dtype=torch.float16, attn_implementation="eager", low_cpu_mem_usage=True
+        resolve_model(model_dir), dtype=torch.float16, attn_implementation="eager", low_cpu_mem_usage=True
     )
     model = model.to(device).eval()
     if model.config.text_config._attn_implementation != "eager":
         raise RuntimeError("the language model must use eager attention")
-    return bundle_from_model(model, load_tokenizer(model_id), load_image_processor(model_id), head_precision)
+    return bundle_from_model(model, load_tokenizer(model_dir), load_image_processor(model_dir), head_precision)
 
 
 def pixel_values(bundle: Bundle, image: Image.Image) -> torch.Tensor:

@@ -6,19 +6,30 @@ import argparse
 import json
 from pathlib import Path
 
+from .model_files import DEFAULT_MODEL_DIR
+
 
 def _bundle(args):
     from .model import load_bundle
 
-    return load_bundle(device=args.device, head_precision=args.head_precision)
+    return load_bundle(device=args.device, head_precision=args.head_precision, model_dir=args.model_dir)
 
 
 def cmd_build_gqa(args) -> None:
     from .gqa import build
     from .model import load_tokenizer
 
-    funnel = build(args.questions, args.scene_graphs, args.out_dir, load_tokenizer(), args.dev_items)
+    funnel = build(args.questions, args.scene_graphs, args.out_dir, load_tokenizer(args.model_dir), args.dev_items)
     print(json.dumps(funnel, indent=2))
+
+
+def cmd_fetch_model(args) -> None:
+    from .model_files import fetch_model
+
+    missing = fetch_model(args.out, args.workers)
+    if missing:
+        raise SystemExit(f"still missing {', '.join(missing)}; rerun the command to resume")
+    print(f"model complete at {args.out}")
 
 
 def cmd_fetch_images(args) -> None:
@@ -35,7 +46,7 @@ def cmd_check_serialization(args) -> None:
     from .runner import load_items
     from .validate import check_serialization
 
-    result = check_serialization(load_tokenizer(), load_items(args.items))
+    result = check_serialization(load_tokenizer(args.model_dir), load_items(args.items))
     print(json.dumps(result, indent=2))
     if not result["pass"]:
         raise SystemExit(1)
@@ -102,7 +113,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(prog="kvsel", description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
 
+    def add_model_dir(sub) -> None:
+        sub.add_argument(
+            "--model-dir", type=Path, default=DEFAULT_MODEL_DIR,
+            help="local model copy, used if present; otherwise the Hugging Face Hub (default: %(default)s)",
+        )
+
     def add_model_options(sub) -> None:
+        add_model_dir(sub)
         sub.add_argument("--device", default="cuda")
         sub.add_argument("--head-precision", default="fp32", choices=["fp32", "native"])
 
@@ -115,7 +133,13 @@ def main() -> None:
     sub.add_argument("--scene-graphs", type=Path, required=True)
     sub.add_argument("--out-dir", type=Path, default=Path("manifests"))
     sub.add_argument("--dev-items", type=int, default=600, help="candidates before eligibility and verification")
+    add_model_dir(sub)
     sub.set_defaults(run=cmd_build_gqa)
+
+    sub = commands.add_parser("fetch-model", help="download the model for local use; resumes if rerun")
+    sub.add_argument("--out", type=Path, default=DEFAULT_MODEL_DIR)
+    sub.add_argument("--workers", type=int, default=8)
+    sub.set_defaults(run=cmd_fetch_model)
 
     sub = commands.add_parser("fetch-images", help="download only the images a manifest needs")
     sub.add_argument("manifests", type=Path, nargs="+")
@@ -127,6 +151,7 @@ def main() -> None:
 
     sub = commands.add_parser("check-serialization", help="test E1; tokenizer only, no GPU")
     sub.add_argument("--items", type=Path, required=True)
+    add_model_dir(sub)
     sub.set_defaults(run=cmd_check_serialization)
 
     sub = commands.add_parser("validate", help="noise floor and tests E1-E5, E7 on the real model")
