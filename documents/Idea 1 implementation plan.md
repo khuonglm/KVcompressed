@@ -156,8 +156,10 @@ never be revisited because of which model shows the larger effect.
 
 Items are shared: both models run the same manifests, built with LLaVA's tokenizer.
 
-**Open.** Whether Qwen is inside the freeze or a labelled follow-up depends on whether its validation
-and pilot fit the schedule.
+**Decision (7 November 2026): Qwen is parked.** After three validation runs, E3 still failed on its
+margin criterion: 0.038 nats against the 0.01 limit, with every other test passing (tests/README.md).
+Qwen is outside the freeze and the confirmatory claims. The code, the fp32 head and the fp32 attention
+stay. Any later Qwen work starts from that record and is reported as a labelled follow-up.
 
 ## 4. Repository layout
 

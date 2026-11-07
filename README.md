@@ -163,7 +163,7 @@ ssh -L 8765:127.0.0.1:8765 root@YOUR_SERVER
 | --- | --- |
 | `y` | Pass |
 | `1`–`6` | Fail, with the reason shown on the page |
-| `g` | Next evidence overlay: primary, fallback, centre, expanded, box only |
+| `g` | Next view: clean image (each item opens here), box only, then evidence patches under the primary, fallback, centre and expanded rules |
 | `n` | Add a note to the next decision |
 | `←` `→` / `u` | Move / jump to the next undecided item |
 

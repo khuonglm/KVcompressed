@@ -167,6 +167,32 @@ only be measured on the GPU.
   or drop it. The limit does not change.
 - If E3 barely moves, cause 2 is wrong too, and the next step is diagnosis, not another precision change.
 
+**Third run, fp32 head and fp32 attention (7 November 2026).** E3 still fails, on the margin criterion
+alone. Every other test passes.
+
+| | Run 1 (all bf16) | Run 2 (fp32 head) | Run 3 (fp32 head and attention) |
+| --- | ---: | ---: | ---: |
+| Noise floor, Q: margin mean | 0.224 | 0.224 | 0.034 |
+| Noise floor, Q: logit max | 17.3 | 17.3 | 2.26 |
+| Noise floor, Q: logit p99 | 2.13 | 2.13 | 0.30 |
+| E3 margin mean (limit 0.01) | 0.204 | not recorded | **0.038** |
+| E3 logit p99 (limit twice the floor's p99) | 1.69 (4.25) | not recorded | 0.33 (0.61), pass |
+| E3 greedy mismatches, of 360 | 73, check powerless | not recorded | 17; largest gap 0.26, near-tie limit 4.5 |
+
+- Attention was the main source: fp32 attention cut the E3 margin error about 5x and the noise floor about 7x.
+- In run 3 the native-head floor had a margin mean of 0.050, against 0.034 for the fp32 head, so the head
+  matters once attention noise is gone.
+- E3's remaining error (0.038) is about the size of Qwen's own noise floor (0.034, from one full pass
+  against prefix-then-suffix). Compaction adds about as much difference as computing the same thing in
+  a different order.
+- The remaining source is most likely bf16 rounding outside the attention scores: the attention output
+  and the linear layers. That is inferred, not shown. Removing it would need the model in fp32, which
+  does not fit on the GPU.
+
+**Status.** This was the outcome predicted under amendment 2: E3 falls a lot but stays above 0.01. The
+limit stays. Qwen does not pass Level 2, and whether it continues is the user's decision: as an
+exploratory model reported with its measured compact-vs-dense error, or not at all.
+
 **CPU evidence so far** (`tests/test_qwen.py`, tiny random Qwen2.5-VL in fp32, real tokenizer and image
 processor): prefix-then-replay equals one full forward pass, which computes M-RoPE itself; replaying
 from the physical entry count instead of the M-RoPE position fails, as it should; compact equals dense

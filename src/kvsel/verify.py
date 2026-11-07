@@ -227,9 +227,11 @@ kbd { font:12px ui-monospace,monospace; border:1px solid var(--line); border-rad
   </aside>
 </main>
 <script>
-const PAD = __PAD__, REASONS = __REASONS__, RULES = ["none", "primary", "fallback", "center", "expanded"];
+// Every item opens on the clean image, so colours are judged on untouched pixels.
+// The model reads the original file; these overlays exist only on this page.
+const PAD = __PAD__, REASONS = __REASONS__, RULES = ["clean", "box", "primary", "fallback", "center", "expanded"];
 const $ = (id) => document.getElementById(id);
-let items = [], decisions = {}, index = 0, ruleIndex = 1, note = "", image = new Image();
+let items = [], decisions = {}, index = 0, ruleIndex = 0, note = "", image = new Image();
 for (const [key, [code, label]] of Object.entries(REASONS)) {
   const button = document.createElement("button");
   const kbd = document.createElement("kbd"); kbd.textContent = key;
@@ -246,19 +248,19 @@ function draw() {
     ctx.drawImage(image, item.pad[0] * s, item.pad[1] * s, size.width * s, size.height * s);
   }
   const rule = RULES[ruleIndex];
-  if (rule !== "none") {
+  if (rule !== "clean" && rule !== "box") {
     ctx.fillStyle = "rgba(255, 170, 0, 0.35)";
     for (const patch of item.patches[rule]) {
       ctx.fillRect((patch % 24) * 14 * scale, Math.floor(patch / 24) * 14 * scale, 14 * scale, 14 * scale);
     }
   }
   ctx.lineWidth = 3;
-  for (const [x0, y0, x1, y1] of item.boxes) {
+  for (const [x0, y0, x1, y1] of rule === "clean" ? [] : item.boxes) {
     ctx.strokeStyle = "#000"; ctx.strokeRect(x0 * scale, y0 * scale, (x1 - x0) * scale, (y1 - y0) * scale);
     ctx.strokeStyle = "#ffe600"; ctx.lineWidth = 1.5; ctx.strokeRect(x0 * scale, y0 * scale, (x1 - x0) * scale, (y1 - y0) * scale); ctx.lineWidth = 3;
   }
-  $("rule").textContent = rule === "none"
-    ? "Overlay: box only" : `Overlay: ${rule} rule, ${item.patches[rule].length} patches`;
+  $("rule").textContent = rule === "clean" ? "Clean image (press g for the box and evidence patches)"
+    : rule === "box" ? "Overlay: box only" : `Overlay: ${rule} rule, ${item.patches[rule].length} patches`;
 }
 function render() {
   const item = items[index]; if (!item) return;
@@ -271,6 +273,7 @@ function render() {
   const decision = decisions[item.item_id], status = $("status");
   status.className = decision ? (decision.decision === "pass" ? "pass" : "fail") : "";
   status.textContent = decision ? `Recorded: ${decision.decision}${decision.note ? ` (${decision.note})` : ""}` : "Not decided";
+  ruleIndex = 0;
   image = new Image(); image.onload = draw; image.onerror = () => { $("rule").textContent = "Image failed to load"; };
   image.src = `/image/${encodeURIComponent(item.item_id)}`;
   draw();
