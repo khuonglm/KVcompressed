@@ -7,7 +7,8 @@ dependencies = [
     "numpy>=1.26",
     "pandas>=2.2",
     "pillow>=10",
-    "torch>=2.4",
+    # Exact pin, so `uv run` can't change it. Linux uses the CUDA 12.4 build (see tool.uv.sources).
+    "torch==2.6.0",
     # Exact pin: cache and attention internals change between versions.
     "transformers==4.57.6",
     "accelerate>=1.0",
@@ -20,6 +21,14 @@ dev = ["pytest>=8"]
 
 [project.scripts]
 kvsel = "kvsel.cli:main"
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu124", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
 
 [build-system]
 requires = ["hatchling"]
