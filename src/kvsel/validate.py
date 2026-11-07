@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import time
 from pathlib import Path
 
 import numpy as np
@@ -118,12 +119,14 @@ def kept_sets(k: int, seed: int, attention: np.ndarray) -> dict[str, np.ndarray]
     return {"random": np.sort(random_set), "concentrated": np.arange(k), "scored": top_k(pw_attn(attention), k)}
 
 
-def run_e3_e4(bundle: Bundle, loaded, floor: dict, budgets=(288, 144, 72)) -> tuple[dict, dict]:
+def run_e3_e4(bundle: Bundle, loaded, floor: dict, budgets=(288, 144, 72), progress=None) -> tuple[dict, dict]:
     generator = np.random.default_rng(1)
     samples, margins, mismatches = [], [], []
     hash_failures = []
     near_tie_limit = 2 * floor["logit_max"]
     for position, (item, image) in enumerate(loaded):
+        if progress:
+            progress(f"  E3 item {position + 1}/{len(loaded)}")
         tokens = contexts_for(item, bundle.tokenizer)
         prefix = prefill(bundle, tokens[Q].prefix_ids, pixel_values(bundle, image))
         before = entries_hash(prefix.entries)
@@ -210,15 +213,28 @@ def native_head(bundle: Bundle) -> Bundle:
 def validate(
     bundle: Bundle, items: list[dict], images_dir: Path, noise_items: int = 50, sparse_items: int = 20, repeat_items: int = 5,
 ) -> dict:
+    start = time.time()
+
+    def stage(name: str) -> None:
+        print(f"[{(time.time() - start) / 60:5.1f} min] {name}", flush=True)
+
     report: dict = {"head_precision": bundle.decoder.head_precision}
+    stage(f"E1: serialization, {len(items)} items")
     report["E1"] = check_serialization(bundle.tokenizer, items)
     loaded = [(item, open_image(images_dir, item)) for item in items[:noise_items]]
+    stage(f"noise floor, fp32 head, {len(loaded)} items")
     floor = noise_floor(bundle, loaded)
     report["noise_floor"] = floor
+    stage(f"noise floor, native head, {len(loaded)} items")
     report["noise_floor_native_head"] = noise_floor(native_head(bundle), loaded)
+    stage(f"E2: full fidelity, {len(loaded)} items")
     report["E2"] = run_e2(bundle, loaded, floor)
-    report["E3"], report["E4"] = run_e3_e4(bundle, loaded[:sparse_items], floor)
+    stage(f"E3 and E4: sparse equivalence and cache hashes, {len(loaded[:sparse_items])} items (the slowest stage)")
+    report["E3"], report["E4"] = run_e3_e4(bundle, loaded[:sparse_items], floor, progress=stage)
+    stage("E5: placebo")
     report["E5"] = run_e5(bundle, loaded[:sparse_items], floor)
+    stage(f"E7: determinism, {len(loaded[:repeat_items])} items")
     report["E7"] = run_e7(bundle, loaded[:repeat_items])
+    stage("done")
     report["all_pass"] = all(report[name]["pass"] for name in ("E1", "E2", "E3", "E4", "E5", "E7"))
     return report
