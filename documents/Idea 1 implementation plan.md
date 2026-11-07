@@ -152,7 +152,7 @@ never be revisited because of which model shows the larger effect.
 | Candidate | `" " + answer`, then `</s>` | `answer`, then `<|im_end|>` |
 | PW-attn window | 16 fixed instruction tokens | 15 fixed tokens plus the question's last token (`'?\n'`) |
 | Probe layers | 2-31 | 2-27 (Qwen has 28 layers) |
-| Precision | fp16, fp32 head | bf16, fp32 head upcast slice by slice (native head failed E3, 7 Nov 2026; see tests/README.md) |
+| Precision | fp16, fp32 head | bf16 weights and cache; fp32 head upcast slice by slice; fp32 attention scores, softmax and value sum in the language model (E3 failed with bf16 versions, 7 Nov 2026; see tests/README.md) |
 
 Items are shared: both models run the same manifests, built with LLaVA's tokenizer.
 

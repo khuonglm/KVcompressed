@@ -12,6 +12,7 @@ import pytest
 import torch
 from PIL import Image
 
+from kvsel.attention import FP32_ATTENTION, set_text_attention
 from kvsel.cache import entries_hash
 from kvsel.engine import Decoder, advance, probe, replay
 from kvsel.families import QWEN
@@ -49,6 +50,29 @@ def test_bundle_uses_the_qwen_family_defaults(bundle):
     decoder = bundle.decoder
     assert decoder.head_precision == "fp32" and decoder.fp32_head is None  # sliced, no 2.2 GB copy
     assert decoder.stop_ids == (151645, 151643)
+
+
+def test_attention_precision_follows_the_family(bundle, tiny_llava):
+    assert bundle.model.config.text_config._attn_implementation == FP32_ATTENTION
+    llava = bundle_from_model(tiny_llava, None, None)
+    assert llava.model.config.text_config._attn_implementation == "eager"
+
+
+def test_fp32_attention_equals_eager_in_an_fp32_model(bundle, setup):
+    """Same computation as the library's eager attention; only the rounding in bf16 differs."""
+    tokens, _, prefix = setup
+    suffix = torch.tensor([tokens.suffix_ids])
+    kept = torch.randperm(576, generator=torch.Generator().manual_seed(0))[:144]
+    _, fp32_logits = replay(bundle.decoder, prefix, kept, suffix, "compact")
+    fp32_attention = probe(bundle.decoder, prefix, suffix)
+    try:
+        set_text_attention(bundle.model, "native")
+        _, eager_logits = replay(bundle.decoder, prefix, kept, suffix, "compact")
+        eager_attention = probe(bundle.decoder, prefix, suffix)
+    finally:
+        set_text_attention(bundle.model, "fp32")
+    assert (fp32_logits - eager_logits).abs().max() < 1e-6
+    assert np.abs(np.asarray(fp32_attention) - np.asarray(eager_attention)).max() < 1e-6
 
 
 def test_sliced_fp32_head_matches_a_full_fp32_copy(tiny_qwen):

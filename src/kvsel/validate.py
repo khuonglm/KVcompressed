@@ -311,7 +311,11 @@ def validate(
     def stage(name: str) -> None:
         print(f"[{(time.time() - start) / 60:5.1f} min] {name}", flush=True)
 
-    report: dict = {"model": bundle.family.name, "head_precision": bundle.decoder.head_precision}
+    report: dict = {
+        "model": bundle.family.name,
+        "head_precision": bundle.decoder.head_precision,
+        "attention_precision": bundle.family.attention_precision,
+    }
     stage(f"E1: serialization, {len(items)} items")
     report["E1"] = check_serialization(bundle.tokenizer, items, bundle.family)
     loaded = [(item, open_image(images_dir, item)) for item in items[:noise_items]]

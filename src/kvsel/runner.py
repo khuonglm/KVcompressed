@@ -139,6 +139,7 @@ def run_item(bundle: Bundle, item: dict, image: Image.Image, units: list[Unit]) 
         "model": bundle.family.name,
         "template": bundle.family.template_version,
         "head_precision": bundle.decoder.head_precision,
+        "attention_precision": bundle.family.attention_precision,
         "contexts": {
             name: {
                 "suffix_tokens": len(t.suffix_ids),

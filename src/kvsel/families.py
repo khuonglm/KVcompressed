@@ -34,6 +34,7 @@ class Family:
     dtype: torch.dtype
     default_head_precision: str
     fp32_head_copy: bool  # False: upcast the head slice by slice instead of keeping an fp32 copy
+    attention_precision: str  # "native": the library's eager attention; "fp32": kvsel.attention
     add_special_tokens: bool
 
     def user_text(self, question: str, description: str | None) -> str:
@@ -67,12 +68,14 @@ LLAVA = Family(
     dtype=torch.float16,
     default_head_precision="fp32",
     fp32_head_copy=True,
+    attention_precision="native",
     add_special_tokens=True,
 )
 
 # Qwen2.5-VL is trained in bf16 and is known to be unstable in fp16. Its 152k vocabulary makes an
 # fp32 copy of the head 2.2 GB, which does not fit beside 16.6 GB of weights on a 20 GB GPU, so the
-# head is upcast slice by slice. The native bf16 head failed E3 on 7 Nov 2026 (tests/README.md).
+# head is upcast slice by slice. E3 failed on 7 Nov 2026 with the bf16 head and again with the fp32
+# head, so the language model's attention runs in fp32 as well (tests/README.md).
 QWEN = Family(
     name="qwen",
     model_id="Qwen/Qwen2.5-VL-7B-Instruct",
@@ -87,6 +90,7 @@ QWEN = Family(
     dtype=torch.bfloat16,
     default_head_precision="fp32",
     fp32_head_copy=False,
+    attention_precision="fp32",
     add_special_tokens=False,
 )
 

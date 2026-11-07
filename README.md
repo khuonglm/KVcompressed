@@ -140,7 +140,8 @@ uv run kvsel check-tokenization --model qwen results/qwen/gqa/screen_dev --items
   | tee results/qwen/gqa/check_tokenization.json
 ```
 
-Qwen runs in bf16 with an fp32 output head, upcast slice by slice; see the acceptance policy in
+Qwen runs in bf16 with an fp32 output head (upcast slice by slice) and fp32 attention scores in the
+language model; see the acceptance policy in
 [tests/README.md](tests/README.md).
 
 ## Hand verification

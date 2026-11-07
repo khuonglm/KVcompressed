@@ -142,6 +142,31 @@ once the noise floor is small. The criterion is unchanged.
 - If it stays above 0.01, which is the expected outcome given the logit p99, cause 2 is next: an
   attention that keeps scores and weights in fp32, tested the same way. The 0.01 limit does not change.
 
+**Second run, fp32 head (7 November 2026).** E3 failed again. The native-head noise floor reproduced
+the first run exactly (margin mean 0.22395785964472453, logit max 17.3046875). The fp32-head floor
+was almost the same (margin mean 0.2235, logit p99 2.127, max 17.30). So the head contributes almost
+nothing, and cause 1 is ruled out as the main source. The fp32 head stays, since it removes the
+rounding ties and costs no memory.
+
+**Amendment 2 (7 November 2026).** The language model's attention now uses `kvsel.attention`: scores,
+softmax and the weighted sum of values in fp32, output returned in bf16, cache unchanged. Qwen's
+vision tower and all of LLaVA keep the library's eager attention. In an fp32 model it equals eager
+attention below 1e-6, in both logits and probe weights (`test_fp32_attention_equals_eager_in_an_fp32_model`).
+On CPU, compact and dense already agree exactly in bf16 under both attentions, so the effect can
+only be measured on the GPU.
+
+**Predictions for the third run (fp32 head, fp32 attention).**
+
+- E3's margin mean falls well below 0.204, because compact and dense differ only inside attention.
+  Below 0.01 closes the failure.
+- The noise floor may stay large. It also compares bf16 linear layers run over different numbers of
+  rows (one full pass against prefix then suffix), which this change does not touch.
+- If E3 falls a lot but stays above 0.01, the remaining source is the bf16 rounding of the attention
+  output. Further precision cannot remove that without running the model in fp32, which does not fit.
+  The choice then is the user's: report Qwen as exploratory, with its measured compact-vs-dense error,
+  or drop it. The limit does not change.
+- If E3 barely moves, cause 2 is wrong too, and the next step is diagnosis, not another precision change.
+
 **CPU evidence so far** (`tests/test_qwen.py`, tiny random Qwen2.5-VL in fp32, real tokenizer and image
 processor): prefix-then-replay equals one full forward pass, which computes M-RoPE itself; replaying
 from the physical entry count instead of the M-RoPE position fails, as it should; compact equals dense

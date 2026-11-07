@@ -11,6 +11,7 @@ from PIL import Image
 from transformers import AutoTokenizer, CLIPImageProcessor, LlavaForConditionalGeneration
 
 from . import NUM_VISUAL
+from .attention import set_text_attention  # checks that the language model uses eager attention
 from .cache import entries_from_cache
 from .engine import Decoder, Prefix
 from .families import LLAVA, QWEN, Family
@@ -48,6 +49,7 @@ def load_image_processor(model_dir: Path | None = None, family: Family = LLAVA):
 
 def bundle_from_model(model, tokenizer, image_processor, head_precision: str | None = None, family: Family = LLAVA) -> Bundle:
     precision = head_precision or family.default_head_precision
+    set_text_attention(model, family.attention_precision)
     decoder = Decoder(model.model.language_model, model.lm_head, precision, family.stop_ids, family.fp32_head_copy)
     return Bundle(model, decoder, tokenizer, image_processor, family)
 
@@ -65,8 +67,6 @@ def load_bundle(
     source = resolve_model(model_dir or family.default_dir, family.model_id)
     model = model_class.from_pretrained(source, dtype=family.dtype, attn_implementation="eager", low_cpu_mem_usage=True)
     model = model.to(device).eval()
-    if model.config.text_config._attn_implementation != "eager":
-        raise RuntimeError("the language model must use eager attention")
     tokenizer = load_tokenizer(model_dir, family)
     return bundle_from_model(model, tokenizer, load_image_processor(model_dir, family), head_precision, family)
 
