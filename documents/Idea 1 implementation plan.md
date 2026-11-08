@@ -161,6 +161,26 @@ margin criterion: 0.038 nats against the 0.01 limit, with every other test passi
 Qwen is outside the freeze and the confirmatory claims. The code, the fp32 head and the fp32 attention
 stay. Any later Qwen work starts from that record and is reported as a labelled follow-up.
 
+### Decision record: user decisions (9 November 2026)
+
+- **Primary selector: PW-attn.** It was specified in advance. Question-span selection stays a descriptive secondary.
+- **GQA main set: aim for 1,000 items.** Widen the confirmatory pool with more questions from GQA `val_all`, on images not used in development. Not GQA train, which LLaVA-1.5 was trained on. This is a builder change (new builder version) and must happen before the screening rules freeze. Combine it with any builder fix that the development verification failures call for.
+- **H3 is two-sided** (9 November). GQA's development pilot showed E_harm^(mis) = −0.12, the opposite of H3's prediction; TextVQA's showed +0.53. A two-sided test can detect either direction. Disclosed as a revision made on development data, before the freeze.
+- **Adoption: a prompt test first** (9 November). The rule below is fixed before the test runs.
+  - *What runs:* `kvsel prompt-test`, full cache only, on the verified development passes (GQA 150, TextVQA 188). It computes no kept sets, so no S_H is seen for any variant.
+  - *Variants,* each changing one thing about how the description is shown:
+    - `base`: v3.0 itself.
+    - `unverified`: the label becomes "Unverified description, possibly wrong:".
+    - `tiebreak`: the authority line adds "if it conflicts with the image, trust the image". This also changes the Q prompt.
+    - `after`: the description line moves after the question.
+  - *A variant qualifies if both hold:*
+    - On GQA, Full_mis gives the wrong alternative on at most 80% of items (base: about 99%). This leaves room for selection to change answers.
+    - Full_Q stays correct on at least 95% of items, on each dataset.
+  - *Choice:* the qualifying variant with the lowest GQA alternative rate. If two are within 5 points, prefer the smaller change, in the order `unverified`, `after`, `tiebreak`.
+  - *If none qualifies:* keep v3.0 (option A).
+  - *If one is chosen:* it becomes template v3.1 for both datasets. Rescreen and rerun the pilot on both; hand-verification decisions carry over, since the items don't change.
+- **Open:** I^(mis) in Holm, whether H1 and H2 also become two-sided (TextVQA's pilot points the opposite way), and keeping TextVQA.
+
 ## 4. Repository layout
 
 ```

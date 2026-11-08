@@ -158,3 +158,32 @@ def test_tokenization_check_reads_a_run(bundle, dataset, tmp_path):
     run_screen(bundle, items[:2], directory, tmp_path)
     result = check_tokenization(bundle.tokenizer, items, tmp_path)
     assert result["checked"] <= 2 and set(result) == {"checked", "agree", "share", "mismatches"}
+
+
+@pytest.mark.parametrize("variant", ["base", "unverified", "tiebreak", "after"])
+def test_prompt_variants_keep_spans_and_prefix(bundle, variant):
+    from kvsel.families import LLAVA, with_prompt_variant
+
+    family = with_prompt_variant(LLAVA, variant)
+    item = make_item(0)
+    plain = tokenize_prompt(bundle.tokenizer, item["question"], family=family)
+    misled = tokenize_prompt(bundle.tokenizer, item["question"], item["descriptions"]["mis"], family)
+    base = tokenize_prompt(bundle.tokenizer, item["question"])
+    assert plain.prefix_ids == misled.prefix_ids == base.prefix_ids
+    for tokens in (plain, misled):
+        start, stop = tokens.question_span
+        assert bundle.tokenizer.decode(tokens.suffix_ids[start:stop]).strip() == item["question"]
+    start, stop = misled.description_span
+    assert item["descriptions"]["mis"] in bundle.tokenizer.decode(misled.suffix_ids[start:stop])
+    assert (plain.prompt == base.prompt) == (variant != "tiebreak")  # only tiebreak edits the Q prompt
+    assert (family.template_version == "v3.0") == (variant == "base")
+
+
+def test_prompt_test_reports_every_variant(bundle, dataset):
+    from kvsel.runner import run_prompt_test
+
+    items, directory = dataset
+    result = run_prompt_test(bundle, items[:2], directory, ["base", "after"], "capitalized")
+    assert set(result["summary"]) == {"base", "after"} and len(result["rows"]) == 2 * 2 * 2
+    assert all(0 <= value <= 1 for value in (result["summary"]["after"]["mis_alternative"],))
+    assert result["summary"]["after"]["template"] == "v3.0+after"

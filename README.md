@@ -178,6 +178,20 @@ uv run kvsel report results/pilot --surface capitalized --verified verification/
   --out results/pilot/report_verified.md
 ```
 
+## Prompt test (adoption)
+
+Full cache only, on hand-verified development passes, under four ways of showing the description. The
+rule that decides the outcome is in the plan's decision record of 9 November 2026. About 10 minutes
+per dataset.
+
+```bash
+mkdir -p results/prompt_test
+uv run kvsel prompt-test --items manifests/gqa_dev.jsonl --images data/gqa/images \
+  --verified verification/gqa_dev.jsonl --out results/prompt_test/gqa.json
+uv run kvsel prompt-test --items manifests/textvqa_dev.jsonl --images data/textvqa/images \
+  --verified verification/textvqa_dev.jsonl --out results/prompt_test/textvqa.json
+```
+
 ## TextVQA data
 
 The manifests are in `manifests/`. Only the images are needed, not the 7 GB archive: about 0.4 GB for

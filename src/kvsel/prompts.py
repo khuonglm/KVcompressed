@@ -49,14 +49,15 @@ def tokenize_prompt(tokenizer, question: str, description: str | None = None, fa
         raise ValueError("expected exactly 576 image tokens")
     last_image = max(i for i, token in enumerate(ids) if token == family.image_token_id)
     first_suffix = last_image + 1
-    question_start = prompt.index(AUTHORITY) + len(AUTHORITY) + 1
+    question_start = prompt.index(family.authority) + len(family.authority) + 1
     question_stop = question_start + len(question)
     if prompt[question_start:question_stop] != question:
         raise ValueError("could not locate the question in the prompt")
     description_span = None
     if description:
-        description_start = prompt.index("Description: ", prompt.rindex(family.image_token))
-        description_stop = description_start + len("Description: ") + len(description)
+        label = family.description_label
+        description_start = prompt.index(label, prompt.rindex(family.image_token))
+        description_stop = description_start + len(label) + len(description)
         description_span = _token_span(offsets, description_start, description_stop, first_suffix)
     return Tokens(
         prompt,

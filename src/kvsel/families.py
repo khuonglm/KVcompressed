@@ -8,7 +8,7 @@ Both families give a 24 x 24 grid of 576 visual tokens: LLaVA at 336 px with 14 
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import torch
@@ -17,6 +17,21 @@ from . import IMAGE_TOKEN, NUM_VISUAL
 
 AUTHORITY = "Answer from the image. Any provided description may be inaccurate."
 INSTRUCTION = "Answer the question using a single word or phrase."
+
+# Prompt variants for the adoption test (plan, decision record of 9 November 2026). Each changes one
+# thing about how the description is presented. "base" is template v3.0. Only "tiebreak" changes the
+# Q prompt, since it is the only one that edits the authority line.
+PROMPT_VARIANTS = {
+    "base": {"label": "Description: ", "authority": AUTHORITY, "after_question": False},
+    "unverified": {"label": "Unverified description, possibly wrong: ", "authority": AUTHORITY, "after_question": False},
+    "tiebreak": {
+        "label": "Description: ",
+        "authority": "Answer from the image. Any provided description may be inaccurate; "
+        "if it conflicts with the image, trust the image.",
+        "after_question": False,
+    },
+    "after": {"label": "Description: ", "authority": AUTHORITY, "after_question": True},
+}
 
 
 @dataclass(frozen=True)
@@ -36,12 +51,23 @@ class Family:
     fp32_head_copy: bool  # False: upcast the head slice by slice instead of keeping an fp32 copy
     attention_precision: str  # "native": the library's eager attention; "fp32": kvsel.attention
     add_special_tokens: bool
+    prompt_variant: str = "base"  # a key of PROMPT_VARIANTS; "base" is template v3.0 itself
+
+    @property
+    def authority(self) -> str:
+        return PROMPT_VARIANTS[self.prompt_variant]["authority"]
+
+    @property
+    def description_label(self) -> str:
+        return PROMPT_VARIANTS[self.prompt_variant]["label"]
 
     def user_text(self, question: str, description: str | None) -> str:
         if "\n" in question or (description and "\n" in description):
             raise ValueError("newlines in a question or description would break span detection")
-        description_line = f"Description: {description}\n" if description else ""
-        return f"{description_line}{AUTHORITY}\n{question}\n{INSTRUCTION}"
+        description_line = f"{self.description_label}{description}\n" if description else ""
+        if PROMPT_VARIANTS[self.prompt_variant]["after_question"]:
+            return f"{self.authority}\n{question}\n{description_line}{INSTRUCTION}"
+        return f"{description_line}{self.authority}\n{question}\n{INSTRUCTION}"
 
     def build_prompt(self, question: str, description: str | None = None) -> str:
         text = self.user_text(question, description)
@@ -95,6 +121,15 @@ QWEN = Family(
 )
 
 FAMILIES = {family.name: family for family in (LLAVA, QWEN)}
+
+
+def with_prompt_variant(family: Family, variant: str) -> Family:
+    """The family with another way of presenting the description. Template versions stay distinct."""
+    if variant not in PROMPT_VARIANTS:
+        raise ValueError(f"unknown prompt variant {variant!r}; choose from {sorted(PROMPT_VARIANTS)}")
+    if variant == "base":
+        return family
+    return replace(family, prompt_variant=variant, template_version=f"{family.template_version}+{variant}")
 
 
 def get_family(name: str) -> Family:

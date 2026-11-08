@@ -149,6 +149,23 @@ def cmd_pilot(args) -> None:
     run_items(_bundle(args), chosen, args.images, args.out, pilot_units(k=args.k))
 
 
+def cmd_prompt_test(args) -> None:
+    from .families import PROMPT_VARIANTS
+    from .runner import load_items, run_prompt_test
+    from .verify import passed_items
+
+    passed = passed_items(args.verified)
+    items = [item for item in load_items(args.items) if item["item_id"] in passed]
+    if not items:
+        raise SystemExit(f"no verified passes in {args.verified}; verify development items first")
+    print(f"{len(items)} verified development items")
+    result = run_prompt_test(_bundle(args), items, args.images, list(PROMPT_VARIANTS), args.surface)
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    args.out.write_text(json.dumps(result, indent=2))
+    print(json.dumps(result["summary"], indent=2))
+    print(f"full result: {args.out}")
+
+
 def cmd_verify(args) -> None:
     from .runner import eligible, load_items
     from .verify import build_queue, load_decisions, make_server, summarize
@@ -279,6 +296,14 @@ def main() -> None:
     sub.add_argument("--k", type=int, default=144, choices=[288, 144, 72])
     sub.add_argument("--out", type=Path, default=Path("results/pilot"))
     sub.set_defaults(handler=cmd_pilot)
+
+    sub = commands.add_parser("prompt-test", help="full-cache adoption under each prompt variant (GPU)")
+    add_item_options(sub)
+    add_model_options(sub)
+    sub.add_argument("--verified", type=Path, required=True, help="verification decisions; passed items only")
+    sub.add_argument("--surface", default="capitalized", choices=["lower", "capitalized", "upper"])
+    sub.add_argument("--out", type=Path, required=True)
+    sub.set_defaults(handler=cmd_prompt_test)
 
     sub = commands.add_parser("verify", help="hand-verify items in a local web page")
     add_item_options(sub)
