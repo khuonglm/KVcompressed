@@ -19,8 +19,8 @@ AUTHORITY = "Answer from the image. Any provided description may be inaccurate."
 INSTRUCTION = "Answer the question using a single word or phrase."
 
 # Prompt variants for the adoption test (plan, decision record of 9 November 2026). Each changes one
-# thing about how the description is presented. "base" is template v3.0. Only "tiebreak" changes the
-# Q prompt, since it is the only one that edits the authority line.
+# thing about how the description is presented. "base" is template v3.0; "unverified" won the test by
+# its fixed rule and is LLaVA's template v3.1. Only "tiebreak" changes the Q prompt.
 PROMPT_VARIANTS = {
     "base": {"label": "Description: ", "authority": AUTHORITY, "after_question": False},
     "unverified": {"label": "Unverified description, possibly wrong: ", "authority": AUTHORITY, "after_question": False},
@@ -51,7 +51,7 @@ class Family:
     fp32_head_copy: bool  # False: upcast the head slice by slice instead of keeping an fp32 copy
     attention_precision: str  # "native": the library's eager attention; "fp32": kvsel.attention
     add_special_tokens: bool
-    prompt_variant: str = "base"  # a key of PROMPT_VARIANTS; "base" is template v3.0 itself
+    prompt_variant: str = "base"  # a key of PROMPT_VARIANTS
 
     @property
     def authority(self) -> str:
@@ -84,7 +84,7 @@ LLAVA = Family(
     name="llava",
     model_id="llava-hf/llava-1.5-7b-hf",
     default_dir=Path("models/llava-1.5-7b-hf"),
-    template_version="v3.0",
+    template_version="v3.1",  # v3.0 with the description labelled unverified (prompt test, 9 Nov 2026)
     image_token=IMAGE_TOKEN,
     image_token_id=32000,
     image_size=336,
@@ -96,6 +96,7 @@ LLAVA = Family(
     fp32_head_copy=True,
     attention_precision="native",
     add_special_tokens=True,
+    prompt_variant="unverified",
 )
 
 # Qwen2.5-VL is trained in bf16 and is known to be unstable in fp16. Its 152k vocabulary makes an
@@ -121,15 +122,17 @@ QWEN = Family(
 )
 
 FAMILIES = {family.name: family for family in (LLAVA, QWEN)}
+LLAVA_TEMPLATES = {"base": "v3.0", "unverified": "v3.1", "tiebreak": "v3.0+tiebreak", "after": "v3.0+after"}
 
 
 def with_prompt_variant(family: Family, variant: str) -> Family:
     """The family with another way of presenting the description. Template versions stay distinct."""
     if variant not in PROMPT_VARIANTS:
         raise ValueError(f"unknown prompt variant {variant!r}; choose from {sorted(PROMPT_VARIANTS)}")
-    if variant == "base":
+    if variant == family.prompt_variant:
         return family
-    return replace(family, prompt_variant=variant, template_version=f"{family.template_version}+{variant}")
+    version = LLAVA_TEMPLATES[variant] if family.name == "llava" else f"{family.template_version}+{variant}"
+    return replace(family, prompt_variant=variant, template_version=version)
 
 
 def get_family(name: str) -> Family:

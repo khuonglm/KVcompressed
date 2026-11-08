@@ -246,7 +246,7 @@ def run_prompt_test(bundle: Bundle, items: list[dict], images_dir: Path, variant
             "template": with_prompt_variant(bundle.family, variant).template_version,
             "Q_correct": share(Q, "correct"),
             "mis_correct": share("mis", "correct"),
-            "mis_alternative": share("mis", "alternative"),
+            "mis_alternative": share("mis", "alt"),
             "mis_other": share("mis", "other"),
             "mis_margin_mean": float(np.mean(mis)),
         }

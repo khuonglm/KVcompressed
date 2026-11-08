@@ -55,15 +55,18 @@ Added as a model that follows text less readily. After two precision fixes it st
 
 It's parked, and the code is kept.
 
-## Decisions for you
-| # | Question | Options (★ my recommendation) |
+## Decisions
+| # | Question | Status |
 | --- | --- | --- |
-| 1 | The model almost always follows the misleading text | ★ **A.** Keep the prompt; report margin effects, with cell D as the evidence about answers. **B.** Change the prompt; this needs a new pilot and several days |
-| 2 | Hypothesis H3 points the wrong way in the pilot | ★ Test it two-sided. Or keep it as written. Flipping it would look like fitting to the data |
-| 3 | I^(mis): exploratory, but also listed as a test | ★ Report it with intervals only, outside the Holm correction |
-| 4 | GQA size | ★ Accept about 700 items. Or widen the item pool to reach 1,000 |
-| 5 | TextVQA | ★ Keep it, pending its pilot |
-| 6 | Primary selector | ★ PW-attn, as specified in advance. Question-span stays secondary |
+| 1 | The model almost always follows the misleading text | **Done:** prompt test → template v3.1 ("Unverified description, possibly wrong:"). GQA adoption 99% → 46% |
+| 2 | H3's direction | **Done:** two-sided |
+| 3 | I^(mis) | **Done:** reported outside Holm, exploratory |
+| 4 | GQA size | **Done:** widen to 1,000, together with a builder fix for the 25% verification failures |
+| 5 | TextVQA | **Done:** kept |
+| 6 | Primary selector | **Done:** PW-attn |
+| 7 | H1, H2 one-sided, but TextVQA points the other way | **Done:** all confirmatory tests two-sided |
 
-## After you decide
-I write the pre-registration and build the timing test and coverage plots. Then we freeze the protocol and run the confirmatory items once.
+## Next
+1. Rerun both pilots under v3.1 (GPU). The screens and verification decisions stay valid.
+2. Fix the GQA builder and widen it to 1,000 items. This needs `verification/` pushed, so I can look at the failed items.
+3. Pre-registration, timing test and coverage plots. Then freeze and run the confirmatory items once.

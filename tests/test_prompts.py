@@ -51,7 +51,7 @@ def test_window_is_entirely_fixed_instruction(tokenizer, question, description):
 def test_template_round_trip(tokenizer):
     tokens = tokenize_prompt(tokenizer, *QUESTIONS[0])
     text = tokenizer.decode(tokens.suffix_ids)
-    assert "Description: The bus in this image is blue." in text and AUTHORITY in text
+    assert "Unverified description, possibly wrong: The bus in this image is blue." in text and AUTHORITY in text
     assert text.rstrip().endswith("ASSISTANT:")
 
 

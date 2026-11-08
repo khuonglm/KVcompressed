@@ -176,7 +176,7 @@ def test_prompt_variants_keep_spans_and_prefix(bundle, variant):
     start, stop = misled.description_span
     assert item["descriptions"]["mis"] in bundle.tokenizer.decode(misled.suffix_ids[start:stop])
     assert (plain.prompt == base.prompt) == (variant != "tiebreak")  # only tiebreak edits the Q prompt
-    assert (family.template_version == "v3.0") == (variant == "base")
+    assert family.template_version == {"base": "v3.0", "unverified": "v3.1"}.get(variant, f"v3.0+{variant}")
 
 
 def test_prompt_test_reports_every_variant(bundle, dataset):
@@ -185,5 +185,8 @@ def test_prompt_test_reports_every_variant(bundle, dataset):
     items, directory = dataset
     result = run_prompt_test(bundle, items[:2], directory, ["base", "after"], "capitalized")
     assert set(result["summary"]) == {"base", "after"} and len(result["rows"]) == 2 * 2 * 2
-    assert all(0 <= value <= 1 for value in (result["summary"]["after"]["mis_alternative"],))
+    for summary in result["summary"].values():  # every outcome is counted, under its real label
+        assert summary["mis_correct"] + summary["mis_alternative"] + summary["mis_other"] == pytest.approx(1)
+    rows = [r for r in result["rows"] if r["variant"] == "after" and r["context"] == "mis"]
+    assert result["summary"]["after"]["mis_alternative"] == sum(r["outcome"] == "alt" for r in rows) / len(rows)
     assert result["summary"]["after"]["template"] == "v3.0+after"

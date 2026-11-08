@@ -62,12 +62,20 @@ def test_bootstrap_recovers_the_mean_and_detects_a_large_effect():
     assert result["estimate"] == pytest.approx(values.mean())
     assert result["ci95"][0] < 1.0 < result["ci95"][1]
     assert result["p_one_sided"] == pytest.approx(1 / 2001)
+    assert result["p_two_sided"] == pytest.approx(2 / 2001)
     assert result["images"] == 200 and result["items"] == 600
 
 
 def test_p_value_formula_on_a_null_is_not_extreme():
     values, images = simulated(200, 3, 0.0, 0.5, 0.5, 1)
-    assert 0.001 < cluster_bootstrap(values, images, resamples=2000)["p_one_sided"] < 0.999
+    result = cluster_bootstrap(values, images, resamples=2000)
+    assert 0.001 < result["p_one_sided"] < 0.999 and 0.002 < result["p_two_sided"] <= 1
+
+
+def test_two_sided_p_detects_an_effect_in_either_direction():
+    up, images = simulated(200, 3, 1.0, 0.5, 0.5, 0)
+    assert cluster_bootstrap(up, images, resamples=2000)["p_two_sided"] == pytest.approx(2 / 2001)
+    assert cluster_bootstrap(-up, images, resamples=2000)["p_two_sided"] == pytest.approx(2 / 2001)
 
 
 def test_bootstrap_is_deterministic_for_a_seed():

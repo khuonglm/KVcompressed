@@ -85,6 +85,8 @@ def cluster_bootstrap(values: pd.Series, clusters: pd.Series, resamples: int = R
         "ci90": (float(np.percentile(estimates, 5)), float(np.percentile(estimates, 95))),
         "se": float(estimates.std(ddof=1)),
         "p_one_sided": float((1 + np.sum(estimates <= 0)) / (resamples + 1)),
+        # Every confirmatory test is two-sided (plan, decision record of 9 November 2026).
+        "p_two_sided": float(min(1.0, 2 * (1 + min(np.sum(estimates <= 0), np.sum(estimates >= 0))) / (resamples + 1))),
         "items": len(frame),
         "images": n_clusters,
     }
@@ -115,14 +117,14 @@ def _estimate_line(name: str, result: dict) -> str:
     low, high = result["ci95"]
     return (
         f"| {name} | {result['estimate']:+.3f} | [{low:+.3f}, {high:+.3f}] | {result['se']:.3f} | "
-        f"{result['p_one_sided']:.4f} | {read_interval(low, high)} | {result['items']} / {result['images']} |"
+        f"{result['p_two_sided']:.4f} | {read_interval(low, high)} | {result['items']} / {result['images']} |"
     )
 
 
 def _estimand_section(wide, images, selector, conditions, surface, resamples) -> list[str]:
     lines = [
         f"### {selector}, surface `{surface}`", "",
-        "| Estimand | Mean (nats) | 95% interval | SE | One-sided p | Reading | Items / images |",
+        "| Estimand | Mean (nats) | 95% interval | SE | Two-sided p | Reading | Items / images |",
         "| --- | ---: | --- | ---: | ---: | --- | ---: |",
     ]
     by_condition = {c: estimands(wide, selector, c) for c in conditions}

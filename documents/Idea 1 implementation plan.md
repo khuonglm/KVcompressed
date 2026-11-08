@@ -179,7 +179,15 @@ stay. Any later Qwen work starts from that record and is reported as a labelled 
   - *Choice:* the qualifying variant with the lowest GQA alternative rate. If two are within 5 points, prefer the smaller change, in the order `unverified`, `after`, `tiebreak`.
   - *If none qualifies:* keep v3.0 (option A).
   - *If one is chosen:* it becomes template v3.1 for both datasets. Rescreen and rerun the pilot on both; hand-verification decisions carry over, since the items don't change.
-- **Open:** I^(mis) in Holm, whether H1 and H2 also become two-sided (TextVQA's pilot points the opposite way), and keeping TextVQA.
+  - *Result (9 November, GQA, 150 items).* Rates of the wrong alternative under Full_mis: `base` 99.3%, `unverified` **46%**, `tiebreak` 100%, `after` 78%. Full_Q stayed at 99% or more under all four. Under the rule, `unverified` is chosen: it has the lowest rate, and `after` is not within 5 points of it. Its Q prompt is identical to v3.0's, so Full_Q on TextVQA is unchanged and its guard holds by construction. Mean Full_mis margin moved from −3.76 to +0.32 nats. (The first printed summary showed 0% for every alternative rate because of a label bug; the rates above are 1 − correct − other, and the bug is fixed.)
+  - *Applied:* LLaVA template **v3.1** = v3.0 with the description labelled "Unverified description, possibly wrong:". E1 passes on all 2,100 development items. Screens stay valid, since the Q prompt is unchanged. The pilots on both datasets must be rerun; verification decisions carry over. Qwen (parked) keeps v3.0's text.
+- **I^(mis) is reported outside Holm** (9 November), with its estimate and interval, labelled exploratory.
+- **All confirmatory tests are two-sided** (9 November): H1, H2, H3 and H4. TextVQA's development pilot pointed opposite to H1 and H2 (S_H^(mis) = −0.10, T_match = −0.16 under v3.0), and a one-sided test can't report a reliable effect in that direction. One rule for every test; no direction was flipped. Holm families are unchanged apart from I^(mis), which is outside. Reports now show two-sided p-values.
+- **TextVQA stays in the core study** (9 November).
+- **Next, not yet done:**
+  - Builder fixes for GQA (25% verification failures: 22 wrong a_true, 20 non-unique referents, 7 wording, 1 acceptable a_alt) and for TextVQA (6%: 11 wording, mostly unclear questions; 1 wrong a_true).
+  - Widening GQA to 1,000 items from `val_all`.
+  - Both wait on the verification files.
 
 ## 4. Repository layout
 
