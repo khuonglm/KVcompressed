@@ -1,4 +1,4 @@
-# Status report, 8 November 2026
+# Status report, 9 November 2026
 
 ## The study
 Does unreliable text steer which visual entries LLaVA-1.5-7B keeps when its cache is compressed?
@@ -16,19 +16,20 @@ The prompt includes a misleading description. We compare two kept sets under tha
 | 2. Datasets (GQA, TextVQA) | Done |
 | 3. GPU validation (E1–E7) | Done. LLaVA passes everything on both datasets |
 | 4. Screen, pilot, hand verification (development items) | Done for both datasets |
-| 5. Your decisions, pre-registration, timing test, coverage plots | **Next** |
-| 6. Freeze, then the confirmatory run once, then the analysis | Not started |
+| 5. Your decisions, then v3.1 pilots on both datasets | Done |
+| 6. Builder fixes, GQA widening, pre-registration, timing test, coverage plots | **Next** |
+| 7. Freeze, then the confirmatory run once, then the analysis | Not started |
 | Second model, Qwen2.5-VL | Parked (see below) |
 
 ## Data
 | | GQA | TextVQA |
 | --- | ---: | ---: |
 | Development items | 600 | 1,500 |
-| Confirmatory pool | 1,634 | 5,720 |
+| Confirmatory pool | 9,209 | 5,720 |
 | Eligible (model answers correctly with no description) | 351 of 600 (58%) | 888 of 1,500 (59%) |
 | Passed hand verification | 150 of 200 (75%) | 188 of 200 (94%) |
 
-Expected eligible confirmatory items for GQA: about 950. The plan asks for 1,000, so the pool will be widened. Only the control subset (300) and an audit (100) are hand-verified, and the audit fails above 5% errors. GQA development verification failed 25% of items, so the builder needs fixing first.
+GQA's confirmatory pool is now 9,209 candidates (builder `gqa-3`, from `val_all`). GQA labels fail hand verification 25% of the time, so every confirmatory GQA item will be hand-verified.
 
 ## GQA pilot results
 *Development items only, so these are not claims.* 150 verified items.
@@ -47,6 +48,21 @@ Expected eligible confirmatory items for GQA: about 950. The plan asks for 1,000
 - **Main effect reversed:** S_H^(mis) = **−0.10 [−0.15, −0.05]**. Here, choosing entries with the misleading description in view does slightly *better*. T_match and T_irr are negative too.
 - **H3 holds here:** E_harm^(mis) = +0.53. Compression hurts more under the misleading description.
 - **Question-span selection** shows no effect (S_H ≈ 0).
+
+## v3.1 pilots (9 November)
+*Development only.* Template v3.1 labels the description "Unverified description, possibly wrong:".
+
+| | GQA (150) | TextVQA (188) |
+| --- | --- | --- |
+| Full cache, misleading answer given | 46% (was 99%) | 2% (was 4%) |
+| S_H^(mis) | **+0.09 [+0.02, +0.18]** | −0.01 [−0.05, +0.02] |
+| T_match / T_irr | +0.07 / +0.06, inconclusive | −0.07 / −0.07 |
+| I^(mis), exploratory | −0.00 [−0.05, +0.06] | −0.04 |
+| E_harm^(mis), H3 | −0.21, opposite to the prediction | +0.45, but positive for every description |
+
+- **GQA:** a smaller effect than under v3.0, but answers can now flip. I ≈ 0 means no evidence that the steered kept set hurts *more* when the lie is present.
+- **TextVQA:** no steering effect.
+- **Tokenization:** 200/200 and 199/200.
 
 ## Qwen2.5-VL-7B
 Added as a model that follows text less readily. After two precision fixes it still fails one validation test:
@@ -67,6 +83,6 @@ It's parked, and the code is kept.
 | 7 | H1, H2 one-sided, but TextVQA points the other way | **Done:** all confirmatory tests two-sided |
 
 ## Next
-1. Rerun both pilots under v3.1 (GPU). The screens and verification decisions stay valid.
-2. Fix the GQA builder and widen it to 1,000 items. This needs `verification/` pushed, so I can look at the failed items.
+1. GQA: builder `gqa-3` is done (9,209 confirmatory candidates from `val_all`; development items unchanged). Automatic filters couldn't bring failures from 25% to 5%, so every confirmatory item will be hand-verified (about 1,350 to reach 1,000 passes).
+2. TextVQA builder fix for unclear questions.
 3. Pre-registration, timing test and coverage plots. Then freeze and run the confirmatory items once.

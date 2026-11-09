@@ -184,10 +184,18 @@ stay. Any later Qwen work starts from that record and is reported as a labelled 
 - **I^(mis) is reported outside Holm** (9 November), with its estimate and interval, labelled exploratory.
 - **All confirmatory tests are two-sided** (9 November): H1, H2, H3 and H4. TextVQA's development pilot pointed opposite to H1 and H2 (S_H^(mis) = −0.10, T_match = −0.16 under v3.0), and a one-sided test can't report a reliable effect in that direction. One rule for every test; no direction was flipped. Holm families are unchanged apart from I^(mis), which is outside. Reports now show two-sided p-values.
 - **TextVQA stays in the core study** (9 November).
+- **v3.1 development pilots** (9 November, overnight run, `results/v31/`). Development only; no claims.
+  - Prompt test rerun: same rates as above on GQA; TextVQA `unverified` gives the alternative on 2% (Q 100%). The rule holds on both datasets.
+  - GQA, 150 items, PW-attn: S_H^(mis) +0.09 [+0.02, +0.18]; S_Q^(mis) +0.09; I^(mis) −0.00 [−0.05, +0.06]; T_match +0.07 and T_irr +0.06, both inconclusive; E_harm^(mis) −0.21 [−0.34, −0.08]. Full_mis 52% correct; PW at K = 144 under mis 64%.
+  - TextVQA, 188 items: S_H^(mis) −0.01 [−0.05, +0.02]; T_match −0.07 and T_irr −0.07; E_harm^(mis) +0.45, but E_harm^(match) +0.34 and E_harm^(irr) +0.23 are positive too.
+  - Tokenization check: GQA 200/200, TextVQA 199/200 (one "Powerade" split).
+  - v3.1 was fixed by the prompt-test rule before these numbers existed. It isn't revisited because of them.
+- **GQA verification failures: automatic filters don't reach 5%** (9 November). Using the scene graphs on the 200 verified development items (25% failed), the best combination tried (box ≥ 5% of the image, no clothing or hair when the scene has 2+ people, no scene-level nouns) still fails 12%, keeps a quarter of the items, and is fitted to these 200 items. Most failures are label noise (wrong a_true) or people the scene graph omits.
+- **GQA: every confirmatory item is hand-verified** (9 November, user decision). Only passes enter the main set: the first 1,000 eligible items that pass, in manifest order. The first 300 of those form the control subset. Since every item is checked, the 5% audit is no longer needed. No new automatic filters (the ones above were fitted to 200 items and only saved time). Expected work: about 1,350 items at about 15 s each.
+- **Builder `gqa-3`** (9 November). Source `val_all_questions.json`, which contains every `val_balanced` question. Changes from `gqa-2`: one item per (image, object, attribute kind), keeping the lowest question id, because `val_all` asks about the same object in several wordings; and `--dev-manifest` keeps the 600 development items byte for byte (sha256 `c5848b11…`, so verification decisions stay valid), with the confirmatory pool on every other image. Funnel: 2,011,853 questions → 25,474 with the program shape → 23,678 in the vocabulary → 13,871 with an irrelevant object → 13,785 within 3 tokens → 10,455 after de-duplication. Confirmatory pool **9,209 items on 4,429 images**, none shared with development.
 - **Next, not yet done:**
-  - Builder fixes for GQA (25% verification failures: 22 wrong a_true, 20 non-unique referents, 7 wording, 1 acceptable a_alt) and for TextVQA (6%: 11 wording, mostly unclear questions; 1 wrong a_true).
-  - Widening GQA to 1,000 items from `val_all`.
-  - Both wait on the verification files.
+  - TextVQA builder fix (6%: 11 wording, mostly unclear questions; 1 wrong a_true).
+  - `check-tokenization` prints a status line to stdout, so its saved JSON doesn't parse.
 
 ## 4. Repository layout
 

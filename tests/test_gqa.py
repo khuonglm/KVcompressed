@@ -1,6 +1,8 @@
 """GQA builder rules on a small hand-built fixture."""
 
-from kvsel.gqa import VOCABULARY, build_items, parse_program, split_by_image
+import json
+
+from kvsel.gqa import VOCABULARY, build, build_items, iter_json_object, load_questions, parse_program, split_by_image
 
 
 def obj(name, attributes, x=0, y=0, w=10, h=10):
@@ -93,3 +95,43 @@ def test_split_keeps_images_whole_and_labels_items():
     assert not {i["image_id"] for i in development} & {i["image_id"] for i in confirmatory}
     assert len(development) == 6 and len(development) + len(confirmatory) == 30
     assert {i["split"] for i in development} == {"dev"} and {i["split"] for i in confirmatory} == {"confirm"}
+
+
+def test_streaming_reader_matches_json_loads():
+    data = {"a": question("red"), "b": {"x": [1, {"y": "}"}], "s": "a, b: c"}, "c": []}
+    for text in (json.dumps(data), json.dumps(data, indent=2), "{}", " { } "):
+        assert dict(iter_json_object(text)) == json.loads(text)
+
+
+def test_load_questions_keeps_usable_programs_and_counts_all(tmp_path):
+    path = tmp_path / "q.json"
+    path.write_text(json.dumps({"q": question("red"), "r": question("car", query="name")}))
+    kept, total = load_questions(path)
+    assert set(kept) == {"q"} and total == 2
+
+
+def test_one_item_per_object_and_attribute():
+    questions = {"q2": question("red", text="Which color is the bus?"), "q1": question("red")}
+    items, funnel = build_items(questions, GRAPH)
+    assert [item["item_id"] for item in items] == ["q1"]
+    assert funnel["description_lengths_within_3_tokens"] == 2 and funnel["one_item_per_object_and_attribute"] == 1
+
+
+def test_frozen_dev_manifest_is_kept_and_its_images_avoided(tmp_path):
+    graphs = {
+        "img": GRAPH["img"],
+        "other": {**GRAPH["img"]},
+    }
+    questions = {"q": question("red"), "r": question("red", image="other")}
+    (tmp_path / "q.json").write_text(json.dumps(questions))
+    (tmp_path / "g.json").write_text(json.dumps(graphs))
+    dev = tmp_path / "frozen_dev.jsonl"
+    dev_text = json.dumps({"item_id": "old", "image_id": "img", "builder": "gqa-2", "split": "dev"}) + "\n"
+    dev.write_text(dev_text)
+    out = tmp_path / "out"
+    funnel = build(tmp_path / "q.json", tmp_path / "g.json", out, None, 600, dev)
+    assert (out / "gqa_dev.jsonl").read_text() == dev_text
+    confirm = [json.loads(line) for line in (out / "gqa_confirm.jsonl").read_text().splitlines()]
+    assert [(item["item_id"], item["split"]) for item in confirm] == [("r", "confirm")]
+    assert funnel["dev_candidates"] == 1 and funnel["confirm_pool"] == 1 and funnel["questions"] == 2
+    assert funnel["dev_frozen_from"]["builder"] == "gqa-2"

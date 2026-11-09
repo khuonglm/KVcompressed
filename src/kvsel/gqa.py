@@ -12,7 +12,7 @@ from pathlib import Path
 from .normalize import normalize
 from .prompts import tokenize_prompt
 
-BUILDER_VERSION = "gqa-2"
+BUILDER_VERSION = "gqa-3"  # gqa-3: val_all source, one item per object and attribute, frozen dev manifest
 SPLIT_SEED = 0
 # Closed vocabulary for a_true, a_alt and irrelevant values, so a wrong value is clearly wrong. Raw
 # dataset answers also include activities ("brushing teeth"), vague values ("dark") and near
@@ -24,6 +24,30 @@ VOCABULARY = {
 ATTRIBUTE_KINDS = tuple(VOCABULARY)
 MAX_DESCRIPTION_TOKEN_SPREAD = 3
 _SELECT = re.compile(r"^(?P<name>.+) \((?P<id>\d+)\)$")
+
+
+def iter_json_object(text: str):
+    """Yields (key, value) pairs of a top-level JSON object one at a time, so a 1.7 GB file
+    needs memory for its text and the kept values only, not for every parsed question."""
+    decoder = json.JSONDecoder()
+    skip = re.compile(r"[\s,:]*")
+    position = skip.match(text, text.index("{") + 1).end()
+    while text[position] != "}":
+        key, position = decoder.raw_decode(text, position)
+        position = skip.match(text, position).end()
+        value, position = decoder.raw_decode(text, position)
+        position = skip.match(text, position).end()
+        yield key, value
+
+
+def load_questions(path: Path) -> tuple[dict, int]:
+    """Questions whose program can produce an item, and the total count for the funnel."""
+    kept, total = {}, 0
+    for item_id, question in iter_json_object(Path(path).read_text()):
+        total += 1
+        if parse_program(question) is not None:
+            kept[item_id] = question
+    return kept, total
 
 
 def item_rng(item_id: str) -> random.Random:
@@ -88,6 +112,7 @@ def build_items(questions: dict, graphs: dict, tokenizer=None) -> tuple[list[dic
     funnel: Counter[str] = Counter()
     funnel["questions"] = len(questions)
     items = []
+    seen: set[tuple[str, str, str]] = set()
     for item_id in sorted(questions):
         question = questions[item_id]
         parsed = parse_program(question)
@@ -129,6 +154,11 @@ def build_items(questions: dict, graphs: dict, tokenizer=None) -> tuple[list[dic
             if max(lengths) - min(lengths) > MAX_DESCRIPTION_TOKEN_SPREAD:
                 continue
         funnel["description_lengths_within_3_tokens"] += 1
+        key = (question["imageId"], object_id, kind)
+        if key in seen:  # val_all asks about the same object in several wordings; the lowest id wins
+            continue
+        seen.add(key)
+        funnel["one_item_per_object_and_attribute"] += 1
         items.append({
             "item_id": item_id,
             "image_id": question["imageId"],
@@ -169,12 +199,28 @@ def write_jsonl(path: Path, items: list[dict]) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
 
 
-def build(questions_path: Path, graphs_path: Path, out_dir: Path, tokenizer, dev_items: int) -> dict:
-    questions = json.loads(Path(questions_path).read_text())
+def build(questions_path: Path, graphs_path: Path, out_dir: Path, tokenizer, dev_items: int,
+          dev_manifest: Path | None = None) -> dict:
+    """With dev_manifest, development items are kept byte for byte (their verification stays valid)
+    and the confirmatory pool is every built item on an image not used in development."""
+    questions, total = load_questions(questions_path)
     graphs = json.loads(Path(graphs_path).read_text())
     items, funnel = build_items(questions, graphs, tokenizer)
-    development, confirmatory = split_by_image(items, dev_items)
+    funnel["questions"] = total
     out_dir.mkdir(parents=True, exist_ok=True)
+    dev_path = out_dir / "gqa_dev.jsonl"
+    if dev_manifest is None:
+        development, confirmatory = split_by_image(items, dev_items)
+        dev_sha = write_jsonl(dev_path, development)
+    else:
+        dev_bytes = Path(dev_manifest).read_bytes()
+        development = [json.loads(line) for line in dev_bytes.decode().splitlines() if line.strip()]
+        dev_images = {item["image_id"] for item in development}
+        _, confirmatory = split_by_image([item for item in items if item["image_id"] not in dev_images], 0)
+        if Path(dev_manifest).resolve() != dev_path.resolve():
+            dev_path.write_bytes(dev_bytes)
+        dev_sha = hashlib.sha256(dev_bytes).hexdigest()
+        funnel["dev_frozen_from"] = {"builder": development[0]["builder"], "file": Path(dev_manifest).name}
     funnel.update({
         "unique_images": len({item["image_id"] for item in items}),
         "dev_candidates": len(development),
@@ -184,7 +230,7 @@ def build(questions_path: Path, graphs_path: Path, out_dir: Path, tokenizer, dev
         "by_kind": dict(Counter(item["attribute_kind"] for item in items)),
         "builder": BUILDER_VERSION,
         "source": Path(questions_path).name,
-        "dev_sha256": write_jsonl(out_dir / "gqa_dev.jsonl", development),
+        "dev_sha256": dev_sha,
         "confirm_sha256": write_jsonl(out_dir / "gqa_confirm.jsonl", confirmatory),
     })
     (out_dir / "gqa_funnel.json").write_text(json.dumps(funnel, indent=2) + "\n")

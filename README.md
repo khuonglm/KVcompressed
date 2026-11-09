@@ -50,7 +50,15 @@ some files fail, rerun the same command and it fetches only what's missing. Use 
 the parallelism; the default is 3 because the server returned 503 errors at 8.
 
 The item manifests are already in `manifests/`, so you don't need the question files on the GPU.
-If you rebuild them with different filters, rerun this command for any new images.
+If you rebuild them with different filters, rerun this command for any new images. The `gqa-3`
+confirmatory pool (9,209 items, 4,429 images) needs about 0.8 GB more.
+
+To rebuild (no GPU; about a minute and 3 GB of memory), keeping the development items unchanged:
+
+```bash
+uv run kvsel build-gqa --questions val_all_questions.json --scene-graphs val_sceneGraphs.json \
+  --dev-manifest manifests/gqa_dev.jsonl
+```
 
 ### 3. Validate the pipeline
 

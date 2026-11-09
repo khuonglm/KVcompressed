@@ -1,24 +1,29 @@
 {
-  "questions": 132062,
-  "program_select_query_color_or_material": 4503,
-  "object_in_scene_graph": 4503,
-  "unique_referent_in_scene_graph": 4503,
-  "answer_in_closed_vocabulary": 4100,
-  "answer_is_attribute_of_object": 4100,
-  "alternative_found": 4100,
-  "irrelevant_object_found": 2253,
-  "description_lengths_within_3_tokens": 2234,
-  "unique_images": 1799,
+  "questions": 2011853,
+  "program_select_query_color_or_material": 25474,
+  "object_in_scene_graph": 25474,
+  "unique_referent_in_scene_graph": 25474,
+  "answer_in_closed_vocabulary": 23678,
+  "answer_is_attribute_of_object": 23678,
+  "alternative_found": 23678,
+  "irrelevant_object_found": 13871,
+  "description_lengths_within_3_tokens": 13785,
+  "one_item_per_object_and_attribute": 10455,
+  "dev_frozen_from": {
+    "builder": "gqa-2",
+    "file": "gqa_dev.jsonl"
+  },
+  "unique_images": 4901,
   "dev_candidates": 600,
   "dev_images": 483,
-  "confirm_pool": 1634,
-  "confirm_images": 1316,
+  "confirm_pool": 9209,
+  "confirm_images": 4429,
   "by_kind": {
-    "color": 2050,
-    "material": 184
+    "color": 9986,
+    "material": 469
   },
-  "builder": "gqa-2",
-  "source": "val_balanced_questions.json",
+  "builder": "gqa-3",
+  "source": "val_all_questions.json",
   "dev_sha256": "c5848b1151cea6b07479a2b5ad3a7a92f4e736dc4ab4d21b711ae9fc3c3176ab",
-  "confirm_sha256": "4a8aeef7537183d769263f22fa4439b94654c55a8efdb5d1ad6556d019445319"
+  "confirm_sha256": "ded6b8295a653afa55b35f75b8f8b012671d66fcf53f2c940b270250ddb7539c"
 }
