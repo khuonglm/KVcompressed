@@ -85,4 +85,5 @@ It's parked, and the code is kept.
 ## Next
 1. GQA: builder `gqa-3` is done (9,209 confirmatory candidates from `val_all`; development items unchanged). Automatic filters couldn't bring failures from 25% to 5%, so every confirmatory item will be hand-verified (about 1,350 to reach 1,000 passes).
 2. TextVQA: builder `textvqa-3` is done (at least 5 of 10 annotators must agree on the answer; 5,514 confirmatory candidates; development items unchanged). Every confirmatory item will be hand-verified too, about 1,100 items.
-3. Pre-registration, timing test and coverage plots. Then freeze and run the confirmatory items once.
+3. S1 and R1 on the GPU (`scripts/gpu_s1_r1.sh`). E6 coverage plots are done.
+4. Pre-registration and freeze tooling. Then screen, verify, and run the confirmatory items once.

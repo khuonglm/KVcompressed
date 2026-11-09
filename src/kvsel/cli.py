@@ -200,6 +200,46 @@ def cmd_report(args) -> None:
     print(text)
 
 
+def cmd_build_s1(args) -> None:
+    from .sanity import build_s1_items
+
+    items = build_s1_items(args.dataset, args.questions, args.dev_manifest, args.n)
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    args.out.write_text("".join(json.dumps(item, sort_keys=True) + "\n" for item in items))
+    print(f"{len(items)} {args.dataset} questions on development images -> {args.out}")
+
+
+def cmd_s1(args) -> None:
+    from .runner import load_items
+    from .sanity import run_s1
+
+    result = run_s1(_bundle(args), load_items(args.items), args.images)
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    args.out.write_text(json.dumps(result, indent=2))
+    print(json.dumps({key: value for key, value in result.items() if key != "rows"}, indent=2))
+    for row in result["rows"][:15]:
+        print(f"  {row['score']:.2f}  {row['question']!r} -> {row['answer']!r} (gold {row['gold']!r})")
+
+
+def cmd_timing(args) -> None:
+    from .runner import load_items
+    from .sanity import run_timing
+
+    volumes = {"screen_gqa": 9209, "screen_textvqa": 5514, "confirmatory_items": 2000}
+    result = run_timing(_bundle(args), load_items(args.items)[: args.limit], args.images, volumes)
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    args.out.write_text(json.dumps(result, indent=2))
+    print(json.dumps(result, indent=2))
+
+
+def cmd_coverage(args) -> None:
+    from .sanity import coverage_report
+
+    result = coverage_report(args.attention, args.out)
+    print(json.dumps(result, indent=2))
+    print(f"figures: {args.out}/coverage_k*.svg")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="kvsel", description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -327,6 +367,32 @@ def main() -> None:
     sub.add_argument("--verified", type=Path, help="keep only items that passed in this decisions file")
     sub.add_argument("--out", type=Path)
     sub.set_defaults(handler=cmd_report)
+
+    sub = commands.add_parser("build-s1", help="S1 manifest: random questions of any type on development images. No GPU")
+    sub.add_argument("--dataset", required=True, choices=["gqa", "textvqa"])
+    sub.add_argument("--questions", type=Path, nargs="+", required=True, help="raw question files")
+    sub.add_argument("--dev-manifest", type=Path, required=True, help="development manifest; its images are used")
+    sub.add_argument("--n", type=int, default=200)
+    sub.add_argument("--out", type=Path, required=True)
+    sub.set_defaults(handler=cmd_build_s1)
+
+    sub = commands.add_parser("s1", help="S1: accuracy under LLaVA's standard prompt, full cache (GPU)")
+    add_item_options(sub)
+    add_model_options(sub)
+    sub.add_argument("--out", type=Path, required=True)
+    sub.set_defaults(handler=cmd_s1)
+
+    sub = commands.add_parser("timing", help="R1: time and peak memory per stage of the pilot workload (GPU)")
+    add_item_options(sub)
+    add_model_options(sub)
+    sub.add_argument("--limit", type=int, default=20)
+    sub.add_argument("--out", type=Path, required=True)
+    sub.set_defaults(handler=cmd_timing)
+
+    sub = commands.add_parser("coverage", help="E6: coverage reserve radius and plots. No GPU")
+    sub.add_argument("--attention", type=Path, default=None, help="a run's attention/ directory (optional)")
+    sub.add_argument("--out", type=Path, default=Path("results/coverage"))
+    sub.set_defaults(handler=cmd_coverage)
 
     args = parser.parse_args()
     args.handler(args)

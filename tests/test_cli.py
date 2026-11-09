@@ -1,5 +1,6 @@
 """The command line itself: argument names must not collide with the dispatcher."""
 
+import json
 import sys
 
 import pytest
@@ -27,7 +28,7 @@ def test_report_writes_its_output_file(monkeypatch, tmp_path, capsys):
 
 
 @pytest.mark.parametrize("command", [
-    "build-gqa", "build-textvqa", "fetch-model", "fetch-images", "check-serialization",
+    "build-gqa", "build-textvqa", "fetch-model", "fetch-images", "check-serialization", "build-s1", "s1", "timing", "coverage",
     "validate", "diagnose-e2", "check-tokenization", "screen", "pilot", "prompt-test", "verify", "report",
 ])
 def test_every_command_parses_its_help(monkeypatch, command):
@@ -75,3 +76,19 @@ def test_screen_prints_eligibility_and_casing(monkeypatch, tmp_path, capsys):
     printed = capsys.readouterr().out
     assert "eligible under `upper`: 1 of 1" in printed
     assert "| upper | 1.000 |" in printed
+
+
+def test_timing_and_s1_pass_their_arguments(monkeypatch, tmp_path):
+    from kvsel import cli, sanity
+
+    items = tmp_path / "items.jsonl"
+    items.write_text("".join(json.dumps({"item_id": str(i), "split": "dev"}) + "\n" for i in range(30)))
+    seen = {}
+    monkeypatch.setattr(cli, "_bundle", lambda args: "bundle")
+    monkeypatch.setattr(sanity, "run_timing", lambda b, it, images, volumes: seen.update(n=len(it), volumes=volumes) or {"ok": 1})
+    monkeypatch.setattr(sanity, "run_s1", lambda b, it, images: seen.update(s1=len(it)) or {"items": len(it), "rows": []})
+    run_cli(monkeypatch, "timing", "--items", str(items), "--images", str(tmp_path), "--limit", "5",
+            "--out", str(tmp_path / "r1.json"))
+    run_cli(monkeypatch, "s1", "--items", str(items), "--images", str(tmp_path), "--out", str(tmp_path / "s1.json"))
+    assert seen["n"] == 5 and seen["s1"] == 30 and seen["volumes"]["confirmatory_items"] == 2000
+    assert json.loads((tmp_path / "r1.json").read_text()) == {"ok": 1}

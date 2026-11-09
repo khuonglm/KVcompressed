@@ -1,0 +1,200 @@
+{"answers": ["red"], "dataset": "gqa", "image_file": "2340945.jpg", "image_id": "2340945", "item_id": "s1_gqa_14544485", "question": "Which color are the socks?", "split": "dev"}
+{"answers": ["right"], "dataset": "gqa", "image_file": "2392397.jpg", "image_id": "2392397", "item_id": "s1_gqa_15975423", "question": "Is the brown couch to the left or to the right of the bowl?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2334942.jpg", "image_id": "2334942", "item_id": "s1_gqa_01656819", "question": "Do you see computer mice to the left of the mobile phone in the bottom?", "split": "dev"}
+{"answers": ["woman"], "dataset": "gqa", "image_file": "2363706.jpg", "image_id": "2363706", "item_id": "s1_gqa_0947680", "question": "Who is wearing the shorts?", "split": "dev"}
+{"answers": ["yes"], "dataset": "gqa", "image_file": "2369983.jpg", "image_id": "2369983", "item_id": "s1_gqa_19693523", "question": "Is the helmet in the top part of the picture?", "split": "dev"}
+{"answers": ["cabinets"], "dataset": "gqa", "image_file": "2382804.jpg", "image_id": "2382804", "item_id": "s1_gqa_18615853", "question": "What are the pieces of furniture to the left of the woman on the toilet?", "split": "dev"}
+{"answers": ["brown"], "dataset": "gqa", "image_file": "2401657.jpg", "image_id": "2401657", "item_id": "s1_gqa_15285128", "question": "What is the color of the shoe the person is wearing?", "split": "dev"}
+{"answers": ["yes"], "dataset": "gqa", "image_file": "2385924.jpg", "image_id": "2385924", "item_id": "s1_gqa_10824701", "question": "Does the person to the left of the man wear a dress?", "split": "dev"}
+{"answers": ["brown"], "dataset": "gqa", "image_file": "2328140.jpg", "image_id": "2328140", "item_id": "s1_gqa_17960315", "question": "Which color does that door have?", "split": "dev"}
+{"answers": ["couch"], "dataset": "gqa", "image_file": "2334652.jpg", "image_id": "2334652", "item_id": "s1_gqa_13330885", "question": "Which kind of furniture is to the left of the pillow?", "split": "dev"}
+{"answers": ["right"], "dataset": "gqa", "image_file": "2385158.jpg", "image_id": "2385158", "item_id": "s1_gqa_081019217", "question": "Is the backpack to the left or to the right of the people that are to the right of the bench?", "split": "dev"}
+{"answers": ["yes"], "dataset": "gqa", "image_file": "2381993.jpg", "image_id": "2381993", "item_id": "s1_gqa_19315537", "question": "Is the bath tub white and large?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2347380.jpg", "image_id": "2347380", "item_id": "s1_gqa_05558023", "question": "Is the shelf behind a toilet?", "split": "dev"}
+{"answers": ["left"], "dataset": "gqa", "image_file": "2385147.jpg", "image_id": "2385147", "item_id": "s1_gqa_1046309", "question": "Is the bus to the left or to the right of the vehicle on the right side of the picture?", "split": "dev"}
+{"answers": ["laptop"], "dataset": "gqa", "image_file": "2347380.jpg", "image_id": "2347380", "item_id": "s1_gqa_05558141", "question": "What kind of device is black?", "split": "dev"}
+{"answers": ["right"], "dataset": "gqa", "image_file": "2326282.jpg", "image_id": "2326282", "item_id": "s1_gqa_04132006", "question": "Is the couch pillow to the right or to the left of the curtains?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2367570.jpg", "image_id": "2367570", "item_id": "s1_gqa_09231221", "question": "Are there any boats to the right of the rope?", "split": "dev"}
+{"answers": ["bottom"], "dataset": "gqa", "image_file": "2371801.jpg", "image_id": "2371801", "item_id": "s1_gqa_05748921", "question": "Is the car in the top part or in the bottom?", "split": "dev"}
+{"answers": ["white"], "dataset": "gqa", "image_file": "2390101.jpg", "image_id": "2390101", "item_id": "s1_gqa_10981682", "question": "Are the striped pants white or black?", "split": "dev"}
+{"answers": ["bat"], "dataset": "gqa", "image_file": "713531.jpg", "image_id": "713531", "item_id": "s1_gqa_04192696", "question": "What is the batter holding?", "split": "dev"}
+{"answers": ["dog"], "dataset": "gqa", "image_file": "2320543.jpg", "image_id": "2320543", "item_id": "s1_gqa_02769444", "question": "What animal do you think is on the chair?", "split": "dev"}
+{"answers": ["yes"], "dataset": "gqa", "image_file": "2327692.jpg", "image_id": "2327692", "item_id": "s1_gqa_121023788", "question": "Do you see either helmets or pictures in the image?", "split": "dev"}
+{"answers": ["yes"], "dataset": "gqa", "image_file": "2317428.jpg", "image_id": "2317428", "item_id": "s1_gqa_1768515", "question": "Are there both cups and plates in this photo?", "split": "dev"}
+{"answers": ["yes"], "dataset": "gqa", "image_file": "2380658.jpg", "image_id": "2380658", "item_id": "s1_gqa_04247989", "question": "Does the shirt have black color?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2408005.jpg", "image_id": "2408005", "item_id": "s1_gqa_13112212", "question": "Is the gray house to the right of the person the sidewalk is below?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2402718.jpg", "image_id": "2402718", "item_id": "s1_gqa_16514612", "question": "Do you see a spoon or a tablecloth there?", "split": "dev"}
+{"answers": ["chair"], "dataset": "gqa", "image_file": "2361386.jpg", "image_id": "2361386", "item_id": "s1_gqa_1129385", "question": "What kind of furniture is to the right of the device that is pink?", "split": "dev"}
+{"answers": ["airport"], "dataset": "gqa", "image_file": "2393775.jpg", "image_id": "2393775", "item_id": "s1_gqa_07730771", "question": "Which place is it?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "4633.jpg", "image_id": "4633", "item_id": "s1_gqa_181001064", "question": "Are there wigs or balls in this picture?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2393941.jpg", "image_id": "2393941", "item_id": "s1_gqa_16785327", "question": "Are the letters red?", "split": "dev"}
+{"answers": ["bear"], "dataset": "gqa", "image_file": "2359159.jpg", "image_id": "2359159", "item_id": "s1_gqa_09489174", "question": "What animal does the man look at?", "split": "dev"}
+{"answers": ["bookcase"], "dataset": "gqa", "image_file": "2369996.jpg", "image_id": "2369996", "item_id": "s1_gqa_02652901", "question": "What type of furniture is to the left of the books?", "split": "dev"}
+{"answers": ["jacket"], "dataset": "gqa", "image_file": "2405118.jpg", "image_id": "2405118", "item_id": "s1_gqa_00577694", "question": "Which kind of clothing is not fuzzy, the jacket or the glove?", "split": "dev"}
+{"answers": ["child"], "dataset": "gqa", "image_file": "2417896.jpg", "image_id": "2417896", "item_id": "s1_gqa_041019612", "question": "Who wears gloves?", "split": "dev"}
+{"answers": ["skating"], "dataset": "gqa", "image_file": "2404827.jpg", "image_id": "2404827", "item_id": "s1_gqa_151054972", "question": "What is the person doing, skating or swimming?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2405536.jpg", "image_id": "2405536", "item_id": "s1_gqa_001033768", "question": "Is the uniform orange?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2355792.jpg", "image_id": "2355792", "item_id": "s1_gqa_18947056", "question": "Are there napkins or keyboards in the picture?", "split": "dev"}
+{"answers": ["gun"], "dataset": "gqa", "image_file": "2348624.jpg", "image_id": "2348624", "item_id": "s1_gqa_12207434", "question": "What type of weapon is made of the same material as the clock to the right of the bear?", "split": "dev"}
+{"answers": ["shallow"], "dataset": "gqa", "image_file": "2376493.jpg", "image_id": "2376493", "item_id": "s1_gqa_091044095", "question": "What's the depth of the river?", "split": "dev"}
+{"answers": ["left"], "dataset": "gqa", "image_file": "2328640.jpg", "image_id": "2328640", "item_id": "s1_gqa_11666623", "question": "On which side of the image is the man?", "split": "dev"}
+{"answers": ["yes"], "dataset": "gqa", "image_file": "2369996.jpg", "image_id": "2369996", "item_id": "s1_gqa_02653151", "question": "Are the books to the right of the white blinds?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2389885.jpg", "image_id": "2389885", "item_id": "s1_gqa_07541005", "question": "Do the plate and the outfit have the same color?", "split": "dev"}
+{"answers": ["yes"], "dataset": "gqa", "image_file": "2399195.jpg", "image_id": "2399195", "item_id": "s1_gqa_0824080", "question": "Are the blouse and the skirt both pink?", "split": "dev"}
+{"answers": ["yellow"], "dataset": "gqa", "image_file": "2347819.jpg", "image_id": "2347819", "item_id": "s1_gqa_0878083", "question": "Is the pillow yellow or red?", "split": "dev"}
+{"answers": ["yes"], "dataset": "gqa", "image_file": "2320260.jpg", "image_id": "2320260", "item_id": "s1_gqa_0564495", "question": "Is there either a fence or a hat that is green?", "split": "dev"}
+{"answers": ["left"], "dataset": "gqa", "image_file": "2378471.jpg", "image_id": "2378471", "item_id": "s1_gqa_16921910", "question": "Which side is the television on?", "split": "dev"}
+{"answers": ["right"], "dataset": "gqa", "image_file": "2364995.jpg", "image_id": "2364995", "item_id": "s1_gqa_03850348", "question": "Is the truck to the right or to the left of the person on the left side of the image?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2374597.jpg", "image_id": "2374597", "item_id": "s1_gqa_03267967", "question": "Are there either white gloves or hats?", "split": "dev"}
+{"answers": ["couch"], "dataset": "gqa", "image_file": "2357735.jpg", "image_id": "2357735", "item_id": "s1_gqa_11536982", "question": "What is the piece of furniture that the pillow is on?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2375878.jpg", "image_id": "2375878", "item_id": "s1_gqa_19540383", "question": "Is the cooking utensil to the left of the woman made of metal?", "split": "dev"}
+{"answers": ["console"], "dataset": "gqa", "image_file": "2341659.jpg", "image_id": "2341659", "item_id": "s1_gqa_18924772", "question": "What type of device is the same color as the device in the center of the image?", "split": "dev"}
+{"answers": ["dark"], "dataset": "gqa", "image_file": "2379856.jpg", "image_id": "2379856", "item_id": "s1_gqa_04743377", "question": "What color does the horse have?", "split": "dev"}
+{"answers": ["yes"], "dataset": "gqa", "image_file": "2375744.jpg", "image_id": "2375744", "item_id": "s1_gqa_10817770", "question": "Does the jacket look white?", "split": "dev"}
+{"answers": ["chair"], "dataset": "gqa", "image_file": "2385743.jpg", "image_id": "2385743", "item_id": "s1_gqa_10644667", "question": "What kind of furniture is not large, the chair or the table?", "split": "dev"}
+{"answers": ["red"], "dataset": "gqa", "image_file": "2371404.jpg", "image_id": "2371404", "item_id": "s1_gqa_05304454", "question": "What color is that ground?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2345299.jpg", "image_id": "2345299", "item_id": "s1_gqa_12127826", "question": "Are there any canes or trash cans in the picture?", "split": "dev"}
+{"answers": ["olives"], "dataset": "gqa", "image_file": "2384329.jpg", "image_id": "2384329", "item_id": "s1_gqa_07685540", "question": "What is on the pizza to the right of the bowl?", "split": "dev"}
+{"answers": ["remote control"], "dataset": "gqa", "image_file": "2385222.jpg", "image_id": "2385222", "item_id": "s1_gqa_10590116", "question": "What kind of device has the same color as the wall?", "split": "dev"}
+{"answers": ["black"], "dataset": "gqa", "image_file": "2391561.jpg", "image_id": "2391561", "item_id": "s1_gqa_16834464", "question": "What color is the traffic signal?", "split": "dev"}
+{"answers": ["bottom"], "dataset": "gqa", "image_file": "2375154.jpg", "image_id": "2375154", "item_id": "s1_gqa_0389956", "question": "Is the chair in the bottom or in the top part of the image?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2340945.jpg", "image_id": "2340945", "item_id": "s1_gqa_14544433", "question": "Do the pants look checkered and white?", "split": "dev"}
+{"answers": ["black"], "dataset": "gqa", "image_file": "2354281.jpg", "image_id": "2354281", "item_id": "s1_gqa_1135562", "question": "What is the color of the glove that he is wearing?", "split": "dev"}
+{"answers": ["left"], "dataset": "gqa", "image_file": "2347055.jpg", "image_id": "2347055", "item_id": "s1_gqa_091017078", "question": "On which side is the pot?", "split": "dev"}
+{"answers": ["sofa"], "dataset": "gqa", "image_file": "2385743.jpg", "image_id": "2385743", "item_id": "s1_gqa_10644485", "question": "Which kind of furniture are the clothes on?", "split": "dev"}
+{"answers": ["yes"], "dataset": "gqa", "image_file": "2410585.jpg", "image_id": "2410585", "item_id": "s1_gqa_07292090", "question": "Does the horse to the left of the car look dark brown?", "split": "dev"}
+{"answers": ["car"], "dataset": "gqa", "image_file": "3314.jpg", "image_id": "3314", "item_id": "s1_gqa_07386728", "question": "Which kind of vehicle is the tree behind of?", "split": "dev"}
+{"answers": ["yes"], "dataset": "gqa", "image_file": "2341576.jpg", "image_id": "2341576", "item_id": "s1_gqa_07302887", "question": "Is the monitor to the right of the mouse?", "split": "dev"}
+{"answers": ["gray"], "dataset": "gqa", "image_file": "2357561.jpg", "image_id": "2357561", "item_id": "s1_gqa_01314758", "question": "What color is the hair?", "split": "dev"}
+{"answers": ["left"], "dataset": "gqa", "image_file": "2359159.jpg", "image_id": "2359159", "item_id": "s1_gqa_09489087", "question": "Is the toy to the right or to the left of the man?", "split": "dev"}
+{"answers": ["yes"], "dataset": "gqa", "image_file": "2328140.jpg", "image_id": "2328140", "item_id": "s1_gqa_17960303", "question": "Do you see both doors and mirrors?", "split": "dev"}
+{"answers": ["stove"], "dataset": "gqa", "image_file": "2385332.jpg", "image_id": "2385332", "item_id": "s1_gqa_02711623", "question": "What is the appliance that the towels to the right of the man are hanging on?", "split": "dev"}
+{"answers": ["right"], "dataset": "gqa", "image_file": "2345079.jpg", "image_id": "2345079", "item_id": "s1_gqa_03680619", "question": "Is the orange flag to the right or to the left of the woman that the cone is to the left of?", "split": "dev"}
+{"answers": ["people"], "dataset": "gqa", "image_file": "2343415.jpg", "image_id": "2343415", "item_id": "s1_gqa_05435551", "question": "In front of who is the motorbike?", "split": "dev"}
+{"answers": ["taxi"], "dataset": "gqa", "image_file": "2395834.jpg", "image_id": "2395834", "item_id": "s1_gqa_06182663", "question": "What type of vehicle is the same color as the gate?", "split": "dev"}
+{"answers": ["cloudy"], "dataset": "gqa", "image_file": "2405731.jpg", "image_id": "2405731", "item_id": "s1_gqa_01539429", "question": "How is the weather?", "split": "dev"}
+{"answers": ["yes"], "dataset": "gqa", "image_file": "2374597.jpg", "image_id": "2374597", "item_id": "s1_gqa_03267857", "question": "Are both the shirt and the skateboard the same color?", "split": "dev"}
+{"answers": ["yes"], "dataset": "gqa", "image_file": "2397009.jpg", "image_id": "2397009", "item_id": "s1_gqa_14836362", "question": "Are the boy to the left of the chair and the lady near the window both sitting?", "split": "dev"}
+{"answers": ["juice"], "dataset": "gqa", "image_file": "2359715.jpg", "image_id": "2359715", "item_id": "s1_gqa_10376212", "question": "What is inside the bottle on top of the table?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2406152.jpg", "image_id": "2406152", "item_id": "s1_gqa_0866728", "question": "Is the plastic container on the right side?", "split": "dev"}
+{"answers": ["yes"], "dataset": "gqa", "image_file": "2401506.jpg", "image_id": "2401506", "item_id": "s1_gqa_07921078", "question": "Is the person to the right of the picture wearing a watch?", "split": "dev"}
+{"answers": ["yes"], "dataset": "gqa", "image_file": "2392397.jpg", "image_id": "2392397", "item_id": "s1_gqa_15975209", "question": "Do you see either clocks or pots?", "split": "dev"}
+{"answers": ["left"], "dataset": "gqa", "image_file": "2359715.jpg", "image_id": "2359715", "item_id": "s1_gqa_10376117", "question": "Is the old man to the right or to the left of the child?", "split": "dev"}
+{"answers": ["yes"], "dataset": "gqa", "image_file": "2403854.jpg", "image_id": "2403854", "item_id": "s1_gqa_16937021", "question": "Does the cow to the left of the other cows have white color?", "split": "dev"}
+{"answers": ["desk"], "dataset": "gqa", "image_file": "2355792.jpg", "image_id": "2355792", "item_id": "s1_gqa_18946867", "question": "What kind of furniture is the same color as the chair that is to the left of the coffee cup?", "split": "dev"}
+{"answers": ["closed"], "dataset": "gqa", "image_file": "2362929.jpg", "image_id": "2362929", "item_id": "s1_gqa_1317936", "question": "Is the elevator door closed or open?", "split": "dev"}
+{"answers": ["left"], "dataset": "gqa", "image_file": "2345698.jpg", "image_id": "2345698", "item_id": "s1_gqa_03294762", "question": "Are the blue chairs on the left or on the right side?", "split": "dev"}
+{"answers": ["brick"], "dataset": "gqa", "image_file": "2372163.jpg", "image_id": "2372163", "item_id": "s1_gqa_11611852", "question": "What is the fireplace made of?", "split": "dev"}
+{"answers": ["countertop"], "dataset": "gqa", "image_file": "2380179.jpg", "image_id": "2380179", "item_id": "s1_gqa_04987346", "question": "What is the bucket on?", "split": "dev"}
+{"answers": ["woman"], "dataset": "gqa", "image_file": "2356873.jpg", "image_id": "2356873", "item_id": "s1_gqa_18627525", "question": "Who is wearing a hat?", "split": "dev"}
+{"answers": ["white"], "dataset": "gqa", "image_file": "1160040.jpg", "image_id": "1160040", "item_id": "s1_gqa_12249155", "question": "What is the color of the clock that looks large?", "split": "dev"}
+{"answers": ["cat"], "dataset": "gqa", "image_file": "2406719.jpg", "image_id": "2406719", "item_id": "s1_gqa_07490141", "question": "What animal is to the left of the headphones?", "split": "dev"}
+{"answers": ["plant"], "dataset": "gqa", "image_file": "2347055.jpg", "image_id": "2347055", "item_id": "s1_gqa_091017278", "question": "What is in the vase?", "split": "dev"}
+{"answers": ["chair"], "dataset": "gqa", "image_file": "497937.jpg", "image_id": "497937", "item_id": "s1_gqa_00650124", "question": "What is the cat on?", "split": "dev"}
+{"answers": ["yes"], "dataset": "gqa", "image_file": "2335027.jpg", "image_id": "2335027", "item_id": "s1_gqa_10136936", "question": "Is the radiator on the right side?", "split": "dev"}
+{"answers": ["bus"], "dataset": "gqa", "image_file": "2407415.jpg", "image_id": "2407415", "item_id": "s1_gqa_05120016", "question": "What is the guy waiting for?", "split": "dev"}
+{"answers": ["left"], "dataset": "gqa", "image_file": "2320619.jpg", "image_id": "2320619", "item_id": "s1_gqa_08166509", "question": "On which side of the photo is the bowl?", "split": "dev"}
+{"answers": ["car"], "dataset": "gqa", "image_file": "2353425.jpg", "image_id": "2353425", "item_id": "s1_gqa_13991780", "question": "Which kind of vehicle is the trunk in?", "split": "dev"}
+{"answers": ["right"], "dataset": "gqa", "image_file": "2410635.jpg", "image_id": "2410635", "item_id": "s1_gqa_06753099", "question": "In which part of the picture is the wood chair?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2345299.jpg", "image_id": "2345299", "item_id": "s1_gqa_12127779", "question": "Are there any tennis balls or chess pieces in this photograph?", "split": "dev"}
+{"answers": ["right"], "dataset": "gqa", "image_file": "2401477.jpg", "image_id": "2401477", "item_id": "s1_gqa_16319935", "question": "On which side is the plate?", "split": "dev"}
+{"answers": ["bookcase"], "dataset": "gqa", "image_file": "2369996.jpg", "image_id": "2369996", "item_id": "s1_gqa_02652891", "question": "What kind of furniture is to the right of the blinds?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2380658.jpg", "image_id": "2380658", "item_id": "s1_gqa_04247956", "question": "Is the color of the pants different than that of the jeans?", "split": "dev"}
+{"answers": ["pink"], "dataset": "gqa", "image_file": "2406059.jpg", "image_id": "2406059", "item_id": "s1_gqa_05743489", "question": "The trousers are of which color?", "split": "dev"}
+{"answers": ["green"], "dataset": "gqa", "image_file": "2385158.jpg", "image_id": "2385158", "item_id": "s1_gqa_081019386", "question": "What is the color of the grass?", "split": "dev"}
+{"answers": ["blue"], "dataset": "gqa", "image_file": "2381128.jpg", "image_id": "2381128", "item_id": "s1_gqa_01751028", "question": "What color is the jacket?", "split": "dev"}
+{"answers": ["chair"], "dataset": "gqa", "image_file": "2320543.jpg", "image_id": "2320543", "item_id": "s1_gqa_02769450", "question": "What type of furniture is the dog on?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2334672.jpg", "image_id": "2334672", "item_id": "s1_gqa_01162965", "question": "Are there either any trays or cigars?", "split": "dev"}
+{"answers": ["top"], "dataset": "gqa", "image_file": "2371404.jpg", "image_id": "2371404", "item_id": "s1_gqa_05304360", "question": "Where is the boy, in the bottom or in the top of the image?", "split": "dev"}
+{"answers": ["car"], "dataset": "gqa", "image_file": "3314.jpg", "image_id": "3314", "item_id": "s1_gqa_07386490", "question": "What kind of vehicle is to the right of the person?", "split": "dev"}
+{"answers": ["cabinets"], "dataset": "gqa", "image_file": "2382398.jpg", "image_id": "2382398", "item_id": "s1_gqa_05161082", "question": "What kind of furniture is on the right of the truck?", "split": "dev"}
+{"answers": ["girl"], "dataset": "gqa", "image_file": "2397009.jpg", "image_id": "2397009", "item_id": "s1_gqa_14836358", "question": "Who is eating the cake?", "split": "dev"}
+{"answers": ["orange"], "dataset": "gqa", "image_file": "2364995.jpg", "image_id": "2364995", "item_id": "s1_gqa_03850403", "question": "What is the color of the hat?", "split": "dev"}
+{"answers": ["brown"], "dataset": "gqa", "image_file": "2378923.jpg", "image_id": "2378923", "item_id": "s1_gqa_13927941", "question": "What color are the chains the sheep is in?", "split": "dev"}
+{"answers": ["metal"], "dataset": "gqa", "image_file": "2355813.jpg", "image_id": "2355813", "item_id": "s1_gqa_04997119", "question": "What is the plate made of?", "split": "dev"}
+{"answers": ["left"], "dataset": "gqa", "image_file": "2379960.jpg", "image_id": "2379960", "item_id": "s1_gqa_01423122", "question": "Is the ball to the right or to the left of the boy?", "split": "dev"}
+{"answers": ["remote control"], "dataset": "gqa", "image_file": "2357332.jpg", "image_id": "2357332", "item_id": "s1_gqa_0090776", "question": "Which kind of device is on the table?", "split": "dev"}
+{"answers": ["table"], "dataset": "gqa", "image_file": "2368472.jpg", "image_id": "2368472", "item_id": "s1_gqa_07570651", "question": "What is that computer on, a bed or a table?", "split": "dev"}
+{"answers": ["yes"], "dataset": "gqa", "image_file": "2341576.jpg", "image_id": "2341576", "item_id": "s1_gqa_07302472", "question": "Is the chair different in color than the jacket?", "split": "dev"}
+{"answers": ["brown"], "dataset": "gqa", "image_file": "1592403.jpg", "image_id": "1592403", "item_id": "s1_gqa_05280734", "question": "Which color is the umbrella that he is carrying?", "split": "dev"}
+{"answers": ["cabinet"], "dataset": "gqa", "image_file": "2367190.jpg", "image_id": "2367190", "item_id": "s1_gqa_18224878", "question": "What type of furniture is to the left of the rug in the kitchen?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "85.jpg", "image_id": "85", "item_id": "s1_gqa_07886596", "question": "Are there napkins on the table to the right of the cabinet?", "split": "dev"}
+{"answers": ["red"], "dataset": "gqa", "image_file": "2413347.jpg", "image_id": "2413347", "item_id": "s1_gqa_02620419", "question": "What color are the trunks?", "split": "dev"}
+{"answers": ["brown"], "dataset": "gqa", "image_file": "2391364.jpg", "image_id": "2391364", "item_id": "s1_gqa_00945894", "question": "What color is the chair that the dog is sitting in?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2401477.jpg", "image_id": "2401477", "item_id": "s1_gqa_16319779", "question": "Do the bowl and the wall have a different colors?", "split": "dev"}
+{"answers": ["metal"], "dataset": "gqa", "image_file": "2389032.jpg", "image_id": "2389032", "item_id": "s1_gqa_04306931", "question": "What material was used to make the fence?", "split": "dev"}
+{"answers": ["right"], "dataset": "gqa", "image_file": "2359159.jpg", "image_id": "2359159", "item_id": "s1_gqa_09488988", "question": "Which side of the image is the father on?", "split": "dev"}
+{"answers": ["jacket"], "dataset": "gqa", "image_file": "2319558.jpg", "image_id": "2319558", "item_id": "s1_gqa_02718307", "question": "The sitting down man to the right of the chair is wearing what?", "split": "dev"}
+{"answers": ["top"], "dataset": "gqa", "image_file": "2376199.jpg", "image_id": "2376199", "item_id": "s1_gqa_08238535", "question": "Is the small jet in the top part or in the bottom of the image?", "split": "dev"}
+{"answers": ["clock"], "dataset": "gqa", "image_file": "2375100.jpg", "image_id": "2375100", "item_id": "s1_gqa_02759806", "question": "What is on the post?", "split": "dev"}
+{"answers": ["yes"], "dataset": "gqa", "image_file": "2382364.jpg", "image_id": "2382364", "item_id": "s1_gqa_10780691", "question": "Is there a pillow to the right of the ladder?", "split": "dev"}
+{"answers": ["yes"], "dataset": "gqa", "image_file": "2382899.jpg", "image_id": "2382899", "item_id": "s1_gqa_12990", "question": "Does the glove have a different color than the hose?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2336023.jpg", "image_id": "2336023", "item_id": "s1_gqa_1665119", "question": "Are there both a towel and a cabinet in the image?", "split": "dev"}
+{"answers": ["yes"], "dataset": "gqa", "image_file": "2404271.jpg", "image_id": "2404271", "item_id": "s1_gqa_0713742", "question": "Does the cap look metallic and red?", "split": "dev"}
+{"answers": ["tractor"], "dataset": "gqa", "image_file": "712975.jpg", "image_id": "712975", "item_id": "s1_gqa_19279755", "question": "What vehicle is the same color as the sign on the boat?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2372121.jpg", "image_id": "2372121", "item_id": "s1_gqa_1743940", "question": "Is the water in front of a house?", "split": "dev"}
+{"answers": ["silver"], "dataset": "gqa", "image_file": "2334942.jpg", "image_id": "2334942", "item_id": "s1_gqa_01656504", "question": "Which color is the device the monitor is to the left of?", "split": "dev"}
+{"answers": ["jumping"], "dataset": "gqa", "image_file": "2380658.jpg", "image_id": "2380658", "item_id": "s1_gqa_04248102", "question": "What is the person that is skating doing?", "split": "dev"}
+{"answers": ["yes"], "dataset": "gqa", "image_file": "2335740.jpg", "image_id": "2335740", "item_id": "s1_gqa_07676808", "question": "Does the boat look red?", "split": "dev"}
+{"answers": ["right"], "dataset": "gqa", "image_file": "2359159.jpg", "image_id": "2359159", "item_id": "s1_gqa_09489112", "question": "Is the boy to the right or to the left of the toy that is made of plastic?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2329508.jpg", "image_id": "2329508", "item_id": "s1_gqa_13366349", "question": "Does the hair look short and blond?", "split": "dev"}
+{"answers": ["right"], "dataset": "gqa", "image_file": "2380573.jpg", "image_id": "2380573", "item_id": "s1_gqa_17626830", "question": "Is the racket to the left or to the right of the man that is wearing shoes?", "split": "dev"}
+{"answers": ["bed"], "dataset": "gqa", "image_file": "2410635.jpg", "image_id": "2410635", "item_id": "s1_gqa_06752819", "question": "Which kind of furniture is to the right of the folding chair?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2384329.jpg", "image_id": "2384329", "item_id": "s1_gqa_07685591", "question": "Is there a laptop on the table?", "split": "dev"}
+{"answers": ["brown"], "dataset": "gqa", "image_file": "2380828.jpg", "image_id": "2380828", "item_id": "s1_gqa_02320949", "question": "What color is the suitcase on the ground?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2403189.jpg", "image_id": "2403189", "item_id": "s1_gqa_06460688", "question": "Is the person to the left of a fence?", "split": "dev"}
+{"answers": ["white"], "dataset": "gqa", "image_file": "1592713.jpg", "image_id": "1592713", "item_id": "s1_gqa_06550148", "question": "What color is the vase?", "split": "dev"}
+{"answers": ["left"], "dataset": "gqa", "image_file": "2374359.jpg", "image_id": "2374359", "item_id": "s1_gqa_12682151", "question": "Is the white car to the left or to the right of the man that is to the left of the bags?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2352686.jpg", "image_id": "2352686", "item_id": "s1_gqa_0926412", "question": "Does the hair that is brown look short?", "split": "dev"}
+{"answers": ["bus"], "dataset": "gqa", "image_file": "2407415.jpg", "image_id": "2407415", "item_id": "s1_gqa_05120019", "question": "What kind of vehicle is the guy to the right of the people waiting for?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2393941.jpg", "image_id": "2393941", "item_id": "s1_gqa_16785233", "question": "Is the bicycle to the left of a bench?", "split": "dev"}
+{"answers": ["yes"], "dataset": "gqa", "image_file": "4712.jpg", "image_id": "4712", "item_id": "s1_gqa_06905457", "question": "Are both the wall and the pole the same color?", "split": "dev"}
+{"answers": ["woman"], "dataset": "gqa", "image_file": "4559.jpg", "image_id": "4559", "item_id": "s1_gqa_00577595", "question": "Who is wearing shorts?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2317428.jpg", "image_id": "2317428", "item_id": "s1_gqa_1768388", "question": "Is the laptop below a puppy?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2345287.jpg", "image_id": "2345287", "item_id": "s1_gqa_15705103", "question": "Are there any watermelons by the apple?", "split": "dev"}
+{"answers": ["yes"], "dataset": "gqa", "image_file": "2354614.jpg", "image_id": "2354614", "item_id": "s1_gqa_19545590", "question": "Is the balcony made of brick?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2365049.jpg", "image_id": "2365049", "item_id": "s1_gqa_11183303", "question": "Are there women or men that are playing?", "split": "dev"}
+{"answers": ["white"], "dataset": "gqa", "image_file": "2362929.jpg", "image_id": "2362929", "item_id": "s1_gqa_1317846", "question": "What color does the shirt have?", "split": "dev"}
+{"answers": ["left"], "dataset": "gqa", "image_file": "2346877.jpg", "image_id": "2346877", "item_id": "s1_gqa_14806644", "question": "Is the tent to the left or to the right of the horse in the middle of the photo?", "split": "dev"}
+{"answers": ["top"], "dataset": "gqa", "image_file": "2352686.jpg", "image_id": "2352686", "item_id": "s1_gqa_0926580", "question": "Is the car in the top or in the bottom of the picture?", "split": "dev"}
+{"answers": ["post"], "dataset": "gqa", "image_file": "2345207.jpg", "image_id": "2345207", "item_id": "s1_gqa_06215733", "question": "What is the fence on?", "split": "dev"}
+{"answers": ["lady"], "dataset": "gqa", "image_file": "2370424.jpg", "image_id": "2370424", "item_id": "s1_gqa_0055304", "question": "Who is wearing the gloves?", "split": "dev"}
+{"answers": ["oven"], "dataset": "gqa", "image_file": "2322049.jpg", "image_id": "2322049", "item_id": "s1_gqa_17207545", "question": "Which kind of appliance is to the right of the tissue?", "split": "dev"}
+{"answers": ["phone"], "dataset": "gqa", "image_file": "2387060.jpg", "image_id": "2387060", "item_id": "s1_gqa_03202951", "question": "What device is the person typing on?", "split": "dev"}
+{"answers": ["dirty"], "dataset": "gqa", "image_file": "2403358.jpg", "image_id": "2403358", "item_id": "s1_gqa_12290390", "question": "How clean is the red motorcycle to the right of the bike?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "1159718.jpg", "image_id": "1159718", "item_id": "s1_gqa_01770237", "question": "Are there any people to the right of the backpack that is carried by the woman?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2367894.jpg", "image_id": "2367894", "item_id": "s1_gqa_10432796", "question": "Does the fan look metallic and large?", "split": "dev"}
+{"answers": ["man"], "dataset": "gqa", "image_file": "2359504.jpg", "image_id": "2359504", "item_id": "s1_gqa_05488969", "question": "Who is wearing shoes?", "split": "dev"}
+{"answers": ["purple"], "dataset": "gqa", "image_file": "2347819.jpg", "image_id": "2347819", "item_id": "s1_gqa_0878214", "question": "What is the color of the flowers?", "split": "dev"}
+{"answers": ["white"], "dataset": "gqa", "image_file": "2358172.jpg", "image_id": "2358172", "item_id": "s1_gqa_18281944", "question": "The bedspread on the bed is of which color?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2334602.jpg", "image_id": "2334602", "item_id": "s1_gqa_12993097", "question": "Are there any bottles in the picture?", "split": "dev"}
+{"answers": ["left"], "dataset": "gqa", "image_file": "2385222.jpg", "image_id": "2385222", "item_id": "s1_gqa_10590186", "question": "On which side of the image is the bag?", "split": "dev"}
+{"answers": ["brown"], "dataset": "gqa", "image_file": "2410758.jpg", "image_id": "2410758", "item_id": "s1_gqa_13417520", "question": "What color is the fence?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2382986.jpg", "image_id": "2382986", "item_id": "s1_gqa_05451412", "question": "Does the bag to the left of the cat have brown color?", "split": "dev"}
+{"answers": ["left"], "dataset": "gqa", "image_file": "2390101.jpg", "image_id": "2390101", "item_id": "s1_gqa_10981715", "question": "Which side of the picture is the umpire on?", "split": "dev"}
+{"answers": ["yes"], "dataset": "gqa", "image_file": "2359534.jpg", "image_id": "2359534", "item_id": "s1_gqa_14645473", "question": "Is the man to the left of the women that are wearing a purse?", "split": "dev"}
+{"answers": ["man"], "dataset": "gqa", "image_file": "2326054.jpg", "image_id": "2326054", "item_id": "s1_gqa_15805535", "question": "Who is wearing gloves?", "split": "dev"}
+{"answers": ["skateboard"], "dataset": "gqa", "image_file": "2374597.jpg", "image_id": "2374597", "item_id": "s1_gqa_03268046", "question": "What is this boy playing with?", "split": "dev"}
+{"answers": ["dark"], "dataset": "gqa", "image_file": "2405536.jpg", "image_id": "2405536", "item_id": "s1_gqa_001033864", "question": "Which color is this helmet, dark or blue?", "split": "dev"}
+{"answers": ["black"], "dataset": "gqa", "image_file": "2342705.jpg", "image_id": "2342705", "item_id": "s1_gqa_07547074", "question": "Which color do you think the signal light is?", "split": "dev"}
+{"answers": ["red"], "dataset": "gqa", "image_file": "2331754.jpg", "image_id": "2331754", "item_id": "s1_gqa_12245133", "question": "What is the color of the animal in the bottom of the photo?", "split": "dev"}
+{"answers": ["brown"], "dataset": "gqa", "image_file": "2367338.jpg", "image_id": "2367338", "item_id": "s1_gqa_06512439", "question": "What is the color of the cow?", "split": "dev"}
+{"answers": ["woman"], "dataset": "gqa", "image_file": "2347819.jpg", "image_id": "2347819", "item_id": "s1_gqa_0878128", "question": "Who is using the hair dryer?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2328788.jpg", "image_id": "2328788", "item_id": "s1_gqa_08255768", "question": "Is the chair to the right of the plate made out of wicker?", "split": "dev"}
+{"answers": ["television"], "dataset": "gqa", "image_file": "2378471.jpg", "image_id": "2378471", "item_id": "s1_gqa_16921945", "question": "Which kind of device is in the cabinet?", "split": "dev"}
+{"answers": ["man"], "dataset": "gqa", "image_file": "2345598.jpg", "image_id": "2345598", "item_id": "s1_gqa_14202768", "question": "Who is wearing the backpack?", "split": "dev"}
+{"answers": ["cat"], "dataset": "gqa", "image_file": "2335787.jpg", "image_id": "2335787", "item_id": "s1_gqa_01270180", "question": "Which kind of animal is the chair behind of?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2333995.jpg", "image_id": "2333995", "item_id": "s1_gqa_15260511", "question": "Do the roof and the door have a different colors?", "split": "dev"}
+{"answers": ["woman"], "dataset": "gqa", "image_file": "2390580.jpg", "image_id": "2390580", "item_id": "s1_gqa_15973499", "question": "Who is before the tree?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2417186.jpg", "image_id": "2417186", "item_id": "s1_gqa_01783493", "question": "Are there both collars and carts in this picture?", "split": "dev"}
+{"answers": ["yes"], "dataset": "gqa", "image_file": "2343326.jpg", "image_id": "2343326", "item_id": "s1_gqa_06689475", "question": "Do you see bookcases there?", "split": "dev"}
+{"answers": ["fire hydrant"], "dataset": "gqa", "image_file": "2346063.jpg", "image_id": "2346063", "item_id": "s1_gqa_16909024", "question": "What is in front of the shrubs?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2354629.jpg", "image_id": "2354629", "item_id": "s1_gqa_02655217", "question": "Are the shirt and the cap the same color?", "split": "dev"}
+{"answers": ["couch"], "dataset": "gqa", "image_file": "2363706.jpg", "image_id": "2363706", "item_id": "s1_gqa_0947705", "question": "What kind of furniture is the woman on?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2403189.jpg", "image_id": "2403189", "item_id": "s1_gqa_06460518", "question": "Does the sky look foggy?", "split": "dev"}
+{"answers": ["trees"], "dataset": "gqa", "image_file": "2346063.jpg", "image_id": "2346063", "item_id": "s1_gqa_16909162", "question": "What are the bushes around of?", "split": "dev"}
+{"answers": ["yes"], "dataset": "gqa", "image_file": "2387077.jpg", "image_id": "2387077", "item_id": "s1_gqa_18664609", "question": "Does the hat have the same color as the jacket?", "split": "dev"}
+{"answers": ["no"], "dataset": "gqa", "image_file": "2405536.jpg", "image_id": "2405536", "item_id": "s1_gqa_001033701", "question": "Does the grass have brown color?", "split": "dev"}
+{"answers": ["black"], "dataset": "gqa", "image_file": "2405731.jpg", "image_id": "2405731", "item_id": "s1_gqa_01539455", "question": "What is the color of the hair?", "split": "dev"}
+{"answers": ["yes"], "dataset": "gqa", "image_file": "2363993.jpg", "image_id": "2363993", "item_id": "s1_gqa_1899373", "question": "Are there any fences or lamps?", "split": "dev"}
+{"answers": ["right"], "dataset": "gqa", "image_file": "2390550.jpg", "image_id": "2390550", "item_id": "s1_gqa_11718411", "question": "Is the white bag to the right or to the left of the cup in this scene?", "split": "dev"}

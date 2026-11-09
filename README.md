@@ -200,6 +200,17 @@ uv run kvsel prompt-test --items manifests/textvqa_dev.jsonl --images data/textv
   --verified verification/textvqa_dev.jsonl --out results/prompt_test/textvqa.json
 ```
 
+## Checks before the freeze (S1, R1, E6)
+
+```bash
+bash scripts/gpu_s1_r1.sh      # GPU, about 15-20 minutes; results in results/checks/
+uv run kvsel coverage --attention results/v31/gqa_pilot/attention   # no GPU; E6 figures in results/coverage/
+```
+
+S1 runs 200 random questions of any type with LLaVA's standard prompt, to catch bugs only. R1
+times every stage of the pilot workload and projects the confirmatory runtime. The S1 manifests are
+rebuilt with `kvsel build-s1` from the raw question files.
+
 ## TextVQA data
 
 The manifests are in `manifests/`. Only the images are needed, not the 7 GB archive: about 0.4 GB for
