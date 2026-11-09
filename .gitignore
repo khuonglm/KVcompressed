@@ -222,6 +222,7 @@ __marimo__/
 # Project
 /data/
 /results/
+/verification/
 .DS_Store
 /models/
 

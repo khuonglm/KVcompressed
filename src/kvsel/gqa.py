@@ -193,6 +193,24 @@ def split_by_image(items: list[dict], dev_items: int) -> tuple[list[dict], list[
     return development, confirmatory
 
 
+def split_development(items: list[dict], dev_items: int, dev_manifest: Path | None, dev_path: Path,
+                      funnel: dict) -> tuple[list[dict], list[dict], str]:
+    """With dev_manifest, development items are kept byte for byte (their verification stays valid)
+    and the confirmatory pool is every built item on an image not used in development. Without it,
+    a fresh split. Writes the development manifest and returns its sha256."""
+    if dev_manifest is None:
+        development, confirmatory = split_by_image(items, dev_items)
+        return development, confirmatory, write_jsonl(dev_path, development)
+    dev_bytes = Path(dev_manifest).read_bytes()
+    development = [json.loads(line) for line in dev_bytes.decode().splitlines() if line.strip()]
+    dev_images = {item["image_id"] for item in development}
+    _, confirmatory = split_by_image([item for item in items if item["image_id"] not in dev_images], 0)
+    if Path(dev_manifest).resolve() != dev_path.resolve():
+        dev_path.write_bytes(dev_bytes)
+    funnel["dev_frozen_from"] = {"builder": development[0]["builder"], "file": Path(dev_manifest).name}
+    return development, confirmatory, hashlib.sha256(dev_bytes).hexdigest()
+
+
 def write_jsonl(path: Path, items: list[dict]) -> str:
     text = "".join(json.dumps(item, sort_keys=True) + "\n" for item in items)
     path.write_text(text)
@@ -201,26 +219,12 @@ def write_jsonl(path: Path, items: list[dict]) -> str:
 
 def build(questions_path: Path, graphs_path: Path, out_dir: Path, tokenizer, dev_items: int,
           dev_manifest: Path | None = None) -> dict:
-    """With dev_manifest, development items are kept byte for byte (their verification stays valid)
-    and the confirmatory pool is every built item on an image not used in development."""
     questions, total = load_questions(questions_path)
     graphs = json.loads(Path(graphs_path).read_text())
     items, funnel = build_items(questions, graphs, tokenizer)
     funnel["questions"] = total
     out_dir.mkdir(parents=True, exist_ok=True)
-    dev_path = out_dir / "gqa_dev.jsonl"
-    if dev_manifest is None:
-        development, confirmatory = split_by_image(items, dev_items)
-        dev_sha = write_jsonl(dev_path, development)
-    else:
-        dev_bytes = Path(dev_manifest).read_bytes()
-        development = [json.loads(line) for line in dev_bytes.decode().splitlines() if line.strip()]
-        dev_images = {item["image_id"] for item in development}
-        _, confirmatory = split_by_image([item for item in items if item["image_id"] not in dev_images], 0)
-        if Path(dev_manifest).resolve() != dev_path.resolve():
-            dev_path.write_bytes(dev_bytes)
-        dev_sha = hashlib.sha256(dev_bytes).hexdigest()
-        funnel["dev_frozen_from"] = {"builder": development[0]["builder"], "file": Path(dev_manifest).name}
+    development, confirmatory, dev_sha = split_development(items, dev_items, dev_manifest, out_dir / "gqa_dev.jsonl", funnel)
     funnel.update({
         "unique_images": len({item["image_id"] for item in items}),
         "dev_candidates": len(development),

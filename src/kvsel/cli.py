@@ -33,7 +33,7 @@ def cmd_build_textvqa(args) -> None:
     from .model import load_tokenizer
     from .textvqa import build
 
-    funnel = build(args.questions, args.ocr, args.out_dir, load_tokenizer(args.model_dir), args.dev_items)
+    funnel = build(args.questions, args.ocr, args.out_dir, load_tokenizer(args.model_dir), args.dev_items, args.dev_manifest)
     print(json.dumps(funnel, indent=2))
 
 
@@ -238,6 +238,8 @@ def main() -> None:
     sub.add_argument("--ocr", type=Path, nargs="+", required=True)
     sub.add_argument("--out-dir", type=Path, default=Path("manifests"))
     sub.add_argument("--dev-items", type=int, default=1500, help="candidates before eligibility and verification")
+    sub.add_argument("--dev-manifest", type=Path, default=None,
+                     help="keep these development items unchanged; confirmatory items avoid their images")
     add_model_dir(sub, choose_model=False)
     sub.set_defaults(handler=cmd_build_textvqa)
 

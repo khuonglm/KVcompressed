@@ -1,29 +1,33 @@
 {
   "questions": 39602,
   "image_has_ocr": 38611,
-  "modal_answer_has_3_votes": 36178,
-  "answer_matches_complete_ocr_tokens": 16671,
-  "alternative_found": 8635,
-  "irrelevant_text_found": 8223,
-  "description_lengths_within_3_tokens": 7220,
-  "unique_images": 6359,
+  "modal_answer_has_5_votes": 32988,
+  "answer_matches_complete_ocr_tokens": 15771,
+  "alternative_found": 8185,
+  "irrelevant_text_found": 7789,
+  "description_lengths_within_3_tokens": 6871,
+  "dev_frozen_from": {
+    "builder": "textvqa-2",
+    "file": "textvqa_dev.jsonl"
+  },
+  "unique_images": 6100,
   "dev_candidates": 1500,
   "dev_images": 1320,
-  "confirm_pool": 5720,
-  "confirm_images": 5039,
-  "repeated_answers": 1197,
-  "rotated_boxes": 5075,
+  "confirm_pool": 5514,
+  "confirm_images": 4905,
+  "repeated_answers": 1135,
+  "rotated_boxes": 4827,
   "by_character_class": {
-    "alpha": 6388,
-    "digit": 608,
-    "mixed": 224
+    "alpha": 6046,
+    "digit": 613,
+    "mixed": 212
   },
-  "multi_token_answers": 775,
-  "builder": "textvqa-2",
+  "multi_token_answers": 677,
+  "builder": "textvqa-3",
   "source": [
     "TextVQA_0.5.1_train.json",
     "TextVQA_0.5.1_val.json"
   ],
   "dev_sha256": "957eecf38e7b1c2c01d56585ae3a784004e08f8ec6a262b657d15fd6ae9ea43b",
-  "confirm_sha256": "bb1a27d1f2a6ba7b2c0b59598065937094d9eca0bdc2fa21a7ab7bb3192ab1c8"
+  "confirm_sha256": "16fcf6fe0eae0ea2ab15cfe9b37e44d2d3161b8bfc30fc5d54d61da9bcf6d0d7"
 }

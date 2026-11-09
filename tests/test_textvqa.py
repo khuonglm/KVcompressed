@@ -1,9 +1,11 @@
 """TextVQA builder rules on a small hand-built fixture."""
 
+import json
+
 import pytest
 
 from kvsel.textvqa import (
-    build_items, character_class, choose_alternative, find_spans, modal_answer, normalize_text,
+    build, build_items, character_class, choose_alternative, find_spans, modal_answer, normalize_text,
 )
 
 
@@ -60,7 +62,8 @@ def test_item_rules():
 
 
 def test_too_few_votes_is_excluded():
-    assert build_items([question(["canon", "canon", "a", "b", "c"])], OCR)[0] == []
+    assert build_items([question(["canon"] * 4 + ["a", "b", "c"])], OCR)[0] == []
+    assert len(build_items([question(["canon"] * 5 + ["a", "b", "c"])], OCR)[0]) == 1
 
 
 def test_answer_only_inside_a_longer_token_is_excluded():
@@ -108,3 +111,19 @@ def test_rotated_box_is_flagged():
 def test_build_is_deterministic():
     questions = [question(["canon"] * 5, question_id=1), question(["sony"] * 5, question_id=2)]
     assert build_items(questions, OCR) == build_items(list(reversed(questions)), OCR)
+
+
+def test_frozen_dev_manifest_is_kept_and_its_images_avoided(tmp_path):
+    other = {**question(["canon"] * 6, question_id=2), "image_id": "other"}
+    (tmp_path / "q.json").write_text(json.dumps({"data": [question(["canon"] * 6), other]}))
+    ocr = {"data": [OCR["img"], {**OCR["img"], "image_id": "other"}]}
+    (tmp_path / "ocr.json").write_text(json.dumps(ocr))
+    dev = tmp_path / "frozen_dev.jsonl"
+    dev_text = json.dumps({"item_id": "old", "image_id": "img", "builder": "textvqa-2", "split": "dev"}) + "\n"
+    dev.write_text(dev_text)
+    out = tmp_path / "out"
+    funnel = build([tmp_path / "q.json"], [tmp_path / "ocr.json"], out, None, 1500, dev)
+    assert (out / "textvqa_dev.jsonl").read_text() == dev_text
+    confirm = [json.loads(line) for line in (out / "textvqa_confirm.jsonl").read_text().splitlines()]
+    assert [(item["item_id"], item["split"]) for item in confirm] == [("textvqa_2", "confirm")]
+    assert funnel["dev_frozen_from"]["builder"] == "textvqa-2" and funnel["modal_answer_has_5_votes"] == 2

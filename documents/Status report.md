@@ -25,11 +25,11 @@ The prompt includes a misleading description. We compare two kept sets under tha
 | | GQA | TextVQA |
 | --- | ---: | ---: |
 | Development items | 600 | 1,500 |
-| Confirmatory pool | 9,209 | 5,720 |
+| Confirmatory pool | 9,209 | 5,514 |
 | Eligible (model answers correctly with no description) | 351 of 600 (58%) | 888 of 1,500 (59%) |
 | Passed hand verification | 150 of 200 (75%) | 188 of 200 (94%) |
 
-GQA's confirmatory pool is now 9,209 candidates (builder `gqa-3`, from `val_all`). GQA labels fail hand verification 25% of the time, so every confirmatory GQA item will be hand-verified.
+GQA's confirmatory pool is now 9,209 candidates (builder `gqa-3`, from `val_all`). GQA labels fail hand verification 25% of the time and TextVQA's 6%, so every confirmatory item on both datasets will be hand-verified (no audit).
 
 ## GQA pilot results
 *Development items only, so these are not claims.* 150 verified items.
@@ -84,5 +84,5 @@ It's parked, and the code is kept.
 
 ## Next
 1. GQA: builder `gqa-3` is done (9,209 confirmatory candidates from `val_all`; development items unchanged). Automatic filters couldn't bring failures from 25% to 5%, so every confirmatory item will be hand-verified (about 1,350 to reach 1,000 passes).
-2. TextVQA builder fix for unclear questions.
+2. TextVQA: builder `textvqa-3` is done (at least 5 of 10 annotators must agree on the answer; 5,514 confirmatory candidates; development items unchanged). Every confirmatory item will be hand-verified too, about 1,100 items.
 3. Pre-registration, timing test and coverage plots. Then freeze and run the confirmatory items once.

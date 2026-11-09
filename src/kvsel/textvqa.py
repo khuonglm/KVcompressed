@@ -8,11 +8,11 @@ import random
 from collections import Counter
 from pathlib import Path
 
-from .gqa import MAX_DESCRIPTION_TOKEN_SPREAD, split_by_image, write_jsonl
+from .gqa import MAX_DESCRIPTION_TOKEN_SPREAD, split_development, write_jsonl
 from .prompts import tokenize_prompt
 
-BUILDER_VERSION = "textvqa-2"
-MIN_ANSWER_VOTES = 3
+BUILDER_VERSION = "textvqa-3"  # textvqa-3: majority of annotators (5 of 10), frozen dev manifest
+MIN_ANSWER_VOTES = 5  # 3 under textvqa-2; development verification failed 2 of 3 items with 3 votes
 MAX_ALT_LENGTH_DIFFERENCE = 2
 MIN_ALT_LENGTH = 2
 
@@ -113,7 +113,7 @@ def build_items(questions: list[dict], ocr_by_image: dict[str, dict], tokenizer=
         modal = modal_answer(question["answers"])
         if modal is None or modal[1] < MIN_ANSWER_VOTES:
             continue
-        funnel["modal_answer_has_3_votes"] += 1
+        funnel[f"modal_answer_has_{MIN_ANSWER_VOTES}_votes"] += 1
         a_true = modal[0]
         infos = ocr["ocr_info"]
         tokens = [normalize_text(info["word"]) for info in infos]
@@ -167,12 +167,14 @@ def build_items(questions: list[dict], ocr_by_image: dict[str, dict], tokenizer=
     return items, dict(funnel)
 
 
-def build(question_paths: list[Path], ocr_paths: list[Path], out_dir: Path, tokenizer, dev_items: int) -> dict:
+def build(question_paths: list[Path], ocr_paths: list[Path], out_dir: Path, tokenizer, dev_items: int,
+          dev_manifest: Path | None = None) -> dict:
     questions = [q for path in question_paths for q in json.loads(Path(path).read_text())["data"]]
     ocr_by_image = {e["image_id"]: e for path in ocr_paths for e in json.loads(Path(path).read_text())["data"]}
     items, funnel = build_items(questions, ocr_by_image, tokenizer)
-    development, confirmatory = split_by_image(items, dev_items)
     out_dir.mkdir(parents=True, exist_ok=True)
+    development, confirmatory, dev_sha = split_development(
+        items, dev_items, dev_manifest, out_dir / "textvqa_dev.jsonl", funnel)
     funnel.update({
         "unique_images": len({item["image_id"] for item in items}),
         "dev_candidates": len(development),
@@ -185,7 +187,7 @@ def build(question_paths: list[Path], ocr_paths: list[Path], out_dir: Path, toke
         "multi_token_answers": sum(" " in item["a_true"] for item in items),
         "builder": BUILDER_VERSION,
         "source": [Path(path).name for path in question_paths],
-        "dev_sha256": write_jsonl(out_dir / "textvqa_dev.jsonl", development),
+        "dev_sha256": dev_sha,
         "confirm_sha256": write_jsonl(out_dir / "textvqa_confirm.jsonl", confirmatory),
     })
     (out_dir / "textvqa_funnel.json").write_text(json.dumps(funnel, indent=2) + "\n")

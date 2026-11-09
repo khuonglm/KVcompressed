@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from pathlib import Path
 
 from . import MODEL_ID
@@ -45,7 +46,7 @@ def resolve_model(model_dir: Path = DEFAULT_MODEL_DIR, model_id: str = MODEL_ID,
     """
     model_dir = Path(model_dir)
     if not model_dir.is_dir() or not any(model_dir.iterdir()):
-        print(f"no local model at {model_dir}; using {model_id} from the Hugging Face Hub", flush=True)
+        print(f"no local model at {model_dir}; using {model_id} from the Hugging Face Hub", file=sys.stderr, flush=True)
         return model_id
     missing = missing_files(model_dir, weights, model_id)
     if missing:
@@ -53,7 +54,7 @@ def resolve_model(model_dir: Path = DEFAULT_MODEL_DIR, model_id: str = MODEL_ID,
             f"the model at {model_dir} is incomplete (missing {', '.join(missing)}). "
             f"Run `kvsel fetch-model --out {model_dir}` to finish it."
         )
-    print(f"using local model at {model_dir}", flush=True)
+    print(f"using local model at {model_dir}", file=sys.stderr, flush=True)
     return str(model_dir)
 
 
