@@ -306,7 +306,6 @@ def run_blind_rate(bundle, items: list[dict], images_dir: Path, surface: str = "
 
     Reports rates only. It never splits S_H by blind status, which would choose an analysis by outcome.
     """
-    from .confirm import blank_image
     from .runner import (
         NO_CONTEXT,
         Q,
@@ -316,6 +315,7 @@ def run_blind_rate(bundle, items: list[dict], images_dir: Path, surface: str = "
         require_development,
         run_item,
     )
+    from .screening import blank_image
 
     require_development(items)
     full_q = Unit("full", 576, False, NO_CONTEXT, Q)
@@ -344,6 +344,9 @@ def run_blind_rate(bundle, items: list[dict], images_dir: Path, surface: str = "
         "surface": surface,
         "eligible_image_independent": share(chosen, lambda r: r["blind_margin"] > 0),
         "eligible_blind_greedy_correct": share(chosen, lambda r: r["blind_outcome"] == "correct"),
+        # amendment 1: removed if it would pass eligibility with the blank image too
+        "eligible_removed_by_blind_rule": share(
+            chosen, lambda r: r["blind_outcome"] == "correct" and r["blind_margin"] > 0),
         "all_image_independent": share(rows, lambda r: r["blind_margin"] > 0),
         "rows": rows,
     }

@@ -81,18 +81,22 @@ def test_unfrozen_or_development_manifests_are_refused(frozen, tmp_path):
         check_screening(prereg, manifest(tmp_path / "x.jsonl"), tmp_path / "missing.json")
 
 
-def fake_screen(monkeypatch, tmp_path, frozen_record, items, outcomes):
+def fake_screen(monkeypatch, tmp_path, frozen_record, items, outcomes, blind=None):
     bundle = SimpleNamespace(family=LLAVA, decoder=SimpleNamespace(head_precision="fp32"))
     calls = []
+    blind = blind or {}
 
     def run_item(bundle, item, image, units):
-        calls.append(item["item_id"])
-        row = {"outcome": outcomes[item["item_id"]], "greedy_text": "SECRET",
+        is_blank = image is not None  # open_image is patched to return None for real images
+        calls.append(item["item_id"] + ("/blank" if is_blank else ""))
+        result = blind.get(item["item_id"], "other") if is_blank else outcomes[item["item_id"]]
+        row = {"outcome": result, "greedy_text": "SECRET",
                "scores": {"true": {"capitalized": [-0.1]}, "alt": {"capitalized": [-2.0]}}}
         return {"rows": [row]}, {}
 
     monkeypatch.setattr(screening, "run_item", run_item)
     monkeypatch.setattr(screening, "open_image", lambda images, item: None)
+    monkeypatch.setattr(screening, "blank_image", lambda bundle: "blank")
     for item in items:
         (tmp_path / item["image_file"]).touch()
     return screening.run_confirm_screen(bundle, items, tmp_path, tmp_path / "screen", frozen_record), calls
@@ -104,7 +108,8 @@ def test_screen_writes_only_eligibility_and_resumes(monkeypatch, tmp_path, froze
     items = [json.loads(line) for line in items_path.read_text().splitlines()]
     outcomes = {"i0": "correct", "i1": "alt", "i2": "correct"}
     funnel, calls = fake_screen(monkeypatch, tmp_path, record, items, outcomes)
-    assert (funnel["screened"], funnel["eligible"], funnel["not_eligible"]) == (3, 2, 1) and calls == ["i0", "i1", "i2"]
+    assert (funnel["screened"], funnel["eligible"], funnel["not_eligible"]) == (3, 2, 1)
+    assert calls == ["i0", "i0/blank", "i1", "i2", "i2/blank"]  # blind only after Full_Q passes
     out = tmp_path / "screen"
     text = (out / "eligible.jsonl").read_text() + "".join(p.read_text() for p in (out / "items").glob("*.json"))
     assert "SECRET" not in text and "scores" not in text and "outcome" not in text
@@ -112,6 +117,31 @@ def test_screen_writes_only_eligibility_and_resumes(monkeypatch, tmp_path, froze
         {"item_id": "i0", "eligible": True}, {"item_id": "i1", "eligible": False}, {"item_id": "i2", "eligible": True}]
     assert screening.eligible_ids(out) == {"i0", "i2"}
     assert fake_screen(monkeypatch, tmp_path, record, items, outcomes)[1] == []  # rerun skips finished items
+
+
+def test_items_answerable_with_a_blank_image_are_not_eligible(monkeypatch, tmp_path, frozen):
+    _, items_path, record = frozen
+    items = [json.loads(line) for line in items_path.read_text().splitlines()]
+    outcomes = {"i0": "correct", "i1": "correct", "i2": "alt"}
+    funnel, _ = fake_screen(monkeypatch, tmp_path, json.loads(record.read_text()), items, outcomes, blind={"i0": "correct"})
+    assert (funnel["full_q_eligible"], funnel["removed_image_independent"], funnel["eligible"]) == (2, 1, 1)
+    flags = {r["item_id"]: r for r in map(json.loads, (tmp_path / "screen" / "eligible.jsonl").read_text().splitlines())}
+    assert [flags[i]["eligible"] for i in ("i0", "i1", "i2")] == [False, True, False]
+    assert json.loads((tmp_path / "screen" / "items" / "i0.json").read_text()) == {
+        "item_id": "i0", "full_q_eligible": True, "blind_eligible": True, "eligible": False}
+
+
+def test_amendment_keeps_the_old_record_and_names_it(frozen, tmp_path):
+    prereg, items, record = frozen
+    old = record.read_text()
+    prereg.write_text(PREREG.replace("positive margin.", "positive margin, and not with a blank image."))
+    with pytest.raises(SystemExit, match="needs both"):
+        freeze_screening(prereg, [items], tmp_path / "a.json", amends=record)
+    amended = freeze_screening(prereg, [items], tmp_path / "a.json", amends=record, reason="language prior")
+    assert record.read_text() == old and amended["amends"]["reason"] == "language prior"
+    check_screening(prereg, items, tmp_path / "a.json")
+    with pytest.raises(SystemExit, match="Screening rules"):
+        check_screening(prereg, items, record)  # the superseded record no longer matches
 
 
 def test_screen_refuses_bad_inputs(monkeypatch, tmp_path, frozen):
@@ -141,4 +171,4 @@ def test_screen_runs_on_the_tiny_model(tiny_llava, tmp_path, frozen):
                 "mis": "The bus in this image is blue.", "match": "The bus in this image is red.",
                 "irr": "The road in this image is gray."}}
     funnel = screening.run_confirm_screen(bundle, [item], tmp_path, tmp_path / "screen", json.loads(frozen[2].read_text()))
-    assert funnel["screened"] == 1 and set(json.loads((tmp_path / "screen" / "items" / "c1.json").read_text())) == {"item_id", "eligible"}
+    assert funnel["screened"] == 1 and set(json.loads((tmp_path / "screen" / "items" / "c1.json").read_text())) == {"item_id", "full_q_eligible", "blind_eligible", "eligible"}

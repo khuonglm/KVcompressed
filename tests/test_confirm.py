@@ -97,12 +97,12 @@ def test_comparative_freeze_and_its_check(setup, tmp_path):
 
 
 def test_unchanged_stage1_code():
-    """The confirm code lives outside the screening modules, so the committed stage-1 freeze still holds."""
+    """The confirm code lives outside the screening modules, so the committed stage-1 record still holds."""
     from pathlib import Path
 
     from kvsel.freeze import code_hash
 
-    record = Path(__file__).parents[1] / "freeze" / "screening.json"
+    record = Path(__file__).parents[1] / "freeze" / "screening_amend1.json"
     if not record.exists():
         pytest.skip("no stage-1 freeze in this checkout")
     assert json.loads(record.read_text())["code_sha256"] == code_hash()

@@ -15,10 +15,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
 
 from .freeze import SCREENING, check_screening, sha256_file
-from .geometry import PAD_COLOR
 from .model import Bundle
 from .runner import (
     Q,
@@ -29,6 +27,7 @@ from .runner import (
     run_item,
     write_json_atomic,
 )
+from .screening import blank_image
 from .verify import PASS, load_decisions
 
 MAIN_SIZE = 1000
@@ -44,7 +43,7 @@ def comparative_settings() -> dict:
         "surface": SCREENING["surface"],
         "main_units": [unit.__dict__ for unit in pilot_units(("mis",), K)],
         "control_units": [unit.__dict__ for unit in pilot_units(k=K)],
-        "blind": "Full_Q on a blank image of the padding colour; image-dependent if its margin <= 0",
+        "blind": "Full_Q on a blank image of the padding colour; consistency check, should never be eligible",
         "main_size": MAIN_SIZE,
         "control_size": CONTROL_SIZE,
     }
@@ -139,11 +138,6 @@ def check_comparative(prereg: Path, manifest: Path, screen_dir: Path, decisions:
     return frozen
 
 
-def blank_image(bundle: Bundle) -> Image.Image:
-    size = bundle.family.image_size
-    return Image.new("RGB", (size, size), PAD_COLOR)
-
-
 def run_confirm(bundle: Bundle, items: list[dict], images_dir: Path, out_dir: Path, selection: dict) -> dict:
     """Runs the main set once; an item's file appears only when complete, so a crash resumes safely.
 
@@ -170,9 +164,12 @@ def run_confirm(bundle: Bundle, items: list[dict], images_dir: Path, out_dir: Pa
         if position % 25 == 0 or position == len(selection["main"]):
             print(f"{position}/{len(selection['main'])} items", flush=True)
     # Consistency with the screen: Full_Q must still be eligible (a determinism check, flags only).
-    not_eligible = 0
+    not_eligible = blind_eligible = 0
     for item_id in selection["main"]:
         rows = json.loads((out_dir / "items" / f"{item_id}.json").read_text())["rows"]
         full_q = next(r for r in rows if r["selector"] == "full" and r["cell"] == "Q")
         not_eligible += not eligible(full_q, SCREENING["surface"])
-    return {"items": len(selection["main"]), "control": len(control), "full_q_no_longer_eligible": not_eligible}
+        blind = next(r for r in rows if r["selector"] == "blind")
+        blind_eligible += eligible(blind, SCREENING["surface"])
+    return {"items": len(selection["main"]), "control": len(control), "full_q_no_longer_eligible": not_eligible,
+            "blind_now_eligible": blind_eligible}

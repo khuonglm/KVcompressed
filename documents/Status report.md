@@ -19,7 +19,8 @@ The prompt includes a misleading description. We compare two kept sets under tha
 | 5. Your decisions, then v3.1 pilots on both datasets | Done |
 | 6. Builder fixes, GQA widening, timing test, coverage plots | Done |
 | 6b. Pre-registration, freeze, GQA screen and verification | Done |
-| 6c. GQA stage-3 freeze and confirmatory run | **Next** |
+| 6c. GQA amendment 1 (blind filter): new screen, verify to 1,000 | **Next** |
+| 6d. GQA stage-3 freeze and confirmatory run | Not started |
 | 7. Freeze, then the confirmatory run once, then the analysis | Not started |
 | Second model, Qwen2.5-VL | Parked (see below) |
 

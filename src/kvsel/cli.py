@@ -137,7 +137,7 @@ def cmd_screen(args) -> None:
 def cmd_freeze_screening(args) -> None:
     from .freeze import freeze_screening
 
-    print(json.dumps(freeze_screening(args.prereg, args.manifests, args.record), indent=2))
+    print(json.dumps(freeze_screening(args.prereg, args.manifests, args.record, args.amends, args.reason), indent=2))
 
 
 def cmd_screen_confirm(args) -> None:
@@ -399,7 +399,9 @@ def main() -> None:
     sub.add_argument("--prereg", type=Path, default=Path("PREREG.md"))
     sub.add_argument("--manifests", type=Path, nargs="+",
                      default=[Path("manifests/gqa_confirm.jsonl"), Path("manifests/textvqa_confirm.jsonl")])
-    sub.add_argument("--record", type=Path, default=Path("freeze/screening.json"))
+    sub.add_argument("--record", type=Path, default=Path("freeze/screening_amend1.json"))
+    sub.add_argument("--amends", type=Path, default=None, help="the stage-1 record this amendment supersedes")
+    sub.add_argument("--reason", default=None, help="why the screening rules changed")
     sub.set_defaults(handler=cmd_freeze_screening)
 
     sub = commands.add_parser("screen-confirm", help="eligibility screen on confirmatory items; writes flags only (GPU)")
@@ -408,7 +410,7 @@ def main() -> None:
     add_model_dir(sub, choose_model=False)
     sub.add_argument("--device", default="cuda")
     sub.add_argument("--prereg", type=Path, default=Path("PREREG.md"))
-    sub.add_argument("--record", type=Path, default=Path("freeze/screening.json"))
+    sub.add_argument("--record", type=Path, default=Path("freeze/screening_amend1.json"))
     sub.add_argument("--limit", type=int, default=None, help="screen only the first N items in manifest order")
     sub.add_argument("--out", type=Path, required=True)
     sub.set_defaults(handler=cmd_screen_confirm, head_precision=None)
@@ -418,7 +420,7 @@ def main() -> None:
         sub.add_argument("--screen", type=Path, required=True, help="confirmatory screen directory")
         sub.add_argument("--decisions", type=Path, required=True, help="verification decisions (JSONL)")
         sub.add_argument("--prereg", type=Path, default=Path("PREREG.md"))
-        sub.add_argument("--stage1", type=Path, default=Path("freeze/screening.json"))
+        sub.add_argument("--stage1", type=Path, default=Path("freeze/screening_amend1.json"))
         sub.add_argument("--record", type=Path, required=True, help="for example freeze/comparative_gqa.json")
 
     sub = commands.add_parser("freeze-comparative", help="freeze stage 3 for one dataset: record hashes and the main set. No GPU")

@@ -24,6 +24,10 @@ SCREENING = {
     "head_precision": LLAVA.default_head_precision,
     "surface": "capitalized",
     "eligibility": "Full_Q greedy answer correct and margin(true - alt) > 0",
+    # Amendment 1 (10 November 2026): an item that passes the rule above with a blank image instead
+    # of the real one is not eligible, since the model answers it without the image.
+    "blind_filter": "not eligible if the same rule passes on a blank 336 x 336 image of the padding colour",
+    "amendment": 1,
     "max_new_tokens": 16,
     "batch_size": 1,
 }
@@ -35,7 +39,7 @@ SCREENING_MODULES = (
     "prompts.py", "runner.py", "screening.py",
 )
 PREREG_SECTION = "## 1. Screening rules"
-DEFAULT_RECORD = Path("freeze/screening.json")
+DEFAULT_RECORD = Path("freeze/screening_amend1.json")  # supersedes freeze/screening.json
 
 
 def sha256_file(path: Path) -> str:
@@ -70,7 +74,13 @@ def current_state(prereg: Path, manifests: list[Path]) -> dict:
     }
 
 
-def freeze_screening(prereg: Path, manifests: list[Path], record: Path = DEFAULT_RECORD) -> dict:
+def freeze_screening(prereg: Path, manifests: list[Path], record: Path = DEFAULT_RECORD,
+                     amends: Path | None = None, reason: str | None = None) -> dict:
+    """Writes the stage-1 record. An amendment names the record it supersedes and why; that record stays."""
+    if (amends is None) != (reason is None):
+        raise SystemExit("an amendment needs both --amends and --reason")
+    if amends is not None and not Path(amends).exists():
+        raise SystemExit(f"{amends} does not exist")
     for manifest in manifests:
         splits = {json.loads(line).get("split") for line in Path(manifest).read_text().splitlines() if line.strip()}
         if splits != {"confirm"}:
@@ -83,6 +93,8 @@ def freeze_screening(prereg: Path, manifests: list[Path], record: Path = DEFAULT
         raise SystemExit(f"{record} already exists with different contents. A screening rule can't change after "
                          "the freeze without a documented amendment and a fresh held-out partition.")
     payload = {"stage": "screening", "frozen_at": datetime.now(UTC).isoformat(timespec="seconds"), **state}
+    if amends is not None:
+        payload["amends"] = {"record": str(amends), "sha256": sha256_file(amends), "reason": reason}
     record.parent.mkdir(parents=True, exist_ok=True)
     record.write_text(json.dumps(payload, indent=2) + "\n")
     return payload

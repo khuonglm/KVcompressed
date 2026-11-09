@@ -213,41 +213,40 @@ rebuilt with `kvsel build-s1` from the raw question files.
 
 ## Freeze stage 1 and the confirmatory screen
 
-Rules: `PREREG.md`, section 1. Run in this order and stop at the first step that fails.
+Rules: `PREREG.md`, section 1, as amended on 10 November (amendment 1: items answerable with a blank
+image aren't eligible). The first record, `freeze/screening.json`, is kept; amendment 1's record
+supersedes it. Run in this order and stop at the first step that fails.
 
-1. Review `PREREG.md` and commit it yourself.
-2. Freeze the screening rules (no GPU). This writes `freeze/screening.json`; commit that too.
+1. Optional, development only (about 2 min on the GPU): how many items the blind rule removes.
    ```
-   uv run kvsel freeze-screening
+   uv run kvsel blind-rate --items manifests/gqa_dev.jsonl --images data/gqa/images --verified verification/gqa_dev.jsonl --out results/checks/blind_gqa.json
    ```
-3. Screen on the GPU (GQA about 1.6 h, TextVQA about 1.1 h). It writes only eligible flags and resumes
-   if rerun. Add `--limit N` to screen only the first N items if not all images are there yet.
+2. Freeze amendment 1 (no GPU); commit `freeze/screening_amend1.json`:
    ```
-   uv run kvsel screen-confirm --items manifests/gqa_confirm.jsonl --images data/gqa/images --out results/confirm/gqa_screen
-   uv run kvsel screen-confirm --items manifests/textvqa_confirm.jsonl --images data/textvqa/images --out results/confirm/textvqa_screen
+   uv run kvsel freeze-screening --amends freeze/screening.json --reason "amendment 1: exclude items answerable with a blank image"
    ```
-4. Copy `results/confirm/*_screen` to the machine you verify on, then verify only eligible items, in
-   manifest order, until 1,000 pass per dataset. Earlier decisions carry over.
+3. Screen on the GPU into a new folder (GQA about 2.5 h). It writes only flags and resumes if rerun.
+   `--limit N` screens only the first N items.
    ```
-   uv run kvsel verify --items manifests/gqa_confirm.jsonl --images data/gqa/images --screen results/confirm/gqa_screen --decisions verification/gqa_confirm.jsonl
-   uv run kvsel verify --items manifests/textvqa_confirm.jsonl --images data/textvqa/images --screen results/confirm/textvqa_screen --decisions verification/textvqa_confirm.jsonl
+   uv run kvsel screen-confirm --items manifests/gqa_confirm.jsonl --images data/gqa/images --out results/confirm/gqa_screen_a1
+   ```
+4. Copy `results/confirm/gqa_screen_a1` to the machine you verify on and verify eligible items in manifest
+   order until 1,000 pass. Earlier decisions carry over; only new items are queued.
+   ```
+   uv run kvsel verify --items manifests/gqa_confirm.jsonl --images data/gqa/images --screen results/confirm/gqa_screen_a1 --decisions verification/gqa_confirm.jsonl
    ```
 
 The screen refuses to run if `PREREG.md` section 1, a manifest or the screening code changed after the freeze.
 
 ## Freeze stage 3 and the confirmatory run (GQA first)
 
-1. Optional, development only: share of items answerable with a blank image (about 2 min):
+1. Review `PREREG.md` section 2, delete its DRAFT line, then freeze (no GPU) and commit `freeze/comparative_gqa.json`:
    ```
-   uv run kvsel blind-rate --items manifests/gqa_dev.jsonl --images data/gqa/images --verified verification/gqa_dev.jsonl --out results/checks/blind_gqa.json
+   uv run kvsel freeze-comparative --items manifests/gqa_confirm.jsonl --screen results/confirm/gqa_screen_a1 --decisions verification/gqa_confirm.jsonl --record freeze/comparative_gqa.json
    ```
-2. Review `PREREG.md` section 2, delete its DRAFT line, then freeze (no GPU) and commit `freeze/comparative_gqa.json`:
+2. On the GPU, with the same `PREREG.md`, `freeze/`, screen folder and decisions file (about 3 h):
    ```
-   uv run kvsel freeze-comparative --items manifests/gqa_confirm.jsonl --screen results/confirm/gqa_screen --decisions verification/gqa_confirm.jsonl --record freeze/comparative_gqa.json
-   ```
-3. On the GPU, with the same `PREREG.md`, `freeze/`, screen folder and decisions file (about 3 h):
-   ```
-   uv run kvsel confirm --items manifests/gqa_confirm.jsonl --screen results/confirm/gqa_screen --decisions verification/gqa_confirm.jsonl --record freeze/comparative_gqa.json --images data/gqa/images --out results/confirm/gqa_run
+   uv run kvsel confirm --items manifests/gqa_confirm.jsonl --screen results/confirm/gqa_screen_a1 --decisions verification/gqa_confirm.jsonl --record freeze/comparative_gqa.json --images data/gqa/images --out results/confirm/gqa_run
    ```
    It refuses if anything changed since the freeze. Send back only its printed summary; don't open the item files.
 

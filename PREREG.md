@@ -2,7 +2,7 @@
 
 The study follows `documents/Idea 1 proposal v3.md`. Its changes are recorded in `documents/Idea 1 implementation plan.md`, section 3. This file freezes the protocol in three stages (plan, decision 4):
 
-1. **Stage 1 (screening rules):** section 1 below. Frozen with `kvsel freeze-screening`, which stores the sha256 of section 1, the confirmatory manifests and the screening code in `freeze/screening.json`. After stage 1, `kvsel screen-confirm` runs the eligibility screen. It exposes only item ids, eligible flags and funnel counts.
+1. **Stage 1 (screening rules):** section 1 below. Frozen with `kvsel freeze-screening`, which stores the sha256 of section 1, the confirmatory manifests and the screening code in `freeze/screening.json`, superseded by amendment 1's `freeze/screening_amend1.json`. After stage 1, `kvsel screen-confirm` runs the eligibility screen. It exposes only item ids, eligible flags and funnel counts.
 2. **Stage 2 (verification):** hand verification of eligible items under the rules in section 1.6.
 3. **Stage 3 (comparative experiment):** section 2 below. It may still change until stage 3, because no comparative outcome on confirmatory items exists before then. Stage 3 freezes this whole file, the verification decisions, the screen output and the code. The comparative run then runs once.
 
@@ -38,7 +38,12 @@ Comparative outcomes (any cell other than the screen's Full_Q eligibility flag) 
 
 ### 1.4 Eligibility
 
-An item is eligible if, under Full_Q (full cache, Q prompt, no description), its greedy outcome is "correct" **and** M > 0 under the capitalized surface rule.
+An item is eligible if both hold:
+
+1. Under Full_Q (full cache, Q prompt, no description), its greedy outcome is "correct" **and** M > 0 under the capitalized surface rule.
+2. **Amendment 1:** the same rule does **not** pass on a blank image. Blind_Q is Full_Q with the real image replaced by one 336 × 336 image filled with the padding colour (the CLIP mean). An item whose Blind_Q answer is correct with M > 0 can be answered without the image, so it is not eligible.
+
+The screen runs Blind_Q only on items that pass condition 1. It writes four flags per item (`full_q_eligible`, `blind_eligible`, `eligible`, and the item id) and no answers or margins.
 
 ### 1.5 Confirmatory pools
 
@@ -75,6 +80,19 @@ An item is eligible if, under Full_Q (full cache, Q prompt, no description), its
 
 A screening rule can't change after stage 1 because of anything seen on confirmatory items. If one must change, the amendment is dated and documented here, and a fresh held-out partition is used.
 
+### 1.8 Amendment 1 (10 November 2026): items answerable without the image
+
+- **Change:** condition 2 of section 1.4 (the blind filter) was added.
+- **Reason:** while hand-verifying confirmatory GQA items, the verifier noticed questions whose answer follows from language alone ("what colour is the sky?"). Such items test the language prior, not the use of visual entries.
+- **What had been seen:** the stage-1 screen's eligible flags for GQA, and the item contents shown by the verification tool. No answers, margins or comparative outcomes had been produced or seen. The trigger was item content, not model output.
+- **Deviation from 1.7:** no fresh held-out partition is used, because GQA has no unused validation images left. The amended screen reruns on the same pool. The flags already seen carry no information about any estimand in section 2. This deviation is disclosed in the report.
+- **Records:**
+  - The original stage-1 record `freeze/screening.json` is kept.
+  - `freeze/screening_amend1.json` supersedes it and names it with its sha256.
+  - The amended screen writes to a new folder; the first screen's output is not used.
+- **Verification decisions carry over.** The main-set rule (1.6) is unchanged and is applied to the amended eligibility flags.
+- **Before this screen ran,** the share of development items the rule removes was measured with `kvsel blind-rate` (rate only).
+
 ## 2. Comparative experiment (frozen at stage 3)
 
 Section 2 covers both datasets. **GQA runs first.** TextVQA is pre-registered here and runs later under this same protocol, with nothing changed because of the GQA results. Each dataset gets its own stage-3 record (`freeze/comparative_gqa.json`, `freeze/comparative_textvqa.json`), made with `kvsel freeze-comparative` before that dataset's run. GQA's record freezes this whole file, so TextVQA's protocol is fixed before any GQA comparative outcome exists.
@@ -102,12 +120,9 @@ Section 2 covers both datasets. **GQA runs first.** TextVQA is pre-registered he
 - **Run once.** Each item's file is written only when that item is complete, so a crash can resume. The run prints only progress, never margins or answers.
 - **Consistency check:** Full_Q must still be eligible on every item. The count of items where it isn't is reported.
 
-### 2.2 Blind baseline (added 10 November 2026, before any comparative outcome)
+### 2.2 Blind baseline
 
-- **Why:** some items may be answerable from language alone ("what colour is the sky?"). On those items the kept visual entries matter little, which would dilute S_H toward 0.
-- **Definition:** Blind_Q is Full_Q with a blank image: a single 336 × 336 image filled with the padding colour (the CLIP mean). An item is **image-independent** if Blind_Q's margin is above 0 under the capitalized surface rule, and **image-dependent** otherwise.
-- **Population unchanged:** this rule doesn't change the main set or the primary analysis. It defines only the secondary analyses in section 2.3.
-- **Why this rule:** it was fixed on scientific grounds. Only the share of image-independent items on development data may be inspected (`kvsel blind-rate`), never S_H split by blind status.
+Items answerable without the image are excluded at screening (section 1.4, amendment 1). The run computes Blind_Q again on every main item as a consistency check: the count of items where it now passes the eligibility rule is reported, and it should be 0. The mean Blind_Q margin is reported descriptively.
 
 ### 2.3 Estimands and tests
 
@@ -126,7 +141,6 @@ Section 2 covers both datasets. **GQA runs first.** TextVQA is pre-registered he
 | H1 (primary) | S_H^(mis) for PW-attn, GQA and TextVQA | Main | Holm over 2, α = 0.05 |
 | H2 | T_match and T_irr per dataset | Control | Holm over 4 |
 | H3, H4 | E_harm^(mis) and S_Q^(mis) per dataset | Main | Holm over 4 |
-| Image dependence | S_H^(mis) on image-dependent items; S_H^(mis) of dependent minus independent items; share of image-independent items | Main | Intervals and two-sided p, no Holm claim |
 | Exploratory | I^(mis), S_H^(match), S_H^(irr), question-span selector | Main / control | Intervals only |
 | H5 | Per-item S_H^(mis) regressed on (1 − Jaccard(S_Q, S_mis)) | Main | OLS, image-clustered SE |
 | H6 | ERR(S_Q) − ERR(S_mis) under all four mapping rules | Grounding | Intervals |
