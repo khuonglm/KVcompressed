@@ -151,6 +151,42 @@ def cmd_screen_confirm(args) -> None:
     print(json.dumps({key: funnel[key] for key in ("screened", "eligible", "not_eligible")}, indent=2))
 
 
+def _confirm_paths(args) -> tuple:
+    return args.prereg, args.items, args.screen, args.decisions, args.record, args.stage1
+
+
+def cmd_freeze_comparative(args) -> None:
+    from .confirm import freeze_comparative
+
+    payload = freeze_comparative(*_confirm_paths(args))
+    print(json.dumps({key: value for key, value in payload.items() if key != "settings"}, indent=2))
+
+
+def cmd_confirm(args) -> None:
+    from .confirm import check_comparative, main_set, run_confirm
+    from .runner import load_items
+
+    check_comparative(*_confirm_paths(args))  # before loading the model
+    items = load_items(args.items)
+    selection = main_set(items, args.screen, args.decisions)
+    print(json.dumps(run_confirm(_bundle(args), items, args.images, args.out, selection), indent=2))
+
+
+def cmd_blind_rate(args) -> None:
+    from .runner import load_items
+    from .sanity import run_blind_rate
+    from .verify import passed_items
+
+    items = load_items(args.items)
+    if args.verified:
+        passed = passed_items(args.verified)
+        items = [item for item in items if item["item_id"] in passed]
+    result = run_blind_rate(_bundle(args), items[: args.limit], args.images)
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    args.out.write_text(json.dumps(result, indent=2))
+    print(json.dumps({key: value for key, value in result.items() if key != "rows"}, indent=2))
+
+
 def cmd_pilot(args) -> None:
     from .runner import eligible, load_items, pilot_units, run_items
 
@@ -376,6 +412,34 @@ def main() -> None:
     sub.add_argument("--limit", type=int, default=None, help="screen only the first N items in manifest order")
     sub.add_argument("--out", type=Path, required=True)
     sub.set_defaults(handler=cmd_screen_confirm, head_precision=None)
+
+    def add_confirm_paths(sub) -> None:
+        sub.add_argument("--items", type=Path, required=True, help="confirmatory manifest (JSONL)")
+        sub.add_argument("--screen", type=Path, required=True, help="confirmatory screen directory")
+        sub.add_argument("--decisions", type=Path, required=True, help="verification decisions (JSONL)")
+        sub.add_argument("--prereg", type=Path, default=Path("PREREG.md"))
+        sub.add_argument("--stage1", type=Path, default=Path("freeze/screening.json"))
+        sub.add_argument("--record", type=Path, required=True, help="for example freeze/comparative_gqa.json")
+
+    sub = commands.add_parser("freeze-comparative", help="freeze stage 3 for one dataset: record hashes and the main set. No GPU")
+    add_confirm_paths(sub)
+    sub.set_defaults(handler=cmd_freeze_comparative)
+
+    sub = commands.add_parser("confirm", help="the confirmatory run, once, on the frozen main set (GPU)")
+    add_confirm_paths(sub)
+    sub.add_argument("--images", type=Path, required=True, help="directory holding the image files")
+    add_model_dir(sub, choose_model=False)
+    sub.add_argument("--device", default="cuda")
+    sub.add_argument("--out", type=Path, required=True)
+    sub.set_defaults(handler=cmd_confirm, head_precision=None)
+
+    sub = commands.add_parser("blind-rate", help="share of development items answerable with a blank image (GPU)")
+    add_item_options(sub)
+    add_model_options(sub)
+    sub.add_argument("--verified", type=Path, help="verification decisions; passed items only")
+    sub.add_argument("--limit", type=int, default=None)
+    sub.add_argument("--out", type=Path, required=True)
+    sub.set_defaults(handler=cmd_blind_rate)
 
     sub = commands.add_parser("pilot", help="the full grid of cells on eligible development items")
     add_item_options(sub)

@@ -235,6 +235,22 @@ Rules: `PREREG.md`, section 1. Run in this order and stop at the first step that
 
 The screen refuses to run if `PREREG.md` section 1, a manifest or the screening code changed after the freeze.
 
+## Freeze stage 3 and the confirmatory run (GQA first)
+
+1. Optional, development only: share of items answerable with a blank image (about 2 min):
+   ```
+   uv run kvsel blind-rate --items manifests/gqa_dev.jsonl --images data/gqa/images --verified verification/gqa_dev.jsonl --out results/checks/blind_gqa.json
+   ```
+2. Review `PREREG.md` section 2, delete its DRAFT line, then freeze (no GPU) and commit `freeze/comparative_gqa.json`:
+   ```
+   uv run kvsel freeze-comparative --items manifests/gqa_confirm.jsonl --screen results/confirm/gqa_screen --decisions verification/gqa_confirm.jsonl --record freeze/comparative_gqa.json
+   ```
+3. On the GPU, with the same `PREREG.md`, `freeze/`, screen folder and decisions file (about 3 h):
+   ```
+   uv run kvsel confirm --items manifests/gqa_confirm.jsonl --screen results/confirm/gqa_screen --decisions verification/gqa_confirm.jsonl --record freeze/comparative_gqa.json --images data/gqa/images --out results/confirm/gqa_run
+   ```
+   It refuses if anything changed since the freeze. Send back only its printed summary; don't open the item files.
+
 ## TextVQA data
 
 The manifests are in `manifests/`. Only the images are needed, not the 7 GB archive: about 0.4 GB for

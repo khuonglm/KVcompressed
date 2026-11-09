@@ -1,7 +1,5 @@
 # Pre-registration: does unreliable text steer visual-KV selection in LLaVA-1.5-7B?
 
-**Status: DRAFT, 9 November 2026.** Not frozen yet.
-
 The study follows `documents/Idea 1 proposal v3.md`. Its changes are recorded in `documents/Idea 1 implementation plan.md`, section 3. This file freezes the protocol in three stages (plan, decision 4):
 
 1. **Stage 1 (screening rules):** section 1 below. Frozen with `kvsel freeze-screening`, which stores the sha256 of section 1, the confirmatory manifests and the screening code in `freeze/screening.json`. After stage 1, `kvsel screen-confirm` runs the eligibility screen. It exposes only item ids, eligible flags and funnel counts.
@@ -79,49 +77,74 @@ A screening rule can't change after stage 1 because of anything seen on confirma
 
 ## 2. Comparative experiment (frozen at stage 3)
 
+Section 2 covers both datasets. **GQA runs first.** TextVQA is pre-registered here and runs later under this same protocol, with nothing changed because of the GQA results. Each dataset gets its own stage-3 record (`freeze/comparative_gqa.json`, `freeze/comparative_textvqa.json`), made with `kvsel freeze-comparative` before that dataset's run. GQA's record freezes this whole file, so TextVQA's protocol is fixed before any GQA comparative outcome exists.
+
 ### 2.1 Configuration
 
-- **Primary selector:** PW-attn. Its window is the last 16 suffix tokens (the fixed instruction), and it averages attention to the 576 visual entries over layers 2–31 and all heads.
+- **Primary selector:** PW-attn. Its window is the last 16 suffix tokens (the fixed instruction), and it averages attention to the 576 visual entries over heads and layers 2 and up.
 - **Budget:** K = 144 visual entries, plus the 5 non-visual prefix entries.
 - **Replay:** on the compact cache with logical positions.
 - **Secondary selector:** question-span attention, the same formula with the window set to the question tokens. It is descriptive only.
-- **Reference:** a uniform grid at K = 144: patches with row and column both even.
-- **Cells (per condition c):**
+- **Reference:** a uniform grid at K = 144, keeping the patches whose row and column are both even.
+- **Cells, for each condition c:**
   - A: S_Q selection, Q answering
   - B_c: S_c selection, QH_c answering
   - C_c: S_Q selection, QH_c answering
   - D_c: S_c selection, Q answering
   - Full anchors: Full_Q and Full_c
-- **Main set:** the misleading condition.
-- **Control subset:** all three conditions (mis, match, irr).
+- **Units on every main-set item:**
+  - cells A, B_mis, C_mis and D_mis under both selectors
+  - Full_Q and Full_mis
+  - the uniform grid under Q and under QH_mis
+  - PW-attn with the coverage reserve: (S_Q, Q), (S_mis, QH_mis) and (S_Q, QH_mis)
+  - **Blind_Q** (section 2.2)
+- **Control subset:** additionally, cells B, C and D, Full_c and the uniform grid for c = match and irr, plus the two reserve variants for match. `kvsel.confirm.comparative_settings` lists every unit exactly.
+- **Run once.** Each item's file is written only when that item is complete, so a crash can resume. The run prints only progress, never margins or answers.
+- **Consistency check:** Full_Q must still be eligible on every item. The count of items where it isn't is reported.
 
-### 2.2 Estimands
+### 2.2 Blind baseline (added 10 November 2026, before any comparative outcome)
 
-- S_H^(c) = M(C_c) − M(B_c)
-- T_match = S_H^(mis) − S_H^(match) and T_irr = S_H^(mis) − S_H^(irr)
-- S_Q^(c) = M(A) − M(D_c)
-- I^(c) = S_H^(c) − S_Q^(c)
-- E_harm^(c) = (M(Full_c) − M(B_c)) − (M(Full_Q) − M(A))
+- **Why:** some items may be answerable from language alone ("what colour is the sky?"). On those items the kept visual entries matter little, which would dilute S_H toward 0.
+- **Definition:** Blind_Q is Full_Q with a blank image: a single 336 × 336 image filled with the padding colour (the CLIP mean). An item is **image-independent** if Blind_Q's margin is above 0 under the capitalized surface rule, and **image-dependent** otherwise.
+- **Population unchanged:** this rule doesn't change the main set or the primary analysis. It defines only the secondary analyses in section 2.3.
+- **Why this rule:** it was fixed on scientific grounds. Only the share of image-independent items on development data may be inspected (`kvsel blind-rate`), never S_H split by blind status.
 
-### 2.3 Inference
+### 2.3 Estimands and tests
 
-- **Resampling:** image-clustered paired bootstrap, 10,000 resamples, seed 0, with a 95% percentile interval.
-- **Two-sided p-value:** p = min(1, 2 · (1 + min(#{θ\* ≤ 0}, #{θ\* ≥ 0})) / 10,001), where θ\* is the estimate in one resample. Every confirmatory test is two-sided (9 November decision).
-- **Families:** each dataset gets its own conclusion. An effect is general only if both datasets pass.
+- **Estimands:**
+  - S_H^(c) = M(C_c) − M(B_c)
+  - T_match = S_H^(mis) − S_H^(match) and T_irr = S_H^(mis) − S_H^(irr)
+  - S_Q^(c) = M(A) − M(D_c)
+  - I^(c) = S_H^(c) − S_Q^(c)
+  - E_harm^(c) = (M(Full_c) − M(B_c)) − (M(Full_Q) − M(A))
+- **Margin:** M uses the capitalized surface rule.
+- **Inference:** image-clustered paired bootstrap, 10,000 resamples, seed 0, with a 95% percentile interval.
+- **Two-sided p-value:** p = min(1, 2 · (1 + min(#{θ\* ≤ 0}, #{θ\* ≥ 0})) / 10,001). Every confirmatory test is two-sided.
 
 | Family | Tests | Set | Multiplicity |
 | --- | --- | --- | --- |
-| H1 (primary) | S_H^(mis), GQA and TextVQA | Main | Holm over 2, α = 0.05 |
+| H1 (primary) | S_H^(mis) for PW-attn, GQA and TextVQA | Main | Holm over 2, α = 0.05 |
 | H2 | T_match and T_irr per dataset | Control | Holm over 4 |
 | H3, H4 | E_harm^(mis) and S_Q^(mis) per dataset | Main | Holm over 4 |
-| Exploratory | I^(mis), S_H^(match), S_H^(irr) | Main / control | Intervals only |
-| H5 | Per-item S_H^(mis) on (1 − Jaccard(S_Q, S_mis)) | Main | OLS, image-clustered SE |
+| Image dependence | S_H^(mis) on image-dependent items; S_H^(mis) of dependent minus independent items; share of image-independent items | Main | Intervals and two-sided p, no Holm claim |
+| Exploratory | I^(mis), S_H^(match), S_H^(irr), question-span selector | Main / control | Intervals only |
+| H5 | Per-item S_H^(mis) regressed on (1 − Jaccard(S_Q, S_mis)) | Main | OLS, image-clustered SE |
 | H6 | ERR(S_Q) − ERR(S_mis) under all four mapping rules | Grounding | Intervals |
+| Mitigation (EQ1) | Reserve and isolation variants against B_mis, on misleading and neutral answering | Main / control | Intervals |
+| Behaviour | Paired differences in correct and a_alt rates, B_mis vs C_mis | Main | Intervals |
 
+- **Reading the results:**
+  - Each dataset gets its own conclusion. An effect is called general only if both datasets pass.
+  - GQA's estimates, intervals and unadjusted p-values are reported when its run ends. The Holm decisions are final once TextVQA's results exist.
+  - If TextVQA is never run, the H1 family becomes GQA alone, and this is disclosed as a deviation.
+- **Sensitivity:** the margin is also reported as the log-sum over the lower and capitalized surface forms.
 - **Equivalence:** δ = 0.10 nats, tested only if the development-projected 90% half-width is below δ/2.
 
-### 2.4 Still to settle before stage 3
+### 2.4 Left out of the confirmatory run
 
-- The extension units (P5): K = 288 and 72, LT-early, random seeds, mitigation variants. These stay limited to what R1's runtime allows.
-- The less-filtered population (decision 6) and its sample size.
-- The `confirm` command and the stage-3 freeze record.
+These are not part of the confirmatory study. Any of them run later is labelled a follow-up:
+- K = 288 and 72
+- LT-early
+- random-selection seeds
+- oracle restoration
+- the less-filtered population (decision 6)

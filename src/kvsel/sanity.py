@@ -135,9 +135,17 @@ def run_timing(bundle, items: list[dict], images_dir: Path, volumes: dict[str, i
     """
     import torch
 
-    from .model import pixel_values, prefill
-    from .runner import Q, contexts_for, kept_for, open_image, pilot_units, require_development, run_unit
     from .engine import probe
+    from .model import pixel_values, prefill
+    from .runner import (
+        Q,
+        contexts_for,
+        kept_for,
+        open_image,
+        pilot_units,
+        require_development,
+        run_unit,
+    )
 
     require_development(items)
     units = pilot_units()
@@ -252,7 +260,14 @@ def coverage_figure(k: int, example: np.ndarray | None, example_label: str) -> s
 def coverage_report(attention_dir: Path | None, out_dir: Path) -> dict:
     """Reserve radius against random sets of the same size; kept-set radius with and without reserve
     on PW-attn scores from development attention files (context Q). Writes one SVG per budget."""
-    from .selectors import coverage_order, coverage_radius, pw_attn, reserve_size, top_k, with_reserve
+    from .selectors import (
+        coverage_order,
+        coverage_radius,
+        pw_attn,
+        reserve_size,
+        top_k,
+        with_reserve,
+    )
 
     files = sorted(Path(attention_dir).glob("*.npz")) if attention_dir else []
     scores = []
@@ -284,3 +299,51 @@ def coverage_report(attention_dir: Path | None, out_dir: Path) -> dict:
         result["budgets"][str(k)] = entry
     (out_dir / "coverage.json").write_text(json.dumps(result, indent=2) + "\n")
     return result
+
+
+def run_blind_rate(bundle, items: list[dict], images_dir: Path, surface: str = "capitalized") -> dict:
+    """Development only: how often the Q prompt prefers a_true with a blank image instead of the real one.
+
+    Reports rates only. It never splits S_H by blind status, which would choose an analysis by outcome.
+    """
+    from .confirm import blank_image
+    from .runner import (
+        NO_CONTEXT,
+        Q,
+        Unit,
+        eligible,
+        open_image,
+        require_development,
+        run_item,
+    )
+
+    require_development(items)
+    full_q = Unit("full", 576, False, NO_CONTEXT, Q)
+    blank = blank_image(bundle)
+    rows = []
+    for position, item in enumerate(items, 1):
+        real = run_item(bundle, item, open_image(images_dir, item), [full_q])[0]["rows"][0]
+        blind = run_item(bundle, item, blank, [full_q])[0]["rows"][0]
+        rows.append({
+            "item_id": item["item_id"],
+            "eligible": eligible(real, surface),
+            "blind_margin": sum(blind["scores"]["true"][surface]) - sum(blind["scores"]["alt"][surface]),
+            "blind_outcome": blind["outcome"],
+            "blind_text": blind["greedy_text"],
+        })
+        if position % 25 == 0 or position == len(items):
+            print(f"{position}/{len(items)} items", flush=True)
+    chosen = [r for r in rows if r["eligible"]]
+
+    def share(selected: list[dict], test) -> float | None:
+        return round(sum(map(test, selected)) / len(selected), 3) if selected else None
+
+    return {
+        "items": len(rows),
+        "eligible": len(chosen),
+        "surface": surface,
+        "eligible_image_independent": share(chosen, lambda r: r["blind_margin"] > 0),
+        "eligible_blind_greedy_correct": share(chosen, lambda r: r["blind_outcome"] == "correct"),
+        "all_image_independent": share(rows, lambda r: r["blind_margin"] > 0),
+        "rows": rows,
+    }

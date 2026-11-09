@@ -18,7 +18,8 @@ The prompt includes a misleading description. We compare two kept sets under tha
 | 4. Screen, pilot, hand verification (development items) | Done for both datasets |
 | 5. Your decisions, then v3.1 pilots on both datasets | Done |
 | 6. Builder fixes, GQA widening, timing test, coverage plots | Done |
-| 6b. Pre-registration and freeze tooling | **Next** |
+| 6b. Pre-registration, freeze, GQA screen and verification | Done |
+| 6c. GQA stage-3 freeze and confirmatory run | **Next** |
 | 7. Freeze, then the confirmatory run once, then the analysis | Not started |
 | Second model, Qwen2.5-VL | Parked (see below) |
 

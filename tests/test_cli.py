@@ -30,7 +30,7 @@ def test_report_writes_its_output_file(monkeypatch, tmp_path, capsys):
 @pytest.mark.parametrize("command", [
     "build-gqa", "build-textvqa", "fetch-model", "fetch-images", "check-serialization", "build-s1", "s1", "timing", "coverage",
     "validate", "diagnose-e2", "check-tokenization", "screen", "pilot", "prompt-test", "verify", "report",
-    "freeze-screening", "screen-confirm",
+    "freeze-screening", "screen-confirm", "freeze-comparative", "confirm", "blind-rate",
 ])
 def test_every_command_parses_its_help(monkeypatch, command):
     with pytest.raises(SystemExit) as stopped:
@@ -124,3 +124,13 @@ def test_verify_tells_confirmatory_screens_from_development_screens(tmp_path):
     (tmp_path / "d" / "items").mkdir(parents=True)
     (tmp_path / "d" / "items" / "a.json").write_text(json.dumps({"item_id": "a", "rows": []}))
     assert _is_confirm_screen(tmp_path / "c") and not _is_confirm_screen(tmp_path / "d")
+
+
+def test_confirm_checks_the_freeze_before_loading_the_model(monkeypatch, tmp_path):
+    from kvsel import cli
+
+    monkeypatch.setattr(cli, "_bundle", lambda args: pytest.fail("the model must not load"))
+    with pytest.raises(SystemExit, match="no comparative freeze"):
+        run_cli(monkeypatch, "confirm", "--items", str(tmp_path / "m.jsonl"), "--screen", str(tmp_path),
+                "--decisions", str(tmp_path / "d.jsonl"), "--record", str(tmp_path / "none.json"),
+                "--images", str(tmp_path), "--out", str(tmp_path / "out"))
