@@ -211,6 +211,30 @@ S1 runs 200 random questions of any type with LLaVA's standard prompt, to catch 
 times every stage of the pilot workload and projects the confirmatory runtime. The S1 manifests are
 rebuilt with `kvsel build-s1` from the raw question files.
 
+## Freeze stage 1 and the confirmatory screen
+
+Rules: `PREREG.md`, section 1. Run in this order and stop at the first step that fails.
+
+1. Review `PREREG.md` and commit it yourself.
+2. Freeze the screening rules (no GPU). This writes `freeze/screening.json`; commit that too.
+   ```
+   uv run kvsel freeze-screening
+   ```
+3. Screen on the GPU (GQA about 1.6 h, TextVQA about 1.1 h). It writes only eligible flags and resumes
+   if rerun. Add `--limit N` to screen only the first N items if not all images are there yet.
+   ```
+   uv run kvsel screen-confirm --items manifests/gqa_confirm.jsonl --images data/gqa/images --out results/confirm/gqa_screen
+   uv run kvsel screen-confirm --items manifests/textvqa_confirm.jsonl --images data/textvqa/images --out results/confirm/textvqa_screen
+   ```
+4. Copy `results/confirm/*_screen` to the machine you verify on, then verify only eligible items, in
+   manifest order, until 1,000 pass per dataset. Earlier decisions carry over.
+   ```
+   uv run kvsel verify --items manifests/gqa_confirm.jsonl --images data/gqa/images --screen results/confirm/gqa_screen --decisions verification/gqa_confirm.jsonl
+   uv run kvsel verify --items manifests/textvqa_confirm.jsonl --images data/textvqa/images --screen results/confirm/textvqa_screen --decisions verification/textvqa_confirm.jsonl
+   ```
+
+The screen refuses to run if `PREREG.md` section 1, a manifest or the screening code changed after the freeze.
+
 ## TextVQA data
 
 The manifests are in `manifests/`. Only the images are needed, not the 7 GB archive: about 0.4 GB for

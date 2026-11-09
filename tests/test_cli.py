@@ -30,6 +30,7 @@ def test_report_writes_its_output_file(monkeypatch, tmp_path, capsys):
 @pytest.mark.parametrize("command", [
     "build-gqa", "build-textvqa", "fetch-model", "fetch-images", "check-serialization", "build-s1", "s1", "timing", "coverage",
     "validate", "diagnose-e2", "check-tokenization", "screen", "pilot", "prompt-test", "verify", "report",
+    "freeze-screening", "screen-confirm",
 ])
 def test_every_command_parses_its_help(monkeypatch, command):
     with pytest.raises(SystemExit) as stopped:
@@ -92,3 +93,34 @@ def test_timing_and_s1_pass_their_arguments(monkeypatch, tmp_path):
     run_cli(monkeypatch, "s1", "--items", str(items), "--images", str(tmp_path), "--out", str(tmp_path / "s1.json"))
     assert seen["n"] == 5 and seen["s1"] == 30 and seen["volumes"]["confirmatory_items"] == 2000
     assert json.loads((tmp_path / "r1.json").read_text()) == {"ok": 1}
+
+
+def test_screen_confirm_checks_the_freeze_before_loading_the_model(monkeypatch, tmp_path):
+    from kvsel import cli
+
+    monkeypatch.setattr(cli, "_bundle", lambda args: pytest.fail("the model must not load"))
+    items = tmp_path / "gqa_confirm.jsonl"
+    items.write_text(json.dumps({"item_id": "a", "split": "confirm"}) + "\n")
+    with pytest.raises(SystemExit, match="no screening freeze"):
+        run_cli(monkeypatch, "screen-confirm", "--items", str(items), "--images", str(tmp_path),
+                "--record", str(tmp_path / "none.json"), "--out", str(tmp_path / "out"))
+
+
+def test_freeze_screening_command_writes_the_record(monkeypatch, tmp_path, capsys):
+    prereg = tmp_path / "PREREG.md"
+    prereg.write_text("## 1. Screening rules\nrule\n")
+    items = tmp_path / "gqa_confirm.jsonl"
+    items.write_text(json.dumps({"item_id": "a", "split": "confirm"}) + "\n")
+    record = tmp_path / "freeze" / "screening.json"
+    run_cli(monkeypatch, "freeze-screening", "--prereg", str(prereg), "--manifests", str(items), "--record", str(record))
+    assert json.loads(record.read_text())["manifests"] == {"gqa_confirm.jsonl": json.loads(capsys.readouterr().out)["manifests"]["gqa_confirm.jsonl"]}
+
+
+def test_verify_tells_confirmatory_screens_from_development_screens(tmp_path):
+    from kvsel.cli import _is_confirm_screen
+
+    (tmp_path / "c" / "items").mkdir(parents=True)
+    (tmp_path / "c" / "items" / "a.json").write_text(json.dumps({"item_id": "a", "eligible": True}))
+    (tmp_path / "d" / "items").mkdir(parents=True)
+    (tmp_path / "d" / "items" / "a.json").write_text(json.dumps({"item_id": "a", "rows": []}))
+    assert _is_confirm_screen(tmp_path / "c") and not _is_confirm_screen(tmp_path / "d")

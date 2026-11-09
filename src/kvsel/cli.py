@@ -134,6 +134,23 @@ def cmd_screen(args) -> None:
     print("\n".join(_surface_section(load_rows(args.out))))
 
 
+def cmd_freeze_screening(args) -> None:
+    from .freeze import freeze_screening
+
+    print(json.dumps(freeze_screening(args.prereg, args.manifests, args.record), indent=2))
+
+
+def cmd_screen_confirm(args) -> None:
+    from .freeze import check_screening
+    from .runner import load_items
+    from .screening import run_confirm_screen
+
+    frozen = check_screening(args.prereg, args.items, args.record)  # before loading the model
+    items = load_items(args.items)[: args.limit]
+    funnel = run_confirm_screen(_bundle(args), items, args.images, args.out, frozen)
+    print(json.dumps({key: funnel[key] for key in ("screened", "eligible", "not_eligible")}, indent=2))
+
+
 def cmd_pilot(args) -> None:
     from .runner import eligible, load_items, pilot_units, run_items
 
@@ -167,13 +184,23 @@ def cmd_prompt_test(args) -> None:
     print(f"full result: {args.out}")
 
 
+def _is_confirm_screen(screen: Path) -> bool:
+    """A confirmatory screen stores only eligibility flags; a development screen stores full rows."""
+    first = next((screen / "items").glob("*.json"), None)
+    return first is not None and "eligible" in json.loads(first.read_text())
+
+
 def cmd_verify(args) -> None:
     from .runner import eligible, load_items
     from .verify import build_queue, load_decisions, make_server, summarize
 
     items = load_items(args.items)
     eligible_ids = None
-    if args.screen:
+    if args.screen and _is_confirm_screen(args.screen):
+        from .screening import eligible_ids as confirm_eligible
+
+        eligible_ids = confirm_eligible(args.screen)
+    elif args.screen:
         eligible_ids = set()
         for item in items:
             path = args.screen / "items" / f"{item['item_id']}.json"
@@ -332,6 +359,24 @@ def main() -> None:
     sub.add_argument("--out", type=Path, default=Path("results/screen_dev"))
     sub.set_defaults(handler=cmd_screen)
 
+    sub = commands.add_parser("freeze-screening", help="freeze stage 1: record hashes of the screening rules. No GPU")
+    sub.add_argument("--prereg", type=Path, default=Path("PREREG.md"))
+    sub.add_argument("--manifests", type=Path, nargs="+",
+                     default=[Path("manifests/gqa_confirm.jsonl"), Path("manifests/textvqa_confirm.jsonl")])
+    sub.add_argument("--record", type=Path, default=Path("freeze/screening.json"))
+    sub.set_defaults(handler=cmd_freeze_screening)
+
+    sub = commands.add_parser("screen-confirm", help="eligibility screen on confirmatory items; writes flags only (GPU)")
+    sub.add_argument("--items", type=Path, required=True, help="confirmatory manifest (JSONL)")
+    sub.add_argument("--images", type=Path, required=True, help="directory holding the image files")
+    add_model_dir(sub, choose_model=False)
+    sub.add_argument("--device", default="cuda")
+    sub.add_argument("--prereg", type=Path, default=Path("PREREG.md"))
+    sub.add_argument("--record", type=Path, default=Path("freeze/screening.json"))
+    sub.add_argument("--limit", type=int, default=None, help="screen only the first N items in manifest order")
+    sub.add_argument("--out", type=Path, required=True)
+    sub.set_defaults(handler=cmd_screen_confirm, head_precision=None)
+
     sub = commands.add_parser("pilot", help="the full grid of cells on eligible development items")
     add_item_options(sub)
     add_model_options(sub)
@@ -353,7 +398,7 @@ def main() -> None:
     sub = commands.add_parser("verify", help="hand-verify items in a local web page")
     add_item_options(sub)
     sub.add_argument("--decisions", type=Path, required=True, help="append-only JSONL, for example verification/gqa_dev.jsonl")
-    sub.add_argument("--screen", type=Path, help="queue only items eligible in this screen directory")
+    sub.add_argument("--screen", type=Path, help="queue only items eligible in this screen directory (development or confirmatory)")
     sub.add_argument("--surface", default="capitalized", choices=["lower", "capitalized", "upper"])
     sub.add_argument("--limit", type=int)
     sub.add_argument("--verifier", default=getpass.getuser())

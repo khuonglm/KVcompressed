@@ -17,7 +17,8 @@ The prompt includes a misleading description. We compare two kept sets under tha
 | 3. GPU validation (E1–E7) | Done. LLaVA passes everything on both datasets |
 | 4. Screen, pilot, hand verification (development items) | Done for both datasets |
 | 5. Your decisions, then v3.1 pilots on both datasets | Done |
-| 6. Builder fixes, GQA widening, pre-registration, timing test, coverage plots | **Next** |
+| 6. Builder fixes, GQA widening, timing test, coverage plots | Done |
+| 6b. Pre-registration and freeze tooling | **Next** |
 | 7. Freeze, then the confirmatory run once, then the analysis | Not started |
 | Second model, Qwen2.5-VL | Parked (see below) |
 
@@ -85,5 +86,5 @@ It's parked, and the code is kept.
 ## Next
 1. GQA: builder `gqa-3` is done (9,209 confirmatory candidates from `val_all`; development items unchanged). Automatic filters couldn't bring failures from 25% to 5%, so every confirmatory item will be hand-verified (about 1,350 to reach 1,000 passes).
 2. TextVQA: builder `textvqa-3` is done (at least 5 of 10 annotators must agree on the answer; 5,514 confirmatory candidates; development items unchanged). Every confirmatory item will be hand-verified too, about 1,100 items.
-3. S1 and R1 on the GPU (`scripts/gpu_s1_r1.sh`). E6 coverage plots are done.
-4. Pre-registration and freeze tooling. Then screen, verify, and run the confirmatory items once.
+3. **Done:** S1 (GQA 73%, TextVQA 60%, both in the expected ranges) and R1 (screens 1.6 h and 1.1 h, confirmatory run about 10 h, 15.3 GiB peak). E6 coverage plots are done.
+4. **Built:** `PREREG.md` draft (for your review), `freeze-screening`, `screen-confirm`. Next: review and commit PREREG, freeze, screen, verify eligible items. Then the stage-3 tooling and the confirmatory run.

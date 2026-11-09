@@ -1,0 +1,20 @@
+{
+  "stage": "screening",
+  "frozen_at": "2026-11-09T08:33:22+00:00",
+  "prereg_screening_sha256": "382d0cf7d552c919e2ccf0ee9ccaf98bbdef1ecbb53631e51c415f9d6219cea3",
+  "manifests": {
+    "gqa_confirm.jsonl": "ded6b8295a653afa55b35f75b8f8b012671d66fcf53f2c940b270250ddb7539c",
+    "textvqa_confirm.jsonl": "16fcf6fe0eae0ea2ab15cfe9b37e44d2d3161b8bfc30fc5d54d61da9bcf6d0d7"
+  },
+  "code_sha256": "c7ec1c33f969a1324ae650b3e44912676e98342850b6e725f3c755212af34fa3",
+  "settings": {
+    "model": "llava",
+    "model_id": "llava-hf/llava-1.5-7b-hf",
+    "template": "v3.1",
+    "head_precision": "fp32",
+    "surface": "capitalized",
+    "eligibility": "Full_Q greedy answer correct and margin(true - alt) > 0",
+    "max_new_tokens": 16,
+    "batch_size": 1
+  }
+}

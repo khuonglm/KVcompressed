@@ -200,7 +200,11 @@ stay. Any later Qwen work starts from that record and is reported as a labelled 
   - *S1:* 200 random questions of any type on development images (seed 0; `manifests/s1_gqa.jsonl`, `manifests/s1_textvqa.jsonl`), LLaVA-1.5's own short-answer prompt, full cache, greedy. Plausible if GQA exact-match accuracy is 50–75% (published 62.0% on testdev-balanced) and the TextVQA VQA score is 35–70% (published 58.2%, which LLaVA's evaluation gets with OCR tokens in the prompt; we give none). Outside the range means look for a bug, not tune anything. Detects bugs only; no claim.
   - *R1:* every stage of the pilot workload on the first 20 development items of each dataset: time (median, p90) and peak reserved GPU memory; projections for the screens (9,209 + 5,514 items) and 2,000 confirmatory items.
   - *E6 result (no GPU, 200 GQA development attention files):* reserve radius against 1,000 random sets of the same size: K = 288, 3.6 vs mean 7.0 (0% of random sets as good); K = 144, 6.0 vs 9.8 (0.1%); K = 72, 11.0 vs 13.1 (21%). With the reserve, the PW-attn kept set's mean radius drops from 4.7 to 2.3 (K = 288), 7.2 to 4.4 (K = 144) and 10.6 to 6.9 (K = 72). At K = 72 the 7 reserve cells include the 4 corners, so the reserve is only modestly better than random there; the coverage rule was fixed in the proposal and is reported, not changed. Figures: `results/coverage/coverage_k*.svg`.
-- **Next, not yet done:** S1 and R1 on the GPU, pre-registration, and the freeze tooling (screen of confirmatory items exposing only eligibility; the verification tool opened to confirmatory items).
+- **S1 and R1 results (9 November, GPU; `results/checks/`).** Development images only; no claim.
+  - *S1:* GQA exact match 73.0% (200 questions from `val_balanced`; range 50–75%). TextVQA VQA score 59.7% (200 questions from train and val; range 35–70%); 1 of 200 answers hit the token limit (a long book title). Both inside the ranges fixed beforehand, so no sign of a pipeline bug. A hand look at the misses found genuine model errors or the metric's usual strictness (bookshelf vs bookcase, kangaroo vs kangaroos), not scoring bugs.
+  - *R1 (first 20 development items, 33 units per item):* about 0.5 s per unit (replay, scoring and decoding), 0.1 s per prefill, 0.06 s per probe. Per item: screen 0.6–0.7 s, full pilot workload 16–18 s (mean). Projections: GQA screen (9,209) 1.6 h, TextVQA screen (5,514) 1.1 h, 2,000 confirmatory items 8.8–9.7 h. Peak reserved GPU memory 15.3 GiB of 20 GB. The confirmatory run fits in one night.
+- **Freeze stages 1 and 2 built** (9 November, user chose "screen first, then verify only eligible items"). `PREREG.md` drafted: section 1 holds the screening rules, sets and main-set rule; section 2 holds the comparative experiment and may change until stage 3. `kvsel freeze-screening` writes `freeze/screening.json` with the sha256 of PREREG section 1, both confirmatory manifests, the screening modules and the fixed settings (template v3.1, fp32 head, capitalized surface, 16 tokens). `kvsel screen-confirm` checks that record before loading the model and writes only `{item_id, eligible}` per item, plus `eligible.jsonl` and funnel counts. `kvsel verify --screen` accepts that output. Verification decisions made before the screen still count, since verification is blind.
+- **Next, not yet done:** stage 3 (the `confirm` command, the stage-3 freeze record, PREREG section 2.4). The `confirm` code goes in a new module, not in the frozen screening modules.
 
 ## 4. Repository layout
 
@@ -451,7 +455,7 @@ The whole analysis runs first on development results and simulated data, so the 
 
 ### Runtime estimate
 
-These are unmeasured guesses that R1 will replace, assuming about 0.1 s for a pass over the full prompt and about 0.15 s for one replay with scoring and decoding.
+These were unmeasured guesses, kept for the record. R1 (9 November, section 3) measured about 0.1 s per prefill but about 0.5 s per unit, not 0.15 s; the measured totals are screens 1.6 h (GQA) and 1.1 h (TextVQA), and 9–10 h for 2,000 confirmatory items with every unit.
 
 | Stage | Volume | Estimate |
 | --- | --- | --- |
