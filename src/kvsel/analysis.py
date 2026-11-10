@@ -230,7 +230,7 @@ def report(run_dir: Path, surface: str = "lower", resamples: int = RESAMPLES, ve
     if not rows:
         raise SystemExit(f"no item files under {run_dir}" if verified is None else f"no items passed in {verified}")
     wide, images = margins_wide(rows, surface)
-    selectors = sorted({r["selector"] for r in rows} - {"full", "uniform"})
+    selectors = sorted({r["selector"] for r in rows} - {"full", "uniform", "blind"})
     conditions = [c for c in ("mis", "match", "irr") if any(r["answering"] == c for r in rows)]
     lines = [
         f"# Development report: {Path(run_dir).name}", "",

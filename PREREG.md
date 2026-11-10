@@ -91,7 +91,7 @@ A screening rule can't change after stage 1 because of anything seen on confirma
   - `freeze/screening_amend1.json` supersedes it and names it with its sha256.
   - The amended screen writes to a new folder; the first screen's output is not used.
 - **Verification decisions carry over.** The main-set rule (1.6) is unchanged and is applied to the amended eligibility flags.
-- **Before this screen ran,** the share of development items the rule removes was measured with `kvsel blind-rate` (rate only).
+- **Before this screen ran,** the share of development items the rule removes was measured with `kvsel blind-rate` (rates only). On 150 verified GQA development items, all eligible, the rule removes 20%: Blind_Q's greedy answer is correct with M > 0. Blind_Q's margin alone is above 0 on 76%, so the blank-image prior often prefers a_true over a_alt without producing a_true. The rule was fixed before these rates were seen and was not changed because of them.
 
 ## 2. Comparative experiment (frozen at stage 3)
 
@@ -151,8 +151,37 @@ Items answerable without the image are excluded at screening (section 1.4, amend
   - Each dataset gets its own conclusion. An effect is called general only if both datasets pass.
   - GQA's estimates, intervals and unadjusted p-values are reported when its run ends. The Holm decisions are final once TextVQA's results exist.
   - If TextVQA is never run, the H1 family becomes GQA alone, and this is disclosed as a deviation.
-- **Sensitivity:** the margin is also reported as the log-sum over the lower and capitalized surface forms.
-- **Equivalence:** δ = 0.10 nats, tested only if the development-projected 90% half-width is below δ/2.
+- **Sensitivity:** S_H^(mis) is also reported with three other margin forms:
+  - the log-sum over the distinct lower, capitalized and upper forms;
+  - content tokens only, without `</s>`;
+  - length-normalised: the mean log-probability per token, with `</s>` counted.
+- **Analysis code:** `kvsel confirm-report` (`src/kvsel/confirm_analysis.py`). It is frozen with the rest of the code by the stage-3 record. It was checked on simulated runs with planted effects and rehearsed on the development pilots before any confirmatory run.
+- **Definitions:**
+  - **T and the exploratory S_H^(match), S_H^(irr):** computed on control-subset items only.
+  - **Behaviour:** per-item differences in the indicator of a correct (or a_alt) greedy answer, C_mis − B_mis, with the same clustered bootstrap.
+  - **H5:**
+    - Model: OLS of per-item S_H^(mis) on 1 − Jaccard(S_Q, S_mis), with an intercept. S_Q and S_mis are the PW-attn kept sets at K = 144, without the reserve.
+    - Standard errors: CR1 image-clustered.
+    - Inference: normal-approximation 95% interval and two-sided p.
+  - **H6:**
+    - Population: grounding-subset items, which are control items with a non-empty evidence box.
+    - Measure: ERR(S) = |S ∩ E| / |E|, where E is the evidence patches under each of the four mapping rules. Items whose E is empty under a rule are left out for that rule.
+    - Inference: the same bootstrap.
+  - **Mitigation (EQ1):** margin differences against PW-attn B_mis:
+    - isolation C_mis
+    - reserve B_mis + r
+    - both C_mis + r
+    - the uniform grid with QH_mis
+
+    The costs are A + r − A on neutral answering, and B_match + r − B_match and C_match − B_match on matching answering (control).
+  - **Checks reported:** Full_Q no longer eligible; Blind_Q eligible (should be 0); the mean Blind_Q margin; the share of truncated answers.
+  - **Reading:** the interval readings (positive, inconclusive, practically small, opposite direction) apply to margins in nats only.
+- **Equivalence:** δ = 0.10 nats, tested only if the development-projected 90% half-width is below δ/2 = 0.05. The test is a 90% clustered interval inside ±δ.
+  - *Projection* (10 November, v3.1 development pilots, PW-attn, verified items, capitalized). The clustered SE of S_H^(mis) was scaled by √(development images / expected confirmatory images). Expected images = 1,000 ÷ the pool's items per image.
+    - GQA: SE 0.042 on 137 images; 2.08 items per image, so about 480 images; projected 90% half-width about 0.037.
+    - TextVQA: SE 0.017 on 176 images; 1.12 items per image, so about 890 images; projected half-width about 0.012.
+  - Both are below 0.05, so equivalence is tested on both datasets.
+  - The development items predate amendment 1, so these are planning numbers only.
 
 ### 2.4 Left out of the confirmatory run
 

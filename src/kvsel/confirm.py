@@ -144,6 +144,9 @@ def run_confirm(bundle: Bundle, items: list[dict], images_dir: Path, out_dir: Pa
     Prints progress only, never margins or answers.
     """
     by_id = {item["item_id"]: item for item in items}
+    missing = [by_id[i]["image_file"] for i in selection["main"] if not (images_dir / by_id[i]["image_file"]).exists()]
+    if missing:
+        raise SystemExit(f"{len(missing)} images are missing from {images_dir} (first: {missing[0]})")
     control = set(selection["control"])
     (out_dir / "items").mkdir(parents=True, exist_ok=True)
     (out_dir / "attention").mkdir(exist_ok=True)

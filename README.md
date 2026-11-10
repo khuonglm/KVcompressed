@@ -249,6 +249,12 @@ The screen refuses to run if `PREREG.md` section 1, a manifest or the screening 
    uv run kvsel confirm --items manifests/gqa_confirm.jsonl --screen results/confirm/gqa_screen_a1 --decisions verification/gqa_confirm.jsonl --record freeze/comparative_gqa.json --images data/gqa/images --out results/confirm/gqa_run
    ```
    It refuses if anything changed since the freeze. Send back only its printed summary; don't open the item files.
+3. The pre-registered analysis, once, no GPU. TextVQA's `--textvqa-*` options join later; until then the
+   Holm decisions show as pending.
+   ```
+   uv run kvsel confirm-report --gqa-run results/confirm/gqa_run --gqa-items manifests/gqa_confirm.jsonl --gqa-record freeze/comparative_gqa.json --out results/confirm/report
+   ```
+   It refuses if the code changed since the freeze or the run is incomplete.
 
 ## TextVQA data
 

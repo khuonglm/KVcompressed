@@ -132,3 +132,13 @@ def test_confirm_runs_on_the_tiny_model(tiny_llava, tmp_path, monkeypatch):
     mtime = (tmp_path / "run" / "items" / "i0.json").stat().st_mtime
     confirm.run_confirm(bundle, items, tmp_path, tmp_path / "run", {"main": ["i0", "i1"], "control": ["i0"]})
     assert (tmp_path / "run" / "items" / "i0.json").stat().st_mtime == mtime  # finished items are skipped
+
+
+def test_confirm_refuses_missing_images_before_running(tmp_path):
+    from types import SimpleNamespace
+
+    from kvsel.families import LLAVA
+
+    bundle = SimpleNamespace(family=LLAVA)
+    with pytest.raises(SystemExit, match="images are missing"):
+        confirm.run_confirm(bundle, [make_item(0)], tmp_path, tmp_path / "run", {"main": ["i0"], "control": []})

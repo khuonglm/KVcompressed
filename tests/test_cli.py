@@ -2,6 +2,7 @@
 
 import json
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -30,7 +31,7 @@ def test_report_writes_its_output_file(monkeypatch, tmp_path, capsys):
 @pytest.mark.parametrize("command", [
     "build-gqa", "build-textvqa", "fetch-model", "fetch-images", "check-serialization", "build-s1", "s1", "timing", "coverage",
     "validate", "diagnose-e2", "check-tokenization", "screen", "pilot", "prompt-test", "verify", "report",
-    "freeze-screening", "screen-confirm", "freeze-comparative", "confirm", "blind-rate",
+    "freeze-screening", "screen-confirm", "freeze-comparative", "confirm", "blind-rate", "confirm-report",
 ])
 def test_every_command_parses_its_help(monkeypatch, command):
     with pytest.raises(SystemExit) as stopped:
@@ -134,3 +135,38 @@ def test_confirm_checks_the_freeze_before_loading_the_model(monkeypatch, tmp_pat
         run_cli(monkeypatch, "confirm", "--items", str(tmp_path / "m.jsonl"), "--screen", str(tmp_path),
                 "--decisions", str(tmp_path / "d.jsonl"), "--record", str(tmp_path / "none.json"),
                 "--images", str(tmp_path), "--out", str(tmp_path / "out"))
+
+
+def test_blind_rate_refuses_a_missing_or_empty_verification_file(monkeypatch, tmp_path):
+    from kvsel import cli
+
+    monkeypatch.setattr(cli, "_bundle", lambda args: pytest.fail("the model must not load"))
+    items = tmp_path / "items.jsonl"
+    items.write_text(json.dumps({"item_id": "a", "split": "dev"}) + "\n")
+    common = ("blind-rate", "--items", str(items), "--images", str(tmp_path), "--out", str(tmp_path / "o.json"))
+    with pytest.raises(SystemExit, match="does not exist"):
+        run_cli(monkeypatch, *common, "--verified", str(tmp_path / "missing.jsonl"))
+    (tmp_path / "d.jsonl").write_text("")
+    with pytest.raises(SystemExit, match="no items to run"):
+        run_cli(monkeypatch, *common, "--verified", str(tmp_path / "d.jsonl"))
+
+
+def test_confirm_report_passes_runs_and_records(monkeypatch, tmp_path, capsys):
+    from kvsel import confirm_analysis
+
+    seen = {}
+
+    def fake(runs, out, resamples, records):
+        seen.update(runs=runs, records=records, resamples=resamples)
+        out.mkdir(parents=True)
+        (out / "report.md").write_text("report")
+
+    monkeypatch.setattr(confirm_analysis, "confirm_report", fake)
+    run_cli(monkeypatch, "confirm-report", "--gqa-run", "r", "--gqa-items", "m.jsonl", "--gqa-record", "f.json",
+            "--resamples", "50", "--out", str(tmp_path / "o"))
+    assert seen["runs"] == {"gqa": (Path("r"), Path("m.jsonl"))} and seen["records"] == {"gqa": Path("f.json")}
+    assert seen["resamples"] == 50 and capsys.readouterr().out.strip() == "report"
+    with pytest.raises(SystemExit, match="--textvqa-items"):
+        run_cli(monkeypatch, "confirm-report", "--textvqa-run", "r", "--out", str(tmp_path / "p"))
+    with pytest.raises(SystemExit, match="at least one run"):
+        run_cli(monkeypatch, "confirm-report", "--out", str(tmp_path / "q"))

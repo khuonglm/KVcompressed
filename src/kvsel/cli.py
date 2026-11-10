@@ -179,12 +179,35 @@ def cmd_blind_rate(args) -> None:
 
     items = load_items(args.items)
     if args.verified:
+        if not args.verified.exists():
+            raise SystemExit(f"{args.verified} does not exist; copy it from the machine you verified on")
         passed = passed_items(args.verified)
         items = [item for item in items if item["item_id"] in passed]
+    if not items:
+        raise SystemExit("no items to run: no passed decisions match this manifest")
     result = run_blind_rate(_bundle(args), items[: args.limit], args.images)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(result, indent=2))
     print(json.dumps({key: value for key, value in result.items() if key != "rows"}, indent=2))
+
+
+def cmd_confirm_report(args) -> None:
+    from .confirm_analysis import confirm_report
+
+    runs, records = {}, {}
+    for dataset in ("gqa", "textvqa"):
+        run, items, record = (getattr(args, f"{dataset}_{part}") for part in ("run", "items", "record"))
+        if run is None:
+            continue
+        if items is None:
+            raise SystemExit(f"--{dataset}-items is needed with --{dataset}-run")
+        runs[dataset] = (run, items)
+        if record is not None:
+            records[dataset] = record
+    if not runs:
+        raise SystemExit("give at least one run, for example --gqa-run results/confirm/gqa_run")
+    confirm_report(runs, args.out, args.resamples, records)
+    print((args.out / "report.md").read_text())
 
 
 def cmd_pilot(args) -> None:
@@ -442,6 +465,15 @@ def main() -> None:
     sub.add_argument("--limit", type=int, default=None)
     sub.add_argument("--out", type=Path, required=True)
     sub.set_defaults(handler=cmd_blind_rate)
+
+    sub = commands.add_parser("confirm-report", help="the pre-registered analysis of confirmatory runs, Holm across datasets. No GPU")
+    for dataset in ("gqa", "textvqa"):
+        sub.add_argument(f"--{dataset}-run", type=Path, default=None, help=f"{dataset} run directory")
+        sub.add_argument(f"--{dataset}-items", type=Path, default=None, help=f"{dataset} manifest, for evidence boxes")
+        sub.add_argument(f"--{dataset}-record", type=Path, default=None, help="stage-3 record; checks the run is complete")
+    sub.add_argument("--resamples", type=int, default=10_000)
+    sub.add_argument("--out", type=Path, required=True)
+    sub.set_defaults(handler=cmd_confirm_report)
 
     sub = commands.add_parser("pilot", help="the full grid of cells on eligible development items")
     add_item_options(sub)
