@@ -256,6 +256,21 @@ The screen refuses to run if `PREREG.md` section 1, a manifest or the screening 
    ```
    It refuses if the code changed since the freeze or the run is incomplete.
 
+## Follow-ups (not confirmatory)
+
+PREREG 2.4's follow-ups on the finished GQA run: K = 288 and 72, LT-early, random seeds 0–4 and oracle
+restoration. They run as `python -m kvsel.followup`, kept outside `kvsel` so the frozen code hash stays
+the same. The confirmatory run folder must hold exactly the frozen main set.
+
+1. On the GPU, in `tmux` (about 4–5 h for all parts; `--parts budgets lt random restore` picks some). It resumes if rerun.
+   ```
+   uv run python -m kvsel.followup run --items manifests/gqa_confirm.jsonl --images data/gqa/images --confirm-run results/confirm/gqa_run --record freeze/comparative_gqa.json --out results/followup/gqa
+   ```
+2. The descriptive report (no GPU):
+   ```
+   uv run python -m kvsel.followup report --run results/followup/gqa --confirm-run results/confirm/gqa_run --items manifests/gqa_confirm.jsonl --out results/followup/gqa/report
+   ```
+
 ## TextVQA data
 
 The manifests are in `manifests/`. Only the images are needed, not the 7 GB archive: about 0.4 GB for

@@ -218,6 +218,17 @@ stay. Any later Qwen work starts from that record and is reported as a labelled 
 - **Known gap, recorded rather than changed mid-screen:** the stage-1 screening-code hash omits `geometry.py`, which holds the image padding and the blank image's colour. It hasn't changed since the freeze, and the stage-3 record hashes all code, so the comparative run is covered.
 - **Next:** finish the GQA verification on the amended screen, then the stage-3 freeze and the run.
 
+### Decision record: GQA confirmatory run and follow-ups (11 November 2026)
+
+- **GQA confirmatory run done** (`results/confirm/report`). The checks were clean: Full_Q was still eligible on all 1,000 items, Blind_Q was eligible on 0 and no answers were truncated. The run folder also held 9 item files outside the frozen main set, left over from an earlier `confirm` invocation; they were moved out unopened before the report. TODO: record how they arose. `confirm-report`'s message for this case ("rerun to finish") is misleading; it is left unchanged until TextVQA has run, because any change to `src/kvsel/*.py` breaks the stage-3 code hash.
+- **Follow-ups built** (PREREG 2.4), in `src/kvsel/followup/`, run with `python -m kvsel.followup`. They live in a subpackage because the stage-3 hash covers only `src/kvsel/*.py`; the hash is unchanged (checked). They reuse the frozen engine, selectors, runner and analysis code without changing them. They run on the confirmatory run's 1,000 items and use its K = 144 cells and Full anchors. All results are descriptive and labelled follow-ups. Definitions, fixed before any follow-up run:
+  - **Budgets:** PW-attn A, B_mis, C_mis, D_mis and the uniform grid (Q, QH_mis) at K = 288 and 72.
+  - **LT-early:** layer-2 attention from the last suffix token, mean over the 32 heads, no pooling, top K = 144; cells A–D for mis. It comes from the same probe pass as PW-attn, and that pass reproduces `engine.probe` exactly (tested).
+  - **Random:** seeds 0–4, each set seeded by `sha256(item_id, "random", seed)`; answering Q and QH_mis at K = 144. Compared with PW-attn as per-item means over the seeds.
+  - **Oracle restoration (EQ3):** on grounding items (control subset, evidence box under the primary rule), m ∈ {4, 8}. Pushed out = S_Q ∖ S_mis. Both arms drop the m lowest-scoring non-evidence entries of S_mis (QH_mis scores; ties drop the higher index). Treatment adds the m pushed-out evidence entries with the highest S_Q scores. Control adds m pushed-out *non-evidence* entries at random (seeds 0–4), so both arms restore entries the text displaced. An item qualifies for m only if it has at least m of each. Answering QH_mis. A reference rerun of B_mis checks determinism against the confirmatory run.
+  - **Not built yet:** the less-filtered population. It needs a new sample of items Full_Q answers correctly and hand verification (decision 6).
+- **Next:** run the follow-ups on GQA. TextVQA's confirmatory screen, verification and run follow under the same frozen code.
+
 ## 4. Repository layout
 
 ```
