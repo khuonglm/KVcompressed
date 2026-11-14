@@ -225,6 +225,3 @@ __marimo__/
 /verification/
 .DS_Store
 /models/
-
-# Claude Code project skills (local only)
-/.claude/skills/

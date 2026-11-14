@@ -1,92 +1,163 @@
-# Status report, 9 November 2026
+# Status report, 12 November 2026
 
 ## The study
 Does unreliable text steer which visual entries LLaVA-1.5-7B keeps when its cache is compressed?
 
 The prompt includes a misleading description. We compare two kept sets under that same prompt:
-- **B:** visual entries chosen with the description in view.
-- **C:** visual entries chosen from the question only.
+- **B:** visual entries chosen with the description in view (S_mis).
+- **C:** visual entries chosen from the question only (S_Q).
 
-**Main measure:** S_H^(mis) = margin(C) − margin(B), where the margin is log p(true answer) − log p(wrong answer), in nats. T_match and T_irr check that the effect comes from *false* text, not from any added text.
+**Main measure:** S_H^(mis) = margin(C) − margin(B), where the margin is log p(true answer) − log p(misleading alternative), in nats. A positive value means the description steered selection toward worse entries.
+
+**Other estimands** (all at K = 144 of 576 visual entries unless noted):
+- **T_match, T_irr:** S_H^(mis) minus S_H under a matching or an irrelevant description. They ask whether the effect comes from false text specifically.
+- **S_Q^(mis):** margin(A) − margin(D). This is the steered set's cost when the prompt is clean.
+- **E_harm^(mis):** how much more compression hurts with the misleading description than without it.
+- **I^(mis):** S_H − S_Q.
 
 ## Where we are
 | Stage | Status |
 | --- | --- |
-| 1. Pipeline and tests | Done |
-| 2. Datasets (GQA, TextVQA) | Done |
-| 3. GPU validation (E1–E7) | Done. LLaVA passes everything on both datasets |
-| 4. Screen, pilot, hand verification (development items) | Done for both datasets |
-| 5. Your decisions, then v3.1 pilots on both datasets | Done |
-| 6. Builder fixes, GQA widening, timing test, coverage plots | Done |
-| 6b. Pre-registration, freeze, GQA screen and verification | Done |
-| 6c. GQA amendment 1 (blind filter): new screen, verify to 1,000 | **Next** |
-| 6d. GQA stage-3 freeze and confirmatory run | Not started |
-| 7. Freeze, then the confirmatory run once, then the analysis | Not started |
-| Second model, Qwen2.5-VL | Parked (see below) |
+| 1–6. Pipeline, datasets, GPU validation, development pilots, prompt v3.1, builder fixes | Done |
+| 6b. Pre-registration (`PREREG.md`), stage-1 freeze, GQA screen | Done |
+| 6c. Amendment 1 (blind filter), new GQA screen, verification to 1,000 passes | Done |
+| 6d. GQA stage-3 freeze, confirmatory run, pre-registered analysis | **Done** (11 November) |
+| 6e. GQA follow-ups (PREREG 2.4) | **Done** (11 November): budgets, LT-early, random seeds, restoration |
+| 7. TextVQA: screen, verification, freeze, run, joint analysis | **Next** |
+| Second model, Qwen2.5-VL | Parked |
 
-## Data
-| | GQA | TextVQA |
-| --- | ---: | ---: |
-| Development items | 600 | 1,500 |
-| Confirmatory pool | 9,209 | 5,514 |
-| Eligible (model answers correctly with no description) | 351 of 600 (58%) | 888 of 1,500 (59%) |
-| Passed hand verification | 150 of 200 (75%) | 188 of 200 (94%) |
+## GQA confirmatory data
+| | GQA |
+| --- | ---: |
+| Confirmatory pool screened | 9,209 |
+| Eligible: Full_Q correct with a positive margin, and **not** answerable from a blank image (amendment 1) | 4,586 (50%) |
+| Main set: first 1,000 eligible items that passed hand verification, in manifest order | 1,000 items on 708 images |
+| Control subset (all descriptions) / grounding subset (evidence box) | 300 / 300 |
 
-GQA's confirmatory pool is now 9,209 candidates (builder `gqa-3`, from `val_all`). GQA labels fail hand verification 25% of the time and TextVQA's 6%, so every confirmatory item on both datasets will be hand-verified (no audit).
+**Checks on the run:**
+- Full_Q stayed eligible on all 1,000 items.
+- Blind_Q became eligible on 0.
+- No answers were truncated.
 
-## GQA pilot results
-*Development items only, so these are not claims.* 150 verified items.
+**Procedural notes:**
+- The verification decisions had 61 gaps: eligible items never decided. They were filled before the freeze, with bad items failed with a reason rather than skipped.
+- The run folder also held 9 item files outside the frozen main set, left over from an earlier `confirm` call. They were moved out unopened before the analysis. *TODO: record how they arose.*
 
-- **Main effect:** S_H^(mis) = **+0.23 nats [+0.14, +0.32]**. Choosing visual entries from the question only is better than choosing them with the misleading description in view.
-- **Specific to false text:** with a matching or an irrelevant description, the effect is about +0.02. T ≈ +0.20.
-- **But answers don't change:** the model follows the misleading description about 99% of the time, even with the full cache. Its margin there is about −3.5 nats, and a 0.23 shift can't flip that.
-- **The misleading kept set hurts on its own:** with no description in the prompt, correct answers drop from 97% to 93% (cell D).
-- **H3 isn't supported:** extra compression damage under the misleading description is −0.12, inconclusive. H3 predicted a positive value.
-- **Sanity check:** the attention selector works. Uniform selection gets 81% correct, against 97% for the selector.
+## Confirmatory results (GQA)
+These are the pre-registered results. All tests are two-sided, with an image-clustered bootstrap (10,000 resamples). The Holm decisions are formally **pending** until TextVQA runs. But p = 0.0002 is the smallest p this bootstrap can produce, so H1, H3 and H4 will survive Holm whatever TextVQA shows. T_irr (p = 0.13) cannot survive. Only T_match depends on TextVQA.
 
-## TextVQA pilot results
-188 verified items. This is the opposite picture from GQA.
+![Pre-registered tests](figures/fig1_tests.png)
 
-- **The model mostly resists the misleading text:** 90% correct with the full cache; only 4% give the wrong alternative.
-- **Main effect reversed:** S_H^(mis) = **−0.10 [−0.15, −0.05]**. Here, choosing entries with the misleading description in view does slightly *better*. T_match and T_irr are negative too.
-- **H3 holds here:** E_harm^(mis) = +0.53. Compression hurts more under the misleading description.
-- **Question-span selection** shows no effect (S_H ≈ 0).
+| Hypothesis | Estimate (nats) | 95% interval | p | Reading |
+| --- | ---: | --- | ---: | --- |
+| **H1** S_H^(mis) | **+0.111** | [+0.080, +0.144] | 0.0002 | Misleading text steers selection, and it costs margin |
+| H2 T_match | +0.057 | [+0.008, +0.116] | 0.019 | Steering is larger than with matching text |
+| H2 T_irr | +0.033 | [−0.009, +0.082] | 0.13 | Can't be told apart from irrelevant text |
+| **H3** E_harm^(mis) | **−0.121** | [−0.166, −0.076] | 0.0002 | **Opposite to the prediction** at K = 144 |
+| H4 S_Q^(mis) | +0.056 | [+0.029, +0.086] | 0.0002 | The steered set is worse even with a clean prompt |
+| Equivalence (δ = 0.10) | 90% CI [+0.085, +0.139] | | | Not negligible by the pre-registered bar |
 
-## v3.1 pilots (9 November)
-*Development only.* Template v3.1 labels the description "Unverified description, possibly wrong:".
+**Exploratory results:**
+- I^(mis) = +0.056.
+- S_H^(irr) = +0.041: irrelevant text steers a little.
+- S_H^(match) = +0.017 (n.s.).
+- The question-span selector isn't steered (+0.015, n.s.).
+- S_H keeps the same direction and significance under all three alternative margin forms.
 
-| | GQA (150) | TextVQA (188) |
-| --- | --- | --- |
-| Full cache, misleading answer given | 46% (was 99%) | 2% (was 4%) |
-| S_H^(mis) | **+0.09 [+0.02, +0.18]** | −0.01 [−0.05, +0.02] |
-| T_match / T_irr | +0.07 / +0.06, inconclusive | −0.07 / −0.07 |
-| I^(mis), exploratory | −0.00 [−0.05, +0.06] | −0.04 |
-| E_harm^(mis), H3 | −0.21, opposite to the prediction | +0.45, but positive for every description |
+### Scale: steering is small next to the text's direct effect
+![Mean margins](figures/fig2_margins.png)
 
-- **GQA:** a smaller effect than under v3.0, but answers can now flip. I ≈ 0 means no evidence that the steered kept set hurts *more* when the lie is present.
-- **TextVQA:** no steering effect.
-- **Tokenization:** 200/200 and 199/200.
+- The misleading description costs about **4.6 nats** directly, through decoding: Full_Q is 5.09 and Full_mis is 0.48.
+- Selection steering adds 0.11 on top of that.
+- Compressing slightly *raises* the margin under misleading text: B_mis (0.75) and C_mis (0.86) are both above Full_mis (0.48). That is why E_harm is negative at K = 144.
+
+### Answers
+![Behaviour](figures/fig5_behaviour.png)
+
+- With the full cache and misleading text, the model gives the misleading alternative 41% of the time.
+- Selecting with the question only (C) raises correct answers from 63.6% to 65.5% (+1.9 points, p = 0.003).
+
+### Mechanism
+![Mechanism](figures/fig6_mechanism.png)
+
+- **H6:** the steered set keeps 3–4 points less of the annotated evidence region, under all four mapping rules.
+- **H5:** the more the description changes the kept set, the larger the harm. The slope is +2.65 per unit of (1 − Jaccard), SE 0.52. The mean Jaccard(S_Q, S_mis) is 0.86.
+
+### Mitigation
+![Mitigation](figures/fig7_mitigation.png)
+
+- Isolation, meaning selecting with the question only, recovers the full +0.11.
+- The 10% coverage reserve does nothing for the misleading text (−0.016, n.s.). It slightly helps neutral and matching prompts.
+- The uniform grid is far worse than PW-attn (−1.26).
+
+## Follow-ups (GQA, not confirmatory)
+These are PREREG 2.4's follow-ups, run on the same 1,000 items. They are descriptive and carry no claims. The consistency checks were perfect: the K = 144 kept sets matched the confirmatory run 100%, and the rerun B_mis margin matched exactly.
+
+### Budget: steering grows as the budget shrinks
+![Budgets](figures/fig3_budget.png)
+
+| K | S_H^(mis) | S_Q^(mis) | E_harm^(mis) | Uniform − B_mis |
+| ---: | ---: | ---: | ---: | ---: |
+| 288 | +0.050 | +0.019 | −0.073 | −0.54 |
+| 144 | +0.111 | +0.056 | −0.121 | −1.26 |
+| 72 | **+0.219** | +0.187 | **+0.155** | −2.36 |
+
+- S_H roughly doubles each time the budget halves.
+- **E_harm changes sign at K = 72.** At a tight budget, misleading text *does* make compression worse, as H3 originally predicted. The negative confirmatory result holds only at generous budgets.
+
+### Selectors: the steering is specific to PW-attn, and attention still pays
+![Selectors](figures/fig4_selectors.png)
+
+- **Steering:**
+  - PW-attn: +0.111.
+  - Question-span: +0.015 (n.s.).
+  - LT-early: −0.075.
+
+  Only PW-attn, whose attention window comes after the description, is steered toward worse entries.
+- **Selection quality under misleading text, relative to PW-attn B_mis:**
+  - random sets: −1.60;
+  - uniform grid: −1.26;
+  - LT-early: −1.06.
+
+  Steered PW-attn is still far better than text-agnostic selection. Its steering costs 0.11; attention selection itself gains about 1.6.
+
+### Oracle restoration (EQ3): too few items
+Restoration puts back m entries that the description pushed out of S_Q, either evidence entries or non-evidence entries as the control.
+- **Qualifying items:** only 49 of 300 at m = 4, and 8 at m = 8.
+- **At m = 4:**
+  - Restoring evidence gains +0.128 [+0.023, +0.274].
+  - Restoring non-evidence gains +0.033.
+  - The difference, +0.095 [−0.011, +0.241], is inconclusive.
+- **At m = 8:** there are too few items to read.
+
+## Reading of the GQA results
+- **The description steers PW-attn's selection toward worse patches.** The mechanism holds together: harm grows with how much the kept set changes, less evidence is kept, and the effect grows as K shrinks.
+- **The size:** small at K = 144 (0.11 nats, about 2 points of correct answers), substantial at K = 72.
+- **It is small next to** the description's direct effect on decoding (4.6 nats) and next to the value of attention-based selection (about 1.6 nats over random).
+- **Practical implication:** keep attention-based selection, but select with the question only (isolation). That costs nothing measurable with matching text.
+
+## Development pilots (9 November, no claims)
+These are kept for the record.
+- **GQA v3.1 (150 items):** S_H^(mis) = +0.09 [+0.02, +0.18]; E_harm = −0.21. The confirmatory run agrees in direction on both.
+- **TextVQA v3.1 (188 items):**
+  - S_H^(mis) = −0.01 (no steering).
+  - E_harm = +0.45, but positive for every description.
+  - The model mostly resists the misleading text (2% alternative answers).
+- Template v3.1 ("Unverified description, possibly wrong:") cut GQA's alternative-answer rate with the full cache from 99% to 46% in development. The confirmatory run gave 41%.
 
 ## Qwen2.5-VL-7B
-Added as a model that follows text less readily. After two precision fixes it still fails one validation test:
-- **The failure:** compressed replay differs from the reference by 0.038 nats, against a 0.01 limit.
-- **The cause:** its bf16 numbers. The full model in fp32 doesn't fit on the GPU.
-
-It's parked, and the code is kept.
-
-## Decisions
-| # | Question | Status |
-| --- | --- | --- |
-| 1 | The model almost always follows the misleading text | **Done:** prompt test → template v3.1 ("Unverified description, possibly wrong:"). GQA adoption 99% → 46% |
-| 2 | H3's direction | **Done:** two-sided |
-| 3 | I^(mis) | **Done:** reported outside Holm, exploratory |
-| 4 | GQA size | **Done:** widen to 1,000, together with a builder fix for the 25% verification failures |
-| 5 | TextVQA | **Done:** kept |
-| 6 | Primary selector | **Done:** PW-attn |
-| 7 | H1, H2 one-sided, but TextVQA points the other way | **Done:** all confirmatory tests two-sided |
+Parked. Compressed replay differs from the reference by 0.038 nats, against a 0.01 limit, because of its bf16 numbers. The code is kept.
 
 ## Next
-1. GQA: builder `gqa-3` is done (9,209 confirmatory candidates from `val_all`; development items unchanged). Automatic filters couldn't bring failures from 25% to 5%, so every confirmatory item will be hand-verified (about 1,350 to reach 1,000 passes).
-2. TextVQA: builder `textvqa-3` is done (at least 5 of 10 annotators must agree on the answer; 5,514 confirmatory candidates; development items unchanged). Every confirmatory item will be hand-verified too, about 1,100 items.
-3. **Done:** S1 (GQA 73%, TextVQA 60%, both in the expected ranges) and R1 (screens 1.6 h and 1.1 h, confirmatory run about 10 h, 15.3 GiB peak). E6 coverage plots are done.
-4. **Built:** `PREREG.md` draft (for your review), `freeze-screening`, `screen-confirm`. Next: review and commit PREREG, freeze, screen, verify eligible items. Then the stage-3 tooling and the confirmatory run.
+1. **TextVQA, under the frozen protocol:** screen, verify to 1,000 passes, freeze, run, then the joint `confirm-report`. That finalises the Holm decisions.
+2. **Record the 9 extra run files** in the plan.
+3. **Possible further follow-ups, each defined before it is run:**
+   - mitigation at K = 72;
+   - a fused selector;
+   - a hint-masked probe;
+   - PW-attn window and layer ablations;
+   - matching and irrelevant text at K = 72;
+   - restoration with a smaller m;
+   - free analyses of which patches get pushed out and which items are steered.
+
+Figures: `documents/figures/`. Rebuild them with `uv run python scripts/report_figures.py`. The follow-up numbers are transcribed in `documents/figures/followup_gqa.json` from the server's follow-up report.
