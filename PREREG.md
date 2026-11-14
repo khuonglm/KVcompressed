@@ -204,8 +204,6 @@ These are not part of the confirmatory study. Any of them run later is labelled 
 
 ## 3. GQA replication on fresh items
 
-DRAFT (15 November 2026). Review this section and delete this line before `python -m kvsel.replication freeze`.
-
 Section 2's GQA run and its follow-ups (2.4) suggested that steering grows as the budget shrinks, that E_harm^(mis) changes sign at K = 72, and that irrelevant text steers selection too. Those observations came from the same 1,000 items after their outcomes were seen, so they are exploratory. This section tests them once on fresh items, under rules fixed before any outcome on those items exists. The hypotheses below were chosen *because* of the earlier results; that is the point of a replication, and the report says so.
 
 Everything not stated here is as in sections 1 and 2: model, prompt, surface rule (`capitalized`), margin, PW-attn's definition, replay, bootstrap (image-clustered, 10,000 resamples, seed 0, 95% percentile interval), the two-sided p-value formula, and the interval readings.
