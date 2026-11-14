@@ -217,7 +217,7 @@ Everything not stated here is as in sections 1 and 2: model, prompt, surface rul
   3. stop at the first eligible item that is not verified; pass over failed items;
   4. the first 1,000 that passed form the **replication set**; its first 300 form the **control subset**.
 - No item is verified again, and no item is added, dropped or repaired after the freeze.
-- The excluded ids and the reason for each are stored in the freeze record (3.6). `python -m kvsel.replication count` applies this rule and prints counts only.
+- The excluded ids and the reason for each are stored in the freeze record (3.5). `python -m kvsel.replication count` applies this rule and prints counts only.
 
 ### 3.2 Configuration
 
@@ -256,7 +256,7 @@ Estimands are those of 2.3, computed separately at each K. One change: **T_irr =
 
 ### 3.5 Records and code
 
-- **Freeze:** `python -m kvsel.replication freeze` writes `freeze/replication_gqa.json`. It stores the sha256 of this file, of the latest stage-1 record (amendment 2), of the manifest and of the screen flags, the hash of the replication set with its verification digests, the excluded ids with reasons, the settings, and a hash of all code under `src/kvsel/`, subfolders included. It refuses while this section is marked DRAFT and refuses to overwrite a different record.
-- **Run and report** refuse if anything in the record changed. Code changes after the freeze follow 1.9: dated, outcome-blind, shown to reproduce, and listed in `freeze/code_amendments.json`.
+- **Freeze:** `python -m kvsel.replication freeze` writes `freeze/replication_gqa.json`. It stores the sha256 of this file, of the latest stage-1 record (amendment 2), of the GQA stage-3 record (section 2), of the manifest and of the screen flags, the hash of the replication set with its verification digests, the earlier run folders given to it, the excluded ids with reasons, the settings (units, budgets, Blind_Q, surface rule, the hypotheses, α and δ), and a hash of all code under `src/kvsel/`, subfolders included. It refuses while this section is marked DRAFT and refuses to overwrite a different record.
+- **Run and report** recompute this state and refuse if anything in the record changed. Code changes after the freeze follow 1.9: dated, outcome-blind, shown to reproduce, and listed in `freeze/code_amendments.json`.
 - **Order:** no comparative unit runs on any replication item before the freeze record is committed.
 - The replication code is a subpackage outside `src/kvsel/*.py`, so the GQA stage-3 record's code hash (section 2) is unaffected.

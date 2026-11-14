@@ -13,7 +13,8 @@
 set -euo pipefail
 
 : "${EXCLUDE:?set EXCLUDE to the earlier run folders (see the usage line)}"
-for folder in $EXCLUDE; do
+read -ra EXCLUDE_DIRS <<< "$EXCLUDE"  # split on spaces only, no globbing
+for folder in "${EXCLUDE_DIRS[@]}"; do
   [[ -d "$folder" ]] || { echo "EXCLUDE folder not found: $folder" >&2; exit 1; }
 done
 
@@ -22,7 +23,7 @@ SCREEN=results/confirm/gqa_screen_a1
 DECISIONS=verification/gqa_confirm.jsonl
 RECORD=freeze/replication_gqa.json
 OUT=results/replication
-COMMON=(--items "$ITEMS" --screen "$SCREEN" --decisions "$DECISIONS" --exclude-runs $EXCLUDE)
+COMMON=(--items "$ITEMS" --screen "$SCREEN" --decisions "$DECISIONS" --exclude-runs "${EXCLUDE_DIRS[@]}")
 
 mkdir -p "$OUT"
 exec > >(tee -a "$OUT/overnight.log") 2>&1
@@ -42,7 +43,7 @@ step "3/4 run (GPU, about 4 h)"
 uv run python -m kvsel.replication run "${COMMON[@]}" --images data/gqa/images --out "$OUT/gqa_run"
 
 step "4/4 report"
-uv run python -m kvsel.replication report --run "$OUT/gqa_run" \
+uv run python -m kvsel.replication report "${COMMON[@]}" --run "$OUT/gqa_run" \
   --original-confirm results/confirm/report/results.json \
   --original-followup results/followup/gqa/report/results.json \
   --out "$OUT/report"

@@ -6,12 +6,9 @@ from pathlib import Path
 
 from ..confirm_analysis import load_run
 from ..model import Bundle
-from ..runner import NO_CONTEXT, Q, Unit, open_image, run_item, write_json_atomic
+from ..runner import open_image, run_item, write_json_atomic
 from ..screening import blank_image
-from .protocol import units
-from .report import checks
-
-BLIND = Unit("full", 576, False, NO_CONTEXT, Q)
+from .protocol import BLIND, checks, units
 
 
 def run_replication(bundle: Bundle, items: list[dict], images_dir: Path, out_dir: Path, selection: dict) -> dict:
@@ -28,7 +25,7 @@ def run_replication(bundle: Bundle, items: list[dict], images_dir: Path, out_dir
         target = out_dir / "items" / f"{item_id}.json"
         if not target.exists():
             item = by_id[item_id]
-            result, _ = run_item(bundle, item, open_image(images_dir, item), units(item_id in control))
+            result, _ = run_item(bundle, item, open_image(images_dir, item), units(control=item_id in control))
             blind, _ = run_item(bundle, item, blank, [BLIND])
             result["rows"].append({**blind["rows"][0], "selector": "blind"})
             result["subset"] = "control" if item_id in control else "main"

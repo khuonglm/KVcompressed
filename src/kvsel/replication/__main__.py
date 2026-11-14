@@ -55,7 +55,10 @@ def cmd_run(args) -> None:
 
 
 def cmd_report(args) -> None:
+    from .protocol import check
     from .report import replication_report
+
+    check(**_protocol_args(args))
 
     results = replication_report(args.run, args.record, args.out, args.resamples, args.original_confirm,
                                  args.original_followup)
@@ -80,11 +83,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m kvsel.replication", description="GQA replication (PREREG 3)")
     commands = parser.add_subparsers(dest="command", required=True)
     sub = commands.add_parser("count", help="how many fresh items qualify; flags and decisions only. No GPU")
-    sub.add_argument("--items", type=Path, required=True, help="confirmatory manifest (JSONL)")
-    sub.add_argument("--screen", type=Path, required=True, help="the amendment-1 screen folder")
-    sub.add_argument("--decisions", type=Path, required=True, help="verification decisions (JSONL)")
-    sub.add_argument("--exclude-runs", type=Path, nargs="*", default=[],
-                     help="earlier run folders; any item with a file in them is left out")
+    _add_protocol(sub)
     sub.set_defaults(handler=cmd_count)
 
     sub = commands.add_parser("freeze", help="freeze the replication protocol and set. No GPU")
@@ -99,9 +98,9 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_argument("--device", default="cuda")
     sub.set_defaults(handler=cmd_run, head_precision=None)
 
-    sub = commands.add_parser("report", help="the pre-registered replication analysis. No GPU")
+    sub = commands.add_parser("report", help="the pre-registered replication analysis; rechecks the freeze. No GPU")
+    _add_protocol(sub)
     sub.add_argument("--run", type=Path, required=True)
-    sub.add_argument("--record", type=Path, default=RECORD)
     sub.add_argument("--resamples", type=int, default=RESAMPLES)
     sub.add_argument("--original-confirm", type=Path, default=None, help="the GQA confirm-report results.json")
     sub.add_argument("--original-followup", type=Path, default=None, help="the follow-up report results.json")

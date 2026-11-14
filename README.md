@@ -248,9 +248,10 @@ EXCLUDE="results/confirm/gqa_run results/followup/gqa <folder with the 9 extra i
    Send me only its final summary (item counts and the two consistency counts); don't open the item files.
 5. The pre-registered analysis, once, no GPU (a few minutes):
    ```
-   uv run python -m kvsel.replication report --run results/replication/gqa_run --original-confirm results/confirm/report/results.json --original-followup results/followup/gqa/report/results.json --out results/replication/report
+   uv run python -m kvsel.replication report --items manifests/gqa_confirm.jsonl --screen results/confirm/gqa_screen_a1 --decisions verification/gqa_confirm.jsonl --exclude-runs $EXCLUDE --run results/replication/gqa_run --original-confirm results/confirm/report/results.json --original-followup results/followup/gqa/report/results.json --out results/replication/report
    ```
-   It refuses missing or extra item files and code changed since the freeze. Send me `report.md`.
+   It refuses, as `run` does, if anything changed since the freeze (code changes only through
+   `freeze/code_amendments.json`), and refuses missing or extra item files. Send me `report.md`.
 
 ## TextVQA data
 

@@ -116,7 +116,8 @@ def test_gqa_stage3_code_hash_still_accepted():
 # --- Freeze, run and report (ticket 03) ---------------------------------------------------------------
 
 PREREG = ("# Pre-registration\n\n## 1. Screening rules\nrule\n\n## 2. Comparative experiment\nPW-attn.\n\n"
-          "## 3. GQA replication on fresh items\n\nDRAFT (date). Review this section.\n\nR1.\n")
+          "## 3. GQA replication on fresh items\n\nDRAFT (date). Review this section.\n\n"
+          "R1. The freeze refuses while this section is marked DRAFT.\n")
 
 
 @pytest.fixture
@@ -195,6 +196,50 @@ def test_freeze_refuses_a_short_set_and_a_changed_main_set(world, tmp_path):
     assert not record.exists()
 
 
+def test_check_refuses_changes_and_accepts_only_amended_code(world, tmp_path, monkeypatch):
+    from kvsel.confirm_analysis import CODE_AMENDMENTS
+    from kvsel.replication import protocol
+
+    _, args, record = world
+    undraft(args["prereg"])
+    frozen = protocol.freeze(record=record, **args)
+    old_run = tmp_path / "old_run"
+    old_run.mkdir()
+    with pytest.raises(SystemExit, match="exclude_runs"):  # a different exclusion list, even an empty folder
+        protocol.check(record=record, **{**args, "exclude_runs": [old_run]})
+    monkeypatch.setattr(protocol, "code_hash_tree", lambda: "new code")
+    with pytest.raises(SystemExit, match="code_sha256"):
+        protocol.check(record=record, **args)
+    (record.parent / CODE_AMENDMENTS).write_text(json.dumps([{"from": frozen["code_sha256"], "to": "new code",
+                                                               "date": "2026-11-20", "reason": "r", "evidence": "e"}]))
+    assert protocol.check(record=record, **args)["replication_ids"] == ["i2", "i3", "i4"]
+    args["prereg"].write_text(args["prereg"].read_text() + "\nAn edit after the freeze.\n")
+    with pytest.raises(SystemExit, match="prereg_sha256"):
+        protocol.check(record=record, **args)
+
+
+def test_selection_matches_the_frozen_main_set_rule(sizes, tmp_path, monkeypatch):
+    """With no shared images or earlier runs, the replication rule picks what `confirm.main_set` would."""
+    monkeypatch.setattr(confirm, "MAIN_SIZE", 3)
+    monkeypatch.setattr(confirm, "CONTROL_SIZE", 1)
+    items = [item(i) for i in range(10)]
+    eligible = {i: i not in (3, 6) for i in range(10)}
+    screen = tmp_path / "screen"
+    screen.mkdir()
+    (screen / "eligible.jsonl").write_text("".join(json.dumps({"item_id": f"i{i}", "eligible": e}) + "\n"
+                                                   for i, e in eligible.items()))
+    verdicts = {i: FAIL if i in (2, 5) else PASS for i in range(10)}
+    path = tmp_path / "d.jsonl"
+    for i, verdict in verdicts.items():
+        append_decision(path, items[i], verdict, "tester")
+    decisions, _ = load_decisions(path, items)
+    flags = {f"i{i}": e for i, e in eligible.items()}
+    chosen = select.replication_set(items, flags, decisions, ["i0"], set())
+    frozen = confirm.main_set(items[1:], screen, path)
+    assert chosen["replication"] == frozen["main"] == ["i1", "i4", "i7"]
+    assert chosen["failed"] == frozen["failed_before_cutoff"] == 2
+
+
 def test_the_tree_hash_covers_subpackages():
     from kvsel.replication import protocol
 
@@ -222,7 +267,7 @@ def synthetic_run(tmp_path, ids, control, mis=None, irr=None, noise=0.05, seed=0
     for n, item_id in enumerate(ids):
         a, b = 2 + generator.normal(0, 0.5), 1 + generator.normal(0, 0.5)
         rows = []
-        for unit in units(item_id in control):
+        for unit in units(control=item_id in control):
             cell = cell_name(unit)
             effect = {"C_mis": mis, "C_irr": irr}.get(cell)
             value = (b + effect[unit.k] + generator.normal(0, noise) if effect
@@ -278,7 +323,7 @@ def test_holm_family_of_six_and_equivalence(tmp_path):
 
 
 def test_report_prints_the_original_estimates_beside(tmp_path):
-    from kvsel.replication import protocol, report
+    from kvsel.replication import report
 
     original = {"S_H^(mis)": {"estimate": 0.111, "ci95": [0.08, 0.144], "p_two_sided": 0.0002, "items": 1000,
                               "images": 708}}
@@ -286,18 +331,25 @@ def test_report_prints_the_original_estimates_beside(tmp_path):
     confirm_results.write_text(json.dumps({"datasets": {"gqa": {"tests": original, "exploratory": {}}}}))
     followup_results = tmp_path / "followup.json"
     followup_results.write_text(json.dumps({"parts": {"budgets": {"by_k": {"72": {"S_H^(mis)": {
-        **original["S_H^(mis)"], "estimate": 0.219}}}}}}))
+        **original["S_H^(mis)"], "estimate": -0.219}}}}}}))
     ids = [f"r{i}" for i in range(20)]
     record = tmp_path / "replication_gqa.json"
-    record.write_text(json.dumps({"replication_ids": ids, "control_ids": ids[:5], "code_sha256": protocol.code_hash_tree()}))
-    out = report.replication_report(synthetic_run(tmp_path, ids, set(ids[:5])), record, tmp_path / "out", resamples=100,
+    record.write_text(json.dumps({"replication_ids": ids, "control_ids": ids[:5]}))
+    out = report.replication_report(synthetic_run(tmp_path, ids, set(ids[:5])), record, tmp_path / "out", resamples=1000,
                                     original_confirm=confirm_results, original_followup=followup_results)
     assert out["original"]["144"]["S_H^(mis)"]["estimate"] == 0.111
-    assert out["original"]["72"]["S_H^(mis)"]["estimate"] == 0.219
-    assert "+0.219" in (tmp_path / "out" / "report.md").read_text()
+    assert out["original"]["72"]["S_H^(mis)"]["estimate"] == -0.219
+    text = (tmp_path / "out" / "report.md").read_text()
+    assert "-0.219" in text
+    # PREREG 3.3: the planted +0.3 is rejected at both budgets; at K = 72 the original was negative
+    assert out["family"]["reading"]["R1: S_H^(mis), K = 144"] == "replicated"
+    assert out["family"]["reading"]["R1: S_H^(mis), K = 72"] == "failed replication: opposite to the original"
+    assert out["family"]["reading"]["R2: S_H^(irr), K = 144"] == "not rejected"
+    assert out["family"]["reading"]["R5: T_irr, K = 72"] == "rejected (no original estimate to compare)"
+    assert "failed replication" in text
 
 
-def test_report_refuses_missing_or_extra_items_and_changed_code(tmp_path):
+def test_report_refuses_missing_or_extra_items(tmp_path):
     from kvsel.replication import protocol, report
 
     ids = [f"r{i}" for i in range(6)]
@@ -311,13 +363,10 @@ def test_report_refuses_missing_or_extra_items_and_changed_code(tmp_path):
                                   "code_sha256": protocol.code_hash_tree()}))
     with pytest.raises(SystemExit, match="1 extra"):
         report.replication_report(run, record, tmp_path / "out", resamples=50)
-    record.write_text(json.dumps({"replication_ids": ids, "control_ids": ids[:2], "code_sha256": "0" * 64}))
-    with pytest.raises(SystemExit, match="code changed"):
-        report.replication_report(run, record, tmp_path / "out", resamples=50)
 
 
 @pytest.mark.network
-def test_run_on_the_tiny_model(tiny_llava, tmp_path):
+def test_run_on_the_tiny_model(tiny_llava, tmp_path, capsys):
     from PIL import Image
 
     from kvsel.model import bundle_from_model, load_image_processor, load_tokenizer
@@ -329,12 +378,13 @@ def test_run_on_the_tiny_model(tiny_llava, tmp_path):
     items = [item(0), item(1)]
     selection = {"replication_ids": ["i0", "i1"], "control_ids": ["i0"]}
     summary = run_replication(bundle, items, tmp_path, tmp_path / "run", selection)
+    assert capsys.readouterr().out == "2/2 items\n"  # progress only, no per-item outcome
     assert summary["items"] == 2 and summary["control"] == 1 and summary["blind_now_eligible"] in (0, 1, 2)
     control = json.loads((tmp_path / "run" / "items" / "i0.json").read_text())
     main = json.loads((tmp_path / "run" / "items" / "i1.json").read_text())
     assert main["subset"] == "main" and control["subset"] == "control"
     for data, control_item in ((main, False), (control, True)):
-        expected = [(u.selector, u.k, u.selection, u.answering) for u in units(control_item)] + [("blind", 576, "none", "Q")]
+        expected = [(u.selector, u.k, u.selection, u.answering) for u in units(control=control_item)] + [("blind", 576, "none", "Q")]
         assert [(r["selector"], r["k"], r["selection"], r["answering"]) for r in data["rows"]] == expected
     assert not any("match" in r["cell"] for r in main["rows"])
     assert {r["cell"] for r in control["rows"]} >= {"B_match", "C_match", "D_match", "match", "B_irr"}
@@ -366,5 +416,8 @@ def test_commands_freeze_run_and_report(world, tmp_path, monkeypatch, capsys):
     main(["run", *common, "--images", str(tmp_path), "--out", str(tmp_path / "run")])
     assert seen == {"ids": ["i2", "i3", "i4"], "out": tmp_path / "run"}
     run = synthetic_run(tmp_path / "synthetic", ["i2", "i3", "i4"], {"i2"})
-    main(["report", "--run", str(run), "--record", str(record), "--resamples", "50", "--out", str(tmp_path / "rep")])
+    main(["report", *common, "--run", str(run), "--resamples", "50", "--out", str(tmp_path / "rep")])
     assert "K = 144" in (tmp_path / "rep" / "report.md").read_text()
+    args["prereg"].write_text(args["prereg"].read_text() + "\nAn edit after the freeze.\n")
+    with pytest.raises(SystemExit, match="prereg_sha256"):  # report rechecks the freeze, not only the code
+        main(["report", *common, "--run", str(run), "--resamples", "50", "--out", str(tmp_path / "rep")])

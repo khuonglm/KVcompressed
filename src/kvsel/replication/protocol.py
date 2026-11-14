@@ -1,8 +1,11 @@
 """The replication's units and its freeze (PREREG section 3.2 and 3.5).
 
 `freeze` records hashes of PREREG.md, the stage-1 record, the GQA stage-3 record, the manifest, the screen
-flags, the replication set with its verification digests, the exclusions, the settings and all code under
-`src/kvsel/` (subfolders included). `check` recomputes that state and refuses any difference.
+flags, the replication set with its verification digests, the earlier run folders and the exclusions, the
+settings and all code under `src/kvsel/` (subfolders included). `check` recomputes that state and refuses any
+difference; a code change passes only through `freeze/code_amendments.json` (PREREG 1.9).
+
+This mirrors `confirm.current_state`/`freeze_comparative` instead of calling them: those are frozen code.
 """
 
 from __future__ import annotations
@@ -13,9 +16,13 @@ from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
 
+import numpy as np
+
+from ..analysis import DELTA, margin
 from ..confirm import load_flags, main_set
+from ..confirm_analysis import CODE_AMENDMENTS, SURFACE, code_accepted
 from ..freeze import check_screening, sha256_file
-from ..runner import NO_CONTEXT, Q, Unit, load_items
+from ..runner import NO_CONTEXT, Q, Unit, eligible, load_items
 from ..verify import load_decisions
 from . import select
 
@@ -23,9 +30,14 @@ SECTION = "## 3. GQA replication"
 BUDGETS = (72, 144, 288)
 CONDITIONS = ("mis", "irr")
 CONTROL_CONDITIONS = ("match",)
+BLIND = Unit("full", 576, False, NO_CONTEXT, Q)
+ALPHA = 0.05
+FAMILY = (("R1", "S_H^(mis)", "72"), ("R1", "S_H^(mis)", "144"), ("R2", "S_H^(irr)", "72"),
+          ("R2", "S_H^(irr)", "144"), ("R3", "E_harm^(mis)", "72"), ("R5", "T_irr", "72"))
+EQUIVALENCE = ("R4", "S_H^(mis)", "288")
 
 
-def units(control: bool) -> list[Unit]:
+def units(*, control: bool) -> list[Unit]:
     """PW-attn cells A, B_c, C_c, D_c at every budget, then the full-cache anchors. The run adds Blind_Q."""
     conditions = CONDITIONS + (CONTROL_CONDITIONS if control else ())
     out = []
@@ -39,7 +51,23 @@ def units(control: bool) -> list[Unit]:
 
 def settings() -> dict:
     return {"budgets": list(BUDGETS), "size": select.REPLICATION_SIZE, "control_size": select.CONTROL_SIZE,
-            "main_units": [asdict(u) for u in units(False)], "control_units": [asdict(u) for u in units(True)]}
+            "main_units": [asdict(u) for u in units(control=False)],
+            "control_units": [asdict(u) for u in units(control=True)], "blind_unit": asdict(BLIND),
+            "surface": SURFACE, "family": [list(t) for t in FAMILY], "alpha": ALPHA,
+            "equivalence": list(EQUIVALENCE), "delta": DELTA}
+
+
+def checks(rows: list[dict]) -> dict:
+    """The run's consistency checks (PREREG 3.2): Full_Q still eligible, Blind_Q eligible should be 0."""
+    full_q = [r for r in rows if r["selector"] == "full" and r["cell"] == "Q"]
+    blind = [r for r in rows if r["selector"] == "blind"]
+    return {
+        "full_q_no_longer_eligible": sum(not eligible(r, SURFACE) for r in full_q),
+        "blind_rows": len(blind),
+        "blind_now_eligible": sum(eligible(r, SURFACE) for r in blind),
+        "blind_mean_margin": float(np.mean([margin(r["scores"], SURFACE) for r in blind])) if blind else None,
+        "truncated_share": float(np.mean([r["truncated"] for r in rows])),
+    }
 
 
 def code_hash_tree() -> str:
@@ -60,7 +88,8 @@ def _section_is_draft(prereg: Path) -> bool:
     text = Path(prereg).read_text()
     if SECTION not in text:
         raise SystemExit(f"{prereg} has no '{SECTION}' section")
-    return "DRAFT" in text.split(SECTION, 1)[1].split("\n## ", 1)[0]
+    section = text.split(SECTION, 1)[1].split("\n## ", 1)[0]
+    return any(line.startswith("DRAFT") for line in section.splitlines())  # the marker line, not a mention
 
 
 def current_state(prereg: Path, manifest: Path, screen: Path, decisions: Path, stage1: Path, gqa_record: Path,
@@ -85,6 +114,7 @@ def current_state(prereg: Path, manifest: Path, screen: Path, decisions: Path, s
         "replication_ids": chosen["replication"],
         "control_ids": chosen["control"],
         "failed_before_cutoff": chosen["failed"],
+        "exclude_runs": [str(run) for run in exclude_runs],
         "excluded": chosen["excluded"],
         "code_sha256": code_hash_tree(),
         "settings": settings(),
@@ -113,7 +143,9 @@ def check(prereg: Path, manifest: Path, screen: Path, decisions: Path, stage1: P
         raise SystemExit(f"no replication freeze at {record}: run `python -m kvsel.replication freeze` first")
     frozen = json.loads(record.read_text())
     now = current_state(prereg, manifest, screen, decisions, stage1, gqa_record, exclude_runs)
-    changed = [key for key in now if frozen.get(key) != now[key]]
+    changed = [key for key in now if key != "code_sha256" and frozen.get(key) != now[key]]
+    if not code_accepted(frozen["code_sha256"], now["code_sha256"], Path(record).parent / CODE_AMENDMENTS):
+        changed.append("code_sha256")
     if changed:
         raise SystemExit("Refusing to run: changed since the replication freeze: " + ", ".join(changed))
     return frozen
