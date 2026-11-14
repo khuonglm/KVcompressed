@@ -1,0 +1,27 @@
+{
+  "stage": "screening",
+  "frozen_at": "2026-11-14T17:21:04+00:00",
+  "prereg_screening_sha256": "e1b68dccc1516388ad45e76698215dbec783146e1dbe922a4a23127f3017a2d9",
+  "manifests": {
+    "gqa_confirm.jsonl": "ded6b8295a653afa55b35f75b8f8b012671d66fcf53f2c940b270250ddb7539c",
+    "textvqa_confirm.jsonl": "16fcf6fe0eae0ea2ab15cfe9b37e44d2d3161b8bfc30fc5d54d61da9bcf6d0d7"
+  },
+  "code_sha256": "a271386d9f7db40b3661182efe0e9f860c19014125f7e58cfd0d375a76f3d0ad",
+  "settings": {
+    "model": "llava",
+    "model_id": "llava-hf/llava-1.5-7b-hf",
+    "template": "v3.1",
+    "head_precision": "fp32",
+    "surface": "capitalized",
+    "eligibility": "Full_Q greedy answer correct and margin(true - alt) > 0",
+    "blind_filter": "not eligible if the same rule passes on a blank 336 x 336 image of the padding colour",
+    "amendment": 1,
+    "max_new_tokens": 16,
+    "batch_size": 1
+  },
+  "amends": {
+    "record": "freeze/screening_amend1.json",
+    "sha256": "b81e37bef738832dcce89c545c77358186e61b68f1bbc14a0dd2560762a6fc93",
+    "reason": "amendment 2: code clean-up, no rule changed (PREREG 1.9)"
+  }
+}
