@@ -1,0 +1,9 @@
+[
+  {
+    "from": "a7317656d79b74619811bf5d7bcc03ca7e4c2bbd0324f726d898fefcc50e9c7b",
+    "to": "9e7944a617a2f130a0e92a556e2972638debb7bfc6d5d57c1a326da494d88c52",
+    "date": "2026-11-15",
+    "reason": "code clean-up, no rule changed (PREREG 1.9, amendment 2)",
+    "evidence": "model inputs (prompts, tokens, spans, candidates, item digests) identical on gqa_confirm, textvqa_confirm, gqa_dev and textvqa_dev; tiny-model confirm and screen rows byte-identical; on the GQA confirmatory run, confirm-report results.json and the follow-up report results.json are byte-identical (cmp) to those from the frozen code"
+  }
+]
