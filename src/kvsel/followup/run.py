@@ -21,7 +21,7 @@ import numpy as np
 import torch
 
 from ..confirm import code_hash_all
-from ..confirm_analysis import evidence_sets
+from ..confirm_analysis import CODE_AMENDMENTS, code_accepted, evidence_sets
 from ..model import Bundle, pixel_values, prefill
 from ..runner import (
     NO_CONTEXT,
@@ -164,7 +164,8 @@ def confirm_selection(confirm_run: Path, record: Path, items: list[dict]) -> dic
     control = [i for i in order if subsets[i] == "control"]
     if len(control) != frozen["control_items"]:
         raise SystemExit(f"{len(control)} control items, but the frozen record has {frozen['control_items']}")
-    return {"main": order, "control": control, "code_unchanged": frozen["code_sha256"] == code_hash_all()}
+    accepted = code_accepted(frozen["code_sha256"], code_hash_all(), Path(record).parent / CODE_AMENDMENTS)
+    return {"main": order, "control": control, "code_unchanged": accepted}
 
 
 def run_followup(bundle: Bundle, items: list[dict], manifest: Path, images_dir: Path, out_dir: Path,

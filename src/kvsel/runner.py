@@ -15,7 +15,13 @@ from .engine import greedy, probe, replay, score_sequence
 from .families import LLAVA, Family
 from .model import Bundle, pixel_values, prefill
 from .normalize import outcome
-from .prompts import Tokens, candidate_ids, surface_forms, tokenize_prompt, window_composition
+from .prompts import (
+    Tokens,
+    candidate_ids,
+    surface_forms,
+    tokenize_prompt,
+    window_composition,
+)
 from .selectors import pw_attn, question_span_attn, top_k, uniform_grid, with_reserve
 
 ALL_CONDITIONS = ("mis", "match", "irr")
@@ -139,7 +145,6 @@ def run_item(bundle: Bundle, item: dict, image: Image.Image, units: list[Unit]) 
         "model": bundle.family.name,
         "template": bundle.family.template_version,
         "head_precision": bundle.decoder.head_precision,
-        "attention_precision": bundle.family.attention_precision,
         "contexts": {
             name: {
                 "suffix_tokens": len(t.suffix_ids),
@@ -207,47 +212,3 @@ def run_screen(bundle: Bundle, items: list[dict], images_dir: Path, out_dir: Pat
     """Full_Q only, on development items, in the same one-file-per-item form."""
     run_items(bundle, items, images_dir, out_dir, [Unit("full", 576, False, NO_CONTEXT, Q)])
 
-
-def run_prompt_test(bundle: Bundle, items: list[dict], images_dir: Path, variants: list[str], surface: str) -> dict:
-    """Full-cache Q and QH_mis under each prompt variant. No selection, so no S_H can be seen.
-
-    Decides the adoption question by a rule fixed in advance (plan, decision record of 9 November 2026).
-    """
-    from .analysis import margin
-    from .families import with_prompt_variant
-
-    require_development(items)
-    rows = []
-    for position, item in enumerate(items):
-        print(f"  item {position + 1}/{len(items)}", flush=True)
-        image = open_image(images_dir, item)
-        base = contexts_for(item, bundle.tokenizer, bundle.family)
-        prefix = prefill(bundle, base[Q].prefix_ids, pixel_values(bundle, image))
-        for variant in variants:
-            family = with_prompt_variant(bundle.family, variant)
-            tokens = {Q: tokenize_prompt(bundle.tokenizer, item["question"], family=family)}
-            tokens["mis"] = tokenize_prompt(bundle.tokenizer, item["question"], item["descriptions"]["mis"], family)
-            if tokens[Q].prefix_ids != base[Q].prefix_ids or tokens["mis"].prefix_ids != base[Q].prefix_ids:
-                raise ValueError("a prompt variant changed the shared prefix")
-            for context in (Q, "mis"):
-                row = run_unit(bundle, item, Unit("full", 576, False, NO_CONTEXT, context), prefix, np.arange(576), tokens)
-                rows.append({
-                    "item_id": item["item_id"], "variant": variant, "context": context,
-                    "outcome": row["outcome"], "margin": margin(row["scores"], surface), "greedy_text": row["greedy_text"],
-                })
-    summary = {}
-    for variant in variants:
-        def share(context: str, result: str) -> float:
-            chosen = [r for r in rows if r["variant"] == variant and r["context"] == context]
-            return sum(r["outcome"] == result for r in chosen) / len(chosen)
-
-        mis = [r["margin"] for r in rows if r["variant"] == variant and r["context"] == "mis"]
-        summary[variant] = {
-            "template": with_prompt_variant(bundle.family, variant).template_version,
-            "Q_correct": share(Q, "correct"),
-            "mis_correct": share("mis", "correct"),
-            "mis_alternative": share("mis", "alt"),
-            "mis_other": share("mis", "other"),
-            "mis_margin_mean": float(np.mean(mis)),
-        }
-    return {"items": len(items), "surface": surface, "summary": summary, "rows": rows}

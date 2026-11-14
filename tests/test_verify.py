@@ -171,13 +171,3 @@ def test_images_are_served_only_for_queued_items(server):
 
 def test_failure_reason_keys_are_single_digits():
     assert all(key.isdigit() and len(key) == 1 for key in FAILURE_REASONS)
-
-
-def test_report_filters_to_verified_items(tmp_path):
-    from kvsel.analysis import keep_verified
-
-    path = tmp_path / "d.jsonl"
-    append_decision(path, make_item("a"), "pass", "me")
-    append_decision(path, make_item("b"), "bad_box", "me")
-    rows = [{"item_id": "a"}, {"item_id": "b"}, {"item_id": "unchecked"}]
-    assert keep_verified(rows, path) == [{"item_id": "a"}]

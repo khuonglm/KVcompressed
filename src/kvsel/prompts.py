@@ -1,7 +1,6 @@
 """Prompt templates, prefix/suffix split and candidate tokenization, for each model family.
 
-LLaVA uses template v3.1: v3.0 with the description labelled as unverified. Qwen2.5-VL (parked) keeps
-v3.0's user text inside its own chat template (v3.0-qwen).
+LLaVA uses template v3.1: v3.0 with the description labelled as unverified.
 """
 
 from __future__ import annotations

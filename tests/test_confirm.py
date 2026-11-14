@@ -97,12 +97,12 @@ def test_comparative_freeze_and_its_check(setup, tmp_path):
 
 
 def test_unchanged_stage1_code():
-    """The confirm code lives outside the screening modules, so the committed stage-1 record still holds."""
+    """The confirm code lives outside the screening modules, so the latest stage-1 record still holds."""
     from pathlib import Path
 
-    from kvsel.freeze import code_hash
+    from kvsel.freeze import DEFAULT_RECORD, code_hash
 
-    record = Path(__file__).parents[1] / "freeze" / "screening_amend1.json"
+    record = Path(__file__).parents[1] / DEFAULT_RECORD
     if not record.exists():
         pytest.skip("no stage-1 freeze in this checkout")
     assert json.loads(record.read_text())["code_sha256"] == code_hash()
@@ -110,7 +110,7 @@ def test_unchanged_stage1_code():
 
 @pytest.mark.network
 def test_confirm_runs_on_the_tiny_model(tiny_llava, tmp_path, monkeypatch):
-    from kvsel.analysis import load_rows, margins_wide
+    from kvsel.confirm_analysis import load_run, wide_margins
     from kvsel.model import bundle_from_model, load_image_processor, load_tokenizer
 
     monkeypatch.setattr(confirm, "CONTROL_SIZE", 1)
@@ -127,7 +127,7 @@ def test_confirm_runs_on_the_tiny_model(tiny_llava, tmp_path, monkeypatch):
     assert not any("match" in r["cell"] for r in main["rows"])
     blind = [r for r in main["rows"] if r["selector"] == "blind"]
     assert len(blind) == 1 and blind[0]["cell"] == "Q"
-    wide, _ = margins_wide(load_rows(tmp_path / "run"), "capitalized")
+    wide, _ = wide_margins(load_run(tmp_path / "run")[0], "primary")
     assert {"blind|Q", "full|Q", "pw|C_mis"} <= set(wide.columns)
     mtime = (tmp_path / "run" / "items" / "i0.json").stat().st_mtime
     confirm.run_confirm(bundle, items, tmp_path, tmp_path / "run", {"main": ["i0", "i1"], "control": ["i0"]})

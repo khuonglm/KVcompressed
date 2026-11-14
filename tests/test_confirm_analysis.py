@@ -204,6 +204,13 @@ def test_record_checks_code_and_completeness(tmp_path):
     record.write_text(json.dumps({"code_sha256": "0" * 64, "main_items": 10}))
     with pytest.raises(SystemExit, match="code changed"):
         confirm_report({"gqa": (run, manifest)}, tmp_path / "bad", resamples=50, records={"gqa": record})
+    # a dated code amendment from the frozen code to the current code is accepted; a broken chain is not
+    amendments = tmp_path / "code_amendments.json"
+    amendments.write_text(json.dumps([{"from": "1" * 64, "to": code_hash_all()}]))
+    with pytest.raises(SystemExit, match="code changed"):
+        confirm_report({"gqa": (run, manifest)}, tmp_path / "bad", resamples=50, records={"gqa": record})
+    amendments.write_text(json.dumps([{"from": "0" * 64, "to": "2" * 64}, {"from": "2" * 64, "to": code_hash_all()}]))
+    confirm_report({"gqa": (run, manifest)}, tmp_path / "chain", resamples=50, records={"gqa": record})
 
 
 def test_run_without_misleading_cells_is_refused(tmp_path):

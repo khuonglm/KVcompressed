@@ -93,6 +93,16 @@ A screening rule can't change after stage 1 because of anything seen on confirma
 - **Verification decisions carry over.** The main-set rule (1.6) is unchanged and is applied to the amended eligibility flags.
 - **Before this screen ran,** the share of development items the rule removes was measured with `kvsel blind-rate` (rates only). On 150 verified GQA development items, all eligible, the rule removes 20%: Blind_Q's greedy answer is correct with M > 0. Blind_Q's margin alone is above 0 on 76%, so the blank-image prior often prefers a_true over a_alt without producing a_true. The rule was fixed before these rates were seen and was not changed because of them.
 
+### 1.9 Amendment 2 (15 November 2026): code clean-up, no change to any rule
+
+- **Change:** code only. Support for the parked Qwen2.5-VL model, its fp32 attention module (`attention.py`), the prompt-variant machinery used once for the 9 November prompt test, and one-off development commands were removed. The screening-code hash now also covers `geometry.py` (image padding and the blank image's colour), closing a gap recorded on 10 November. No screening rule, prompt text, scoring rule or setting changed.
+- **Reason:** to simplify the code before the replication and the second model. No confirmatory outcome motivated it.
+- **Evidence that nothing a model sees or a rule decides changed:**
+  - For every item of the four manifests (GQA and TextVQA, development and confirmatory), the prompt strings, prefix and suffix tokens, question and description spans and the scored candidate tokens are identical before and after, and so are the item digests that bind verification decisions.
+  - On the tiny test model, the confirmatory run's rows for every unit and the screen's flags are byte-identical before and after.
+  - The GQA confirmatory analysis and the follow-up report are rerun under the new code and must reproduce the frozen results exactly. That check and its outcome are recorded in `freeze/code_amendments.json`, which links the stage-3 record's code hash to the new one.
+- **Records:** `freeze/screening_amend2.json` supersedes `freeze/screening_amend1.json` and names it with its sha256. Screens already run, eligibility flags and verification decisions carry over unchanged.
+
 ## 2. Comparative experiment (frozen at stage 3)
 
 Section 2 covers both datasets. **GQA runs first.** TextVQA is pre-registered here and runs later under this same protocol, with nothing changed because of the GQA results. Each dataset gets its own stage-3 record (`freeze/comparative_gqa.json`, `freeze/comparative_textvqa.json`), made with `kvsel freeze-comparative` before that dataset's run. GQA's record freezes this whole file, so TextVQA's protocol is fixed before any GQA comparative outcome exists.

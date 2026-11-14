@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from kvsel.analysis import report
+from kvsel.confirm_analysis import load_run, wide_margins
 from kvsel.geometry import pad_to_square, PAD_COLOR
 from kvsel.model import bundle_from_model, load_image_processor, load_tokenizer, pixel_values, prefill
 from kvsel.prompts import tokenize_prompt
@@ -113,7 +113,7 @@ def test_confirmatory_items_are_refused():
         require_development([{**make_item(0), "split": "confirm"}])
 
 
-def test_run_resumes_and_report_renders(bundle, dataset, tmp_path):
+def test_run_resumes_and_rows_load_for_analysis(bundle, dataset, tmp_path):
     items, directory = dataset
     run_items(bundle, items[:2], directory, tmp_path, pilot_units())
     first = tmp_path / "items" / "q0.json"
@@ -121,9 +121,9 @@ def test_run_resumes_and_report_renders(bundle, dataset, tmp_path):
     run_items(bundle, items[:2], directory, tmp_path, pilot_units())
     assert first.stat().st_mtime_ns == stamp
     assert json.loads(first.read_text())["item_id"] == "q0"
-    text = report(tmp_path, "lower", resamples=100)
-    for expected in ("S_H^(mis)", "E_harm^(mis)", "T_match", "T_irr", "Mean Jaccard", "Window composition", "Mean margin by run"):
-        assert expected in text
+    wide, images = wide_margins(load_run(tmp_path)[0], "primary")
+    assert {"pw|A", "pw|C_mis", "qspan|D_irr", "full|Q", "uniform|mis", "pw+r|C_match"} <= set(wide.columns)
+    assert len(wide) == 2 and images.notna().all()
 
 
 def test_screen_runs_only_full_q(bundle, dataset, tmp_path):
@@ -138,55 +138,3 @@ def test_whole_validate_on_tiny_model_produces_a_report(bundle, dataset):
     result = validate(bundle, items, directory, noise_items=2, sparse_items=1, repeat_items=1)
     assert {"E1", "E2", "E3", "E4", "E5", "E7", "noise_floor", "noise_floor_mis", "noise_floor_native_head", "all_pass"} <= set(result)
     assert result["E1"]["pass"] and result["E4"]["pass"] and result["E7"]["pass"]
-
-
-def test_diagnose_e2_reports_both_suffixes_and_exact_compact_equality(bundle, loaded):
-    from kvsel.validate import diagnose_e2
-
-    report = diagnose_e2(bundle, loaded[:2])
-    assert set(report) == {"Q", "mis"}
-    for result in report.values():
-        assert result["compact_vs_dense_max"] == 0
-        assert result["full_vs_compact_max"] < 1e-3
-        assert len(result["worst_items"]) == 2 and result["worst_items"][0]["max_at_input_token"] is not None
-
-
-def test_tokenization_check_reads_a_run(bundle, dataset, tmp_path):
-    from kvsel.validate import check_tokenization
-
-    items, directory = dataset
-    run_screen(bundle, items[:2], directory, tmp_path)
-    result = check_tokenization(bundle.tokenizer, items, tmp_path)
-    assert result["checked"] <= 2 and set(result) == {"checked", "agree", "share", "mismatches"}
-
-
-@pytest.mark.parametrize("variant", ["base", "unverified", "tiebreak", "after"])
-def test_prompt_variants_keep_spans_and_prefix(bundle, variant):
-    from kvsel.families import LLAVA, with_prompt_variant
-
-    family = with_prompt_variant(LLAVA, variant)
-    item = make_item(0)
-    plain = tokenize_prompt(bundle.tokenizer, item["question"], family=family)
-    misled = tokenize_prompt(bundle.tokenizer, item["question"], item["descriptions"]["mis"], family)
-    base = tokenize_prompt(bundle.tokenizer, item["question"])
-    assert plain.prefix_ids == misled.prefix_ids == base.prefix_ids
-    for tokens in (plain, misled):
-        start, stop = tokens.question_span
-        assert bundle.tokenizer.decode(tokens.suffix_ids[start:stop]).strip() == item["question"]
-    start, stop = misled.description_span
-    assert item["descriptions"]["mis"] in bundle.tokenizer.decode(misled.suffix_ids[start:stop])
-    assert (plain.prompt == base.prompt) == (variant != "tiebreak")  # only tiebreak edits the Q prompt
-    assert family.template_version == {"base": "v3.0", "unverified": "v3.1"}.get(variant, f"v3.0+{variant}")
-
-
-def test_prompt_test_reports_every_variant(bundle, dataset):
-    from kvsel.runner import run_prompt_test
-
-    items, directory = dataset
-    result = run_prompt_test(bundle, items[:2], directory, ["base", "after"], "capitalized")
-    assert set(result["summary"]) == {"base", "after"} and len(result["rows"]) == 2 * 2 * 2
-    for summary in result["summary"].values():  # every outcome is counted, under its real label
-        assert summary["mis_correct"] + summary["mis_alternative"] + summary["mis_other"] == pytest.approx(1)
-    rows = [r for r in result["rows"] if r["variant"] == "after" and r["context"] == "mis"]
-    assert result["summary"]["after"]["mis_alternative"] == sum(r["outcome"] == "alt" for r in rows) / len(rows)
-    assert result["summary"]["after"]["template"] == "v3.0+after"

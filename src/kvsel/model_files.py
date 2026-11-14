@@ -17,10 +17,6 @@ REQUIRED_FILES = {
         "tokenizer.json", "tokenizer_config.json", "special_tokens_map.json", "added_tokens.json",
         "config.json", "generation_config.json", "preprocessor_config.json", "processor_config.json",
     ),
-    "Qwen/Qwen2.5-VL-7B-Instruct": (
-        "tokenizer.json", "tokenizer_config.json", "vocab.json", "merges.txt", "chat_template.json",
-        "config.json", "generation_config.json", "preprocessor_config.json",
-    ),
 }
 # Everything needed to run; skips the README and .gitattributes.
 DOWNLOAD_PATTERNS = ["*.json", "*.safetensors", "tokenizer.model", "*.jinja", "merges.txt"]

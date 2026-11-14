@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 
 from .families import FAMILIES, LLAVA, get_family
+from .freeze import DEFAULT_RECORD
 
 
 def _family(args):
@@ -57,18 +58,6 @@ def cmd_fetch_images(args) -> None:
         raise SystemExit(f"{len(summary['failed'])} files failed; rerun the command to retry them")
 
 
-def cmd_check_serialization(args) -> None:
-    from .model import load_tokenizer
-    from .runner import load_items
-    from .validate import check_serialization
-
-    family = _family(args)
-    result = check_serialization(load_tokenizer(args.model_dir, family), load_items(args.items), family)
-    print(json.dumps(result, indent=2))
-    if not result["pass"]:
-        raise SystemExit(1)
-
-
 def cmd_validate(args) -> None:
     from .runner import load_items, require_development
     from .validate import validate
@@ -92,32 +81,6 @@ def cmd_validate(args) -> None:
         raise SystemExit(1)
 
 
-def cmd_diagnose_e2(args) -> None:
-    from .runner import load_items, open_image, require_development
-    from .validate import diagnose_e2
-
-    items = load_items(args.items)
-    require_development(items)
-    loaded = [(item, open_image(args.images, item)) for item in items[: args.noise_items]]
-    report = diagnose_e2(_bundle(args), loaded)
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(report, indent=2))
-    for name, result in report.items():
-        summary = {key: value for key, value in result.items() if key != "worst_items"}
-        print(f"{name}: {json.dumps(summary)}")
-    print(f"full report: {args.out}")
-
-
-def cmd_check_tokenization(args) -> None:
-    from .model import load_tokenizer
-    from .runner import load_items
-    from .validate import check_tokenization
-
-    family = _family(args)
-    result = check_tokenization(load_tokenizer(args.model_dir, family), load_items(args.items), args.run, family)
-    print(json.dumps(result, indent=2))
-
-
 def cmd_screen(args) -> None:
     from .runner import eligible, load_items, run_screen
 
@@ -129,9 +92,6 @@ def cmd_screen(args) -> None:
         print(f"eligible under `{surface}`: {passed} of {len(results)}")
     answers = [json.loads(path.read_text())["rows"][0]["greedy_text"] for path in (args.out / "items").glob("*.json")]
     print("sample greedy answers:", answers[:20])
-    from .analysis import _surface_section, load_rows
-
-    print("\n".join(_surface_section(load_rows(args.out))))
 
 
 def cmd_freeze_screening(args) -> None:
@@ -172,25 +132,6 @@ def cmd_confirm(args) -> None:
     print(json.dumps(run_confirm(_bundle(args), items, args.images, args.out, selection), indent=2))
 
 
-def cmd_blind_rate(args) -> None:
-    from .runner import load_items
-    from .sanity import run_blind_rate
-    from .verify import passed_items
-
-    items = load_items(args.items)
-    if args.verified:
-        if not args.verified.exists():
-            raise SystemExit(f"{args.verified} does not exist; copy it from the machine you verified on")
-        passed = passed_items(args.verified)
-        items = [item for item in items if item["item_id"] in passed]
-    if not items:
-        raise SystemExit("no items to run: no passed decisions match this manifest")
-    result = run_blind_rate(_bundle(args), items[: args.limit], args.images)
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(result, indent=2))
-    print(json.dumps({key: value for key, value in result.items() if key != "rows"}, indent=2))
-
-
 def cmd_confirm_report(args) -> None:
     from .confirm_analysis import confirm_report
 
@@ -226,23 +167,6 @@ def cmd_pilot(args) -> None:
     run_items(_bundle(args), chosen, args.images, args.out, pilot_units(k=args.k))
 
 
-def cmd_prompt_test(args) -> None:
-    from .families import PROMPT_VARIANTS
-    from .runner import load_items, run_prompt_test
-    from .verify import passed_items
-
-    passed = passed_items(args.verified)
-    items = [item for item in load_items(args.items) if item["item_id"] in passed]
-    if not items:
-        raise SystemExit(f"no verified passes in {args.verified}; verify development items first")
-    print(f"{len(items)} verified development items")
-    result = run_prompt_test(_bundle(args), items, args.images, list(PROMPT_VARIANTS), args.surface)
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(result, indent=2))
-    print(json.dumps(result["summary"], indent=2))
-    print(f"full result: {args.out}")
-
-
 def _is_confirm_screen(screen: Path) -> bool:
     """A confirmatory screen stores only eligibility flags; a development screen stores full rows."""
     first = next((screen / "items").glob("*.json"), None)
@@ -276,56 +200,6 @@ def cmd_verify(args) -> None:
     print(json.dumps(summarize(load_decisions(args.decisions, queue)[0], queue), indent=2))
 
 
-def cmd_report(args) -> None:
-    from .analysis import report
-
-    text = report(args.run, args.surface, args.resamples, args.verified)
-    if args.out:
-        args.out.parent.mkdir(parents=True, exist_ok=True)
-        args.out.write_text(text)
-    print(text)
-
-
-def cmd_build_s1(args) -> None:
-    from .sanity import build_s1_items
-
-    items = build_s1_items(args.dataset, args.questions, args.dev_manifest, args.n)
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text("".join(json.dumps(item, sort_keys=True) + "\n" for item in items))
-    print(f"{len(items)} {args.dataset} questions on development images -> {args.out}")
-
-
-def cmd_s1(args) -> None:
-    from .runner import load_items
-    from .sanity import run_s1
-
-    result = run_s1(_bundle(args), load_items(args.items), args.images)
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(result, indent=2))
-    print(json.dumps({key: value for key, value in result.items() if key != "rows"}, indent=2))
-    for row in result["rows"][:15]:
-        print(f"  {row['score']:.2f}  {row['question']!r} -> {row['answer']!r} (gold {row['gold']!r})")
-
-
-def cmd_timing(args) -> None:
-    from .runner import load_items
-    from .sanity import run_timing
-
-    volumes = {"screen_gqa": 9209, "screen_textvqa": 5514, "confirmatory_items": 2000}
-    result = run_timing(_bundle(args), load_items(args.items)[: args.limit], args.images, volumes)
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(result, indent=2))
-    print(json.dumps(result, indent=2))
-
-
-def cmd_coverage(args) -> None:
-    from .sanity import coverage_report
-
-    result = coverage_report(args.attention, args.out)
-    print(json.dumps(result, indent=2))
-    print(f"figures: {args.out}/coverage_k*.svg")
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(prog="kvsel", description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -336,7 +210,7 @@ def main() -> None:
         sub.add_argument(
             "--model-dir", type=Path, default=None,
             help="local model copy, used if present; otherwise the Hugging Face Hub "
-            f"(default: {LLAVA.default_dir} for llava, models/qwen2.5-vl-7b-instruct for qwen)",
+            f"(default: {LLAVA.default_dir})",
         )
 
     def add_model_options(sub) -> None:
@@ -383,11 +257,6 @@ def main() -> None:
     sub.add_argument("--limit", type=int, help="fetch at most this many files, to try it out")
     sub.set_defaults(handler=cmd_fetch_images)
 
-    sub = commands.add_parser("check-serialization", help="test E1; tokenizer only, no GPU")
-    sub.add_argument("--items", type=Path, required=True)
-    add_model_dir(sub)
-    sub.set_defaults(handler=cmd_check_serialization)
-
     sub = commands.add_parser("validate", help="noise floor and tests E1-E5, E7 on the real model")
     add_item_options(sub)
     add_model_options(sub)
@@ -399,19 +268,6 @@ def main() -> None:
     sub.add_argument("--out", type=Path, default=Path("results/validate.json"))
     sub.set_defaults(handler=cmd_validate)
 
-    sub = commands.add_parser("diagnose-e2", help="separate the sources of the E2 logit difference")
-    add_item_options(sub)
-    add_model_options(sub)
-    sub.add_argument("--noise-items", type=int, default=50)
-    sub.add_argument("--out", type=Path, default=Path("results/diagnose_e2.json"))
-    sub.set_defaults(handler=cmd_diagnose_e2)
-
-    sub = commands.add_parser("check-tokenization", help="do scored tokens match generated tokens? No GPU")
-    sub.add_argument("run", type=Path, help="a run directory, for example results/pilot")
-    sub.add_argument("--items", type=Path, required=True)
-    add_model_dir(sub)
-    sub.set_defaults(handler=cmd_check_tokenization)
-
     sub = commands.add_parser("screen", help="Full_Q on development items, for eligibility")
     add_item_options(sub)
     add_model_options(sub)
@@ -422,7 +278,7 @@ def main() -> None:
     sub.add_argument("--prereg", type=Path, default=Path("PREREG.md"))
     sub.add_argument("--manifests", type=Path, nargs="+",
                      default=[Path("manifests/gqa_confirm.jsonl"), Path("manifests/textvqa_confirm.jsonl")])
-    sub.add_argument("--record", type=Path, default=Path("freeze/screening_amend1.json"))
+    sub.add_argument("--record", type=Path, default=DEFAULT_RECORD)
     sub.add_argument("--amends", type=Path, default=None, help="the stage-1 record this amendment supersedes")
     sub.add_argument("--reason", default=None, help="why the screening rules changed")
     sub.set_defaults(handler=cmd_freeze_screening)
@@ -433,7 +289,7 @@ def main() -> None:
     add_model_dir(sub, choose_model=False)
     sub.add_argument("--device", default="cuda")
     sub.add_argument("--prereg", type=Path, default=Path("PREREG.md"))
-    sub.add_argument("--record", type=Path, default=Path("freeze/screening_amend1.json"))
+    sub.add_argument("--record", type=Path, default=DEFAULT_RECORD)
     sub.add_argument("--limit", type=int, default=None, help="screen only the first N items in manifest order")
     sub.add_argument("--out", type=Path, required=True)
     sub.set_defaults(handler=cmd_screen_confirm, head_precision=None)
@@ -443,7 +299,7 @@ def main() -> None:
         sub.add_argument("--screen", type=Path, required=True, help="confirmatory screen directory")
         sub.add_argument("--decisions", type=Path, required=True, help="verification decisions (JSONL)")
         sub.add_argument("--prereg", type=Path, default=Path("PREREG.md"))
-        sub.add_argument("--stage1", type=Path, default=Path("freeze/screening_amend1.json"))
+        sub.add_argument("--stage1", type=Path, default=DEFAULT_RECORD)
         sub.add_argument("--record", type=Path, required=True, help="for example freeze/comparative_gqa.json")
 
     sub = commands.add_parser("freeze-comparative", help="freeze stage 3 for one dataset: record hashes and the main set. No GPU")
@@ -457,14 +313,6 @@ def main() -> None:
     sub.add_argument("--device", default="cuda")
     sub.add_argument("--out", type=Path, required=True)
     sub.set_defaults(handler=cmd_confirm, head_precision=None)
-
-    sub = commands.add_parser("blind-rate", help="share of development items answerable with a blank image (GPU)")
-    add_item_options(sub)
-    add_model_options(sub)
-    sub.add_argument("--verified", type=Path, help="verification decisions; passed items only")
-    sub.add_argument("--limit", type=int, default=None)
-    sub.add_argument("--out", type=Path, required=True)
-    sub.set_defaults(handler=cmd_blind_rate)
 
     sub = commands.add_parser("confirm-report", help="the pre-registered analysis of confirmatory runs, Holm across datasets. No GPU")
     for dataset in ("gqa", "textvqa"):
@@ -485,14 +333,6 @@ def main() -> None:
     sub.add_argument("--out", type=Path, default=Path("results/pilot"))
     sub.set_defaults(handler=cmd_pilot)
 
-    sub = commands.add_parser("prompt-test", help="full-cache adoption under each prompt variant (GPU)")
-    add_item_options(sub)
-    add_model_options(sub)
-    sub.add_argument("--verified", type=Path, required=True, help="verification decisions; passed items only")
-    sub.add_argument("--surface", default="capitalized", choices=["lower", "capitalized", "upper"])
-    sub.add_argument("--out", type=Path, required=True)
-    sub.set_defaults(handler=cmd_prompt_test)
-
     sub = commands.add_parser("verify", help="hand-verify items in a local web page")
     add_item_options(sub)
     sub.add_argument("--decisions", type=Path, required=True, help="append-only JSONL, for example verification/gqa_dev.jsonl")
@@ -502,40 +342,6 @@ def main() -> None:
     sub.add_argument("--verifier", default=getpass.getuser())
     sub.add_argument("--port", type=int, default=8765)
     sub.set_defaults(handler=cmd_verify)
-
-    sub = commands.add_parser("report", help="estimands and tables from a run directory")
-    sub.add_argument("run", type=Path)
-    sub.add_argument("--surface", default="lower", choices=["lower", "capitalized", "upper", "logsum"])
-    sub.add_argument("--resamples", type=int, default=10_000)
-    sub.add_argument("--verified", type=Path, help="keep only items that passed in this decisions file")
-    sub.add_argument("--out", type=Path)
-    sub.set_defaults(handler=cmd_report)
-
-    sub = commands.add_parser("build-s1", help="S1 manifest: random questions of any type on development images. No GPU")
-    sub.add_argument("--dataset", required=True, choices=["gqa", "textvqa"])
-    sub.add_argument("--questions", type=Path, nargs="+", required=True, help="raw question files")
-    sub.add_argument("--dev-manifest", type=Path, required=True, help="development manifest; its images are used")
-    sub.add_argument("--n", type=int, default=200)
-    sub.add_argument("--out", type=Path, required=True)
-    sub.set_defaults(handler=cmd_build_s1)
-
-    sub = commands.add_parser("s1", help="S1: accuracy under LLaVA's standard prompt, full cache (GPU)")
-    add_item_options(sub)
-    add_model_options(sub)
-    sub.add_argument("--out", type=Path, required=True)
-    sub.set_defaults(handler=cmd_s1)
-
-    sub = commands.add_parser("timing", help="R1: time and peak memory per stage of the pilot workload (GPU)")
-    add_item_options(sub)
-    add_model_options(sub)
-    sub.add_argument("--limit", type=int, default=20)
-    sub.add_argument("--out", type=Path, required=True)
-    sub.set_defaults(handler=cmd_timing)
-
-    sub = commands.add_parser("coverage", help="E6: coverage reserve radius and plots. No GPU")
-    sub.add_argument("--attention", type=Path, default=None, help="a run's attention/ directory (optional)")
-    sub.add_argument("--out", type=Path, default=Path("results/coverage"))
-    sub.set_defaults(handler=cmd_coverage)
 
     args = parser.parse_args()
     args.handler(args)

@@ -35,11 +35,11 @@ SCREENING = {
 # Modules whose code decides a screen's outcome. A later confirm module must not live in these files,
 # or resuming the screen would be refused.
 SCREENING_MODULES = (
-    "__init__.py", "attention.py", "cache.py", "engine.py", "families.py", "model.py", "normalize.py",
+    "__init__.py", "cache.py", "engine.py", "families.py", "geometry.py", "model.py", "normalize.py",
     "prompts.py", "runner.py", "screening.py",
 )
 PREREG_SECTION = "## 1. Screening rules"
-DEFAULT_RECORD = Path("freeze/screening_amend1.json")  # supersedes freeze/screening.json
+DEFAULT_RECORD = Path("freeze/screening_amend2.json")  # supersedes amendment 1, which superseded screening.json
 
 
 def sha256_file(path: Path) -> str:

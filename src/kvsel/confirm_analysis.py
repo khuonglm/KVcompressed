@@ -145,8 +145,9 @@ def dataset_results(run_dir: Path, manifest: Path, resamples: int = RESAMPLES, e
         "items": len(items), "images": int(images.nunique()), "control_items": len(control),
     }
     if expected_items is not None and len(items) != expected_items:
-        raise SystemExit(f"{run_dir} has {len(items)} items, but the frozen main set has {expected_items}; "
-                         "rerun `kvsel confirm` to finish it")
+        fix = ("rerun `kvsel confirm` to finish it" if len(items) < expected_items
+               else "move item files outside the frozen main set out of the run folder")
+        raise SystemExit(f"{run_dir} has {len(items)} items, but the frozen main set has {expected_items}; {fix}")
 
     # Checks: Full_Q still eligible, Blind_Q never eligible, truncation.
     full_q = [r for r in rows if r["selector"] == "full" and r["cell"] == "Q"]
@@ -329,6 +330,22 @@ def _plain(value):
     raise TypeError(f"not serialisable: {type(value)}")
 
 
+CODE_AMENDMENTS = "code_amendments.json"
+
+
+def code_accepted(frozen: str, current: str, amendments: Path) -> bool:
+    """The frozen code, or code reached from it through dated, outcome-blind amendments.
+
+    Each entry of the amendments file, in order, is {"from", "to", "date", "reason", "evidence"}: code
+    `to` replaced code `from` and reproduced the frozen results exactly (PREREG, section 1.9).
+    """
+    reached = {frozen}
+    for entry in json.loads(amendments.read_text()) if amendments.exists() else []:
+        if entry["from"] in reached:
+            reached.add(entry["to"])
+    return current in reached
+
+
 def confirm_report(runs: dict[str, tuple[Path, Path]], out_dir: Path, resamples: int = RESAMPLES,
                    records: dict[str, Path] | None = None) -> dict:
     """runs: dataset -> (run directory, manifest). records: dataset -> stage-3 record, to check completeness."""
@@ -342,7 +359,7 @@ def confirm_report(runs: dict[str, tuple[Path, Path]], out_dir: Path, resamples:
             from .confirm import code_hash_all
 
             record = json.loads(Path(records[dataset]).read_text())
-            if record["code_sha256"] != code_hash_all():
+            if not code_accepted(record["code_sha256"], code_hash_all(), Path(records[dataset]).parent / CODE_AMENDMENTS):
                 raise SystemExit(f"the code changed since {records[dataset]} was frozen; analyse with the frozen code, "
                                  "or document the fix as a dated amendment and rerun every affected condition")
             expected = record["main_items"]

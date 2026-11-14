@@ -93,12 +93,11 @@ uv run kvsel pilot --items manifests/gqa_dev.jsonl --images data/gqa/images --su
 
 ### 6. Report
 
-```bash
-uv run kvsel report results/pilot --surface lower --out results/pilot/report.md
-```
+The development pilot is analysed as a rehearsal of the confirmatory analysis; nothing in it supports a claim:
 
-Development items only, so nothing in this report supports a claim. Its first use is to settle the
-open decisions: rung 1 for PW-attn, answer casing, and the clustered SD for planning.
+```bash
+uv run kvsel confirm-report --gqa-run results/pilot --gqa-items manifests/gqa_dev.jsonl --out results/pilot/report
+```
 
 ## TextVQA runbook
 
@@ -119,38 +118,7 @@ uv run kvsel validate --items manifests/textvqa_dev.jsonl --images data/textvqa/
   --surface capitalized --out results/textvqa/validate.json 2>&1 | tee results/textvqa/validate.log \
 && uv run kvsel screen --items manifests/textvqa_dev.jsonl --images data/textvqa/images \
   --out results/textvqa/screen_dev 2>&1 | tee results/textvqa/screen.log
-
-# 3. No GPU: do scored tokens match generated tokens?
-uv run kvsel check-tokenization results/textvqa/screen_dev --items manifests/textvqa_dev.jsonl \
-  | tee results/textvqa/check_tokenization.json
 ```
-
-## Qwen2.5-VL-7B runbook
-
-The second model. It reuses the same manifests and images. Everything it writes goes under
-`results/qwen/`. Stop at the first step that fails and send me its output.
-
-```bash
-mkdir -p results/qwen/gqa results/qwen/textvqa
-set -o pipefail
-
-# 1. Weights: 16.6 GB into models/qwen2.5-vl-7b-instruct (resumes if rerun)
-uv run kvsel fetch-model --model qwen
-
-# 2. GQA: validate, then screen only if every test passes
-uv run kvsel validate --model qwen --items manifests/gqa_dev.jsonl --images data/gqa/images \
-  --surface capitalized --out results/qwen/gqa/validate.json 2>&1 | tee results/qwen/gqa/validate.log \
-&& uv run kvsel screen --model qwen --items manifests/gqa_dev.jsonl --images data/gqa/images \
-  --out results/qwen/gqa/screen_dev 2>&1 | tee results/qwen/gqa/screen.log
-
-# 3. No GPU: do scored tokens match generated tokens?
-uv run kvsel check-tokenization --model qwen results/qwen/gqa/screen_dev --items manifests/gqa_dev.jsonl \
-  | tee results/qwen/gqa/check_tokenization.json
-```
-
-Qwen runs in bf16 with an fp32 output head (upcast slice by slice) and fp32 attention scores in the
-language model; see the acceptance policy in
-[tests/README.md](tests/README.md).
 
 ## Hand verification
 
@@ -179,64 +147,34 @@ Decisions save immediately to an append-only file, so you can stop any time. Pre
 item to change its decision; the latest one counts. Commit `verification/` regularly: it's the only
 record of this work. The page shows no model outcomes.
 
-To rerun the report on items that passed:
-
-```bash
-uv run kvsel report results/pilot --surface capitalized --verified verification/gqa_dev.jsonl \
-  --out results/pilot/report_verified.md
-```
-
-## Prompt test (adoption)
-
-Full cache only, on hand-verified development passes, under four ways of showing the description. The
-rule that decides the outcome is in the plan's decision record of 9 November 2026. About 10 minutes
-per dataset.
-
-```bash
-mkdir -p results/prompt_test
-uv run kvsel prompt-test --items manifests/gqa_dev.jsonl --images data/gqa/images \
-  --verified verification/gqa_dev.jsonl --out results/prompt_test/gqa.json
-uv run kvsel prompt-test --items manifests/textvqa_dev.jsonl --images data/textvqa/images \
-  --verified verification/textvqa_dev.jsonl --out results/prompt_test/textvqa.json
-```
-
-## Checks before the freeze (S1, R1, E6)
-
-```bash
-bash scripts/gpu_s1_r1.sh      # GPU, about 15-20 minutes; results in results/checks/
-uv run kvsel coverage --attention results/v31/gqa_pilot/attention   # no GPU; E6 figures in results/coverage/
-```
-
-S1 runs 200 random questions of any type with LLaVA's standard prompt, to catch bugs only. R1
-times every stage of the pilot workload and projects the confirmatory runtime. The S1 manifests are
-rebuilt with `kvsel build-s1` from the raw question files.
-
 ## Freeze stage 1 and the confirmatory screen
 
 Rules: `PREREG.md`, section 1, as amended on 10 November (amendment 1: items answerable with a blank
 image aren't eligible). The first record, `freeze/screening.json`, is kept; amendment 1's record
 supersedes it. Run in this order and stop at the first step that fails.
 
-1. Optional, development only (about 2 min on the GPU): how many items the blind rule removes.
-   ```
-   uv run kvsel blind-rate --items manifests/gqa_dev.jsonl --images data/gqa/images --verified verification/gqa_dev.jsonl --out results/checks/blind_gqa.json
-   ```
-2. Freeze amendment 1 (no GPU); commit `freeze/screening_amend1.json`:
+1. Freeze amendment 1 (no GPU); commit `freeze/screening_amend1.json`:
    ```
    uv run kvsel freeze-screening --amends freeze/screening.json --reason "amendment 1: exclude items answerable with a blank image"
    ```
-3. Screen on the GPU into a new folder (GQA about 2.5 h). It writes only flags and resumes if rerun.
+2. Screen on the GPU into a new folder (GQA about 2.5 h). It writes only flags and resumes if rerun.
    `--limit N` screens only the first N items.
    ```
    uv run kvsel screen-confirm --items manifests/gqa_confirm.jsonl --images data/gqa/images --out results/confirm/gqa_screen_a1
    ```
-4. Copy `results/confirm/gqa_screen_a1` to the machine you verify on and verify eligible items in manifest
+3. Copy `results/confirm/gqa_screen_a1` to the machine you verify on and verify eligible items in manifest
    order until 1,000 pass. Earlier decisions carry over; only new items are queued.
    ```
    uv run kvsel verify --items manifests/gqa_confirm.jsonl --images data/gqa/images --screen results/confirm/gqa_screen_a1 --decisions verification/gqa_confirm.jsonl
    ```
 
 The screen refuses to run if `PREREG.md` section 1, a manifest or the screening code changed after the freeze.
+
+**Amendment 2 (15 November, code clean-up only).** Supersedes amendment 1; no rule changed (PREREG 1.9).
+Freeze it once (no GPU) and commit `freeze/screening_amend2.json`:
+```
+uv run kvsel freeze-screening --amends freeze/screening_amend1.json --reason "amendment 2: code clean-up, no rule changed (PREREG 1.9)"
+```
 
 ## Freeze stage 3 and the confirmatory run (GQA first)
 

@@ -58,12 +58,3 @@ def test_fetch_reports_what_is_still_missing(tmp_path, monkeypatch):
     assert "merges.txt" in calls["allow_patterns"]
     assert "*.safetensors" in calls["allow_patterns"]
 
-
-def test_qwen_copy_is_checked_against_its_own_file_list(tmp_path):
-    qwen = "Qwen/Qwen2.5-VL-7B-Instruct"
-    for name in REQUIRED_FILES[qwen]:
-        (tmp_path / name).write_text("{}")
-    assert resolve_model(tmp_path, qwen, weights=False) == str(tmp_path)
-    (tmp_path / "merges.txt").unlink()
-    with pytest.raises(SystemExit, match="merges.txt"):
-        resolve_model(tmp_path, qwen, weights=False)
