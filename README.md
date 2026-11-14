@@ -209,6 +209,49 @@ the same. The confirmatory run folder must hold exactly the frozen main set.
    uv run python -m kvsel.followup report --run results/followup/gqa --confirm-run results/confirm/gqa_run --items manifests/gqa_confirm.jsonl --out results/followup/gqa/report
    ```
 
+## GQA replication (PREREG section 3)
+
+A second confirmatory run on 1,000 fresh, already-verified GQA items: misleading and irrelevant text on
+every item, matching text on the first 300, at K = 72, 144 and 288. It runs as `python -m kvsel.replication`,
+kept outside `kvsel` so `freeze/comparative_gqa.json` stays valid. **No comparative unit may run on any
+replication item before step 3's record is committed.** Run in this order and stop at the first step that
+fails; send me its output.
+
+`--exclude-runs` must list every folder that holds comparative item files on confirmatory items: the
+confirmatory run, the follow-ups, and the folder you moved the first run's 9 extra item files to. Pass the
+same list to `count`, `freeze` and `run`, and never put the replication's `--out` inside one of them.
+
+```
+EXCLUDE="results/confirm/gqa_run results/followup/gqa <folder with the 9 extra item files>"
+```
+
+`scripts/overnight_replication.sh` runs steps 1 and 3–5 in a row (see its header); step 2 and the commit stay by hand.
+
+1. Count the pool (no GPU, seconds). It reads screen flags and decisions only. You want `"replication": 1000`
+   and `"next_unverified": null`; otherwise verify the named item and the ones after it, in manifest order.
+   ```
+   uv run python -m kvsel.replication count --items manifests/gqa_confirm.jsonl --screen results/confirm/gqa_screen_a1 --decisions verification/gqa_confirm.jsonl --exclude-runs $EXCLUDE
+   ```
+2. Review `PREREG.md` section 3 and delete its DRAFT line.
+3. Freeze (no GPU) and commit `freeze/replication_gqa.json` together with `PREREG.md` before step 4:
+   ```
+   uv run python -m kvsel.replication freeze --items manifests/gqa_confirm.jsonl --screen results/confirm/gqa_screen_a1 --decisions verification/gqa_confirm.jsonl --exclude-runs $EXCLUDE
+   ```
+   It refuses while section 3 says DRAFT, if the main set no longer matches the GQA record, if fewer than
+   1,000 items qualify, or if a different record already exists. Send me its printed summary.
+4. On the GPU, in `tmux` (about 4 h: 25 replays per item, 35 on control items, about 1.3 times the first
+   confirmatory run; memory as that run, about 15-16 GB). It refuses if anything changed since the freeze,
+   prints progress only, and resumes if rerun.
+   ```
+   uv run python -m kvsel.replication run --items manifests/gqa_confirm.jsonl --screen results/confirm/gqa_screen_a1 --decisions verification/gqa_confirm.jsonl --exclude-runs $EXCLUDE --images data/gqa/images --out results/replication/gqa_run
+   ```
+   Send me only its final summary (item counts and the two consistency counts); don't open the item files.
+5. The pre-registered analysis, once, no GPU (a few minutes):
+   ```
+   uv run python -m kvsel.replication report --run results/replication/gqa_run --original-confirm results/confirm/report/results.json --original-followup results/followup/gqa/report/results.json --out results/replication/report
+   ```
+   It refuses missing or extra item files and code changed since the freeze. Send me `report.md`.
+
 ## TextVQA data
 
 The manifests are in `manifests/`. Only the images are needed, not the 7 GB archive: about 0.4 GB for

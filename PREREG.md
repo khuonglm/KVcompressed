@@ -201,3 +201,64 @@ These are not part of the confirmatory study. Any of them run later is labelled 
 - random-selection seeds
 - oracle restoration
 - the less-filtered population (decision 6)
+
+## 3. GQA replication on fresh items
+
+DRAFT (15 November 2026). Review this section and delete this line before `python -m kvsel.replication freeze`.
+
+Section 2's GQA run and its follow-ups (2.4) suggested that steering grows as the budget shrinks, that E_harm^(mis) changes sign at K = 72, and that irrelevant text steers selection too. Those observations came from the same 1,000 items after their outcomes were seen, so they are exploratory. This section tests them once on fresh items, under rules fixed before any outcome on those items exists. The hypotheses below were chosen *because* of the earlier results; that is the point of a replication, and the report says so.
+
+Everything not stated here is as in sections 1 and 2: model, prompt, surface rule (`capitalized`), margin, PW-attn's definition, replay, bootstrap (image-clustered, 10,000 resamples, seed 0, 95% percentile interval), the two-sided p-value formula, and the interval readings.
+
+### 3.1 Items
+
+- **Pool:** `manifests/gqa_confirm.jsonl`, with the amendment-1 screen flags and the hand-verification decisions of section 1.6 (latest decision per item, bound by item digest; a stale decision counts as unverified).
+- **Rule:** in manifest order, starting right after the last item of the frozen main set (2.1), take eligible items, then:
+  1. leave out items whose image is the image of any main-set item;
+  2. leave out items with a result file in any earlier run folder (the confirmatory run, the follow-ups, and the folder holding the first run's extra items);
+  3. stop at the first eligible item that is not verified; pass over failed items;
+  4. the first 1,000 that passed form the **replication set**; its first 300 form the **control subset**.
+- No item is verified again, and no item is added, dropped or repaired after the freeze.
+- The excluded ids and the reason for each are stored in the freeze record (3.6). `python -m kvsel.replication count` applies this rule and prints counts only.
+
+### 3.2 Configuration
+
+- **Selector:** PW-attn only. The question-span selector, coverage reserve, uniform grid, LT-early, random sets and restoration are not run.
+- **Budgets:** K = 72, 144 and 288 visual entries, plus the 5 non-visual prefix entries. One probe per context and item gives the kept sets for all three budgets (top-K of the same scores).
+- **Units on every replication item:**
+  - for each K: cell A, and cells B_c, C_c, D_c for c = mis and irr;
+  - Full_Q, Full_mis and Full_irr;
+  - Blind_Q, as in 2.2.
+- **Control subset, additionally:** for each K, cells B_match, C_match, D_match; and Full_match.
+- **Run once,** resumable, printing progress only, with the same consistency checks as 2.1 and 2.2 (Full_Q still eligible; Blind_Q eligible should be 0).
+
+### 3.3 Confirmatory tests
+
+Estimands are those of 2.3, computed separately at each K. One change: **T_irr = S_H^(mis) − S_H^(irr) is computed on all replication items**, not on the control subset, because irr now runs on every item.
+
+| Hypothesis | Test | K | Set |
+| --- | --- | --- | --- |
+| R1 | S_H^(mis) ≠ 0 | 72; 144 | all items |
+| R2 | S_H^(irr) ≠ 0 | 72; 144 | all items |
+| R3 | E_harm^(mis) ≠ 0 | 72 | all items |
+| R5 | T_irr ≠ 0 | 72 | all items |
+
+- **Multiplicity:** R1, R2, R3 and R5 are one Holm family of **6 tests** at α = 0.05. The replication is GQA-only by design, so the Holm decisions are final when the report runs.
+- **R4, equivalence:** S_H^(mis) at K = 288 is called practically null if its 90% image-clustered interval lies inside ±δ, δ = 0.10 nats (as in 2.3). R4 is reported outside the Holm family.
+- **Projection for R4** (planning number only): the original follow-up gave S_H^(mis) = +0.050 [+0.032, +0.070] at K = 288 on 708 images, a clustered SE of about 0.010. With a similar number of images, the 90% half-width is about 0.016, below δ/2 = 0.05, so R4 is tested.
+- **Reading:** a test supports its hypothesis if Holm rejects; the sign is reported, and a rejection in the direction opposite to the original estimate is reported as a failed replication of that direction.
+
+### 3.4 Exploratory (intervals only)
+
+- S_Q^(c), I^(c) and E_harm^(irr) at every K; S_H^(mis), S_H^(irr) and E_harm^(mis) at the budgets not tested above.
+- T_match and S_H^(match) on the control subset, at every K.
+- Behaviour rates and the paired C − B differences in correct and a_alt rates, per K and condition.
+- Jaccard overlap of each condition's kept set with S_Q, per K.
+- The original estimates (section 2 and its follow-ups) printed beside the replication's, labelled as the original exploratory values. The two sets are never pooled.
+
+### 3.5 Records and code
+
+- **Freeze:** `python -m kvsel.replication freeze` writes `freeze/replication_gqa.json`. It stores the sha256 of this file, of the latest stage-1 record (amendment 2), of the manifest and of the screen flags, the hash of the replication set with its verification digests, the excluded ids with reasons, the settings, and a hash of all code under `src/kvsel/`, subfolders included. It refuses while this section is marked DRAFT and refuses to overwrite a different record.
+- **Run and report** refuse if anything in the record changed. Code changes after the freeze follow 1.9: dated, outcome-blind, shown to reproduce, and listed in `freeze/code_amendments.json`.
+- **Order:** no comparative unit runs on any replication item before the freeze record is committed.
+- The replication code is a subpackage outside `src/kvsel/*.py`, so the GQA stage-3 record's code hash (section 2) is unaffected.
