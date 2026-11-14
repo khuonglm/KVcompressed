@@ -1,0 +1,27 @@
+{
+  "stage": "screening",
+  "frozen_at": "2026-11-10T14:46:44+00:00",
+  "prereg_screening_sha256": "ddee3d9b896d4baff7cf25dfd40131caf206c248e6388f618d1455d16901efd1",
+  "manifests": {
+    "gqa_confirm.jsonl": "ded6b8295a653afa55b35f75b8f8b012671d66fcf53f2c940b270250ddb7539c",
+    "textvqa_confirm.jsonl": "16fcf6fe0eae0ea2ab15cfe9b37e44d2d3161b8bfc30fc5d54d61da9bcf6d0d7"
+  },
+  "code_sha256": "8228e4a5cd5a0aa5f040b21d9f38718f536414072aa9088261404b352c0664bd",
+  "settings": {
+    "model": "llava",
+    "model_id": "llava-hf/llava-1.5-7b-hf",
+    "template": "v3.1",
+    "head_precision": "fp32",
+    "surface": "capitalized",
+    "eligibility": "Full_Q greedy answer correct and margin(true - alt) > 0",
+    "blind_filter": "not eligible if the same rule passes on a blank 336 x 336 image of the padding colour",
+    "amendment": 1,
+    "max_new_tokens": 16,
+    "batch_size": 1
+  },
+  "amends": {
+    "record": "freeze/screening.json",
+    "sha256": "c00899920573dcc16bd27b7b93810abbafcd386171eea638c85f36d126fdc18d",
+    "reason": "amendment 1: exclude items answerable with a blank image"
+  }
+}

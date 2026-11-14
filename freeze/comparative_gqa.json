@@ -1,0 +1,367 @@
+{
+  "stage": "comparative",
+  "frozen_at": "2026-11-10T14:46:53+00:00",
+  "prereg_sha256": "75541b1cbd797c38abb0ea7d9bf4b68922e347c064b1bf32ddfa382f6e7a5fa3",
+  "stage1_record_sha256": "b81e37bef738832dcce89c545c77358186e61b68f1bbc14a0dd2560762a6fc93",
+  "manifest": {
+    "gqa_confirm.jsonl": "ded6b8295a653afa55b35f75b8f8b012671d66fcf53f2c940b270250ddb7539c"
+  },
+  "screen_flags_sha256": "81a019934b546cde46d8d6313276b21e33107bd4a60d0538165c88e871f8fb8e",
+  "main_set_sha256": "1cd40d383fc0ab7e15b9162ec8ffdc765f1f4645ca0ceb6fa6aaece3b4c2d7b1",
+  "main_items": 1000,
+  "control_items": 300,
+  "failed_before_cutoff": 239,
+  "code_sha256": "a7317656d79b74619811bf5d7bcc03ca7e4c2bbd0324f726d898fefcc50e9c7b",
+  "settings": {
+    "k": 144,
+    "selectors": [
+      "pw",
+      "qspan"
+    ],
+    "primary_selector": "pw",
+    "surface": "capitalized",
+    "main_units": [
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "mis",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "mis",
+        "answering": "Q"
+      },
+      {
+        "selector": "qspan",
+        "k": 144,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "Q"
+      },
+      {
+        "selector": "qspan",
+        "k": 144,
+        "reserve": false,
+        "selection": "mis",
+        "answering": "mis"
+      },
+      {
+        "selector": "qspan",
+        "k": 144,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "mis"
+      },
+      {
+        "selector": "qspan",
+        "k": 144,
+        "reserve": false,
+        "selection": "mis",
+        "answering": "Q"
+      },
+      {
+        "selector": "full",
+        "k": 576,
+        "reserve": false,
+        "selection": "none",
+        "answering": "Q"
+      },
+      {
+        "selector": "uniform",
+        "k": 144,
+        "reserve": false,
+        "selection": "none",
+        "answering": "Q"
+      },
+      {
+        "selector": "full",
+        "k": 576,
+        "reserve": false,
+        "selection": "none",
+        "answering": "mis"
+      },
+      {
+        "selector": "uniform",
+        "k": 144,
+        "reserve": false,
+        "selection": "none",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": true,
+        "selection": "Q",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": true,
+        "selection": "mis",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": true,
+        "selection": "Q",
+        "answering": "mis"
+      }
+    ],
+    "control_units": [
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "mis",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "mis",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "match",
+        "answering": "match"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "match"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "match",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "irr",
+        "answering": "irr"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "irr"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "irr",
+        "answering": "Q"
+      },
+      {
+        "selector": "qspan",
+        "k": 144,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "Q"
+      },
+      {
+        "selector": "qspan",
+        "k": 144,
+        "reserve": false,
+        "selection": "mis",
+        "answering": "mis"
+      },
+      {
+        "selector": "qspan",
+        "k": 144,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "mis"
+      },
+      {
+        "selector": "qspan",
+        "k": 144,
+        "reserve": false,
+        "selection": "mis",
+        "answering": "Q"
+      },
+      {
+        "selector": "qspan",
+        "k": 144,
+        "reserve": false,
+        "selection": "match",
+        "answering": "match"
+      },
+      {
+        "selector": "qspan",
+        "k": 144,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "match"
+      },
+      {
+        "selector": "qspan",
+        "k": 144,
+        "reserve": false,
+        "selection": "match",
+        "answering": "Q"
+      },
+      {
+        "selector": "qspan",
+        "k": 144,
+        "reserve": false,
+        "selection": "irr",
+        "answering": "irr"
+      },
+      {
+        "selector": "qspan",
+        "k": 144,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "irr"
+      },
+      {
+        "selector": "qspan",
+        "k": 144,
+        "reserve": false,
+        "selection": "irr",
+        "answering": "Q"
+      },
+      {
+        "selector": "full",
+        "k": 576,
+        "reserve": false,
+        "selection": "none",
+        "answering": "Q"
+      },
+      {
+        "selector": "uniform",
+        "k": 144,
+        "reserve": false,
+        "selection": "none",
+        "answering": "Q"
+      },
+      {
+        "selector": "full",
+        "k": 576,
+        "reserve": false,
+        "selection": "none",
+        "answering": "mis"
+      },
+      {
+        "selector": "uniform",
+        "k": 144,
+        "reserve": false,
+        "selection": "none",
+        "answering": "mis"
+      },
+      {
+        "selector": "full",
+        "k": 576,
+        "reserve": false,
+        "selection": "none",
+        "answering": "match"
+      },
+      {
+        "selector": "uniform",
+        "k": 144,
+        "reserve": false,
+        "selection": "none",
+        "answering": "match"
+      },
+      {
+        "selector": "full",
+        "k": 576,
+        "reserve": false,
+        "selection": "none",
+        "answering": "irr"
+      },
+      {
+        "selector": "uniform",
+        "k": 144,
+        "reserve": false,
+        "selection": "none",
+        "answering": "irr"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": true,
+        "selection": "Q",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": true,
+        "selection": "mis",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": true,
+        "selection": "Q",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": true,
+        "selection": "match",
+        "answering": "match"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": true,
+        "selection": "Q",
+        "answering": "match"
+      }
+    ],
+    "blind": "Full_Q on a blank image of the padding colour; consistency check, should never be eligible",
+    "main_size": 1000,
+    "control_size": 300
+  }
+}
