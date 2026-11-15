@@ -22,11 +22,11 @@ from kvsel.confirm_analysis import CODE_AMENDMENTS, code_accepted
 from kvsel.freeze import sha256_file
 from kvsel.geometry import PAD_COLOR
 from kvsel.model import Bundle
-from kvsel.runner import NO_CONTEXT, Q, Unit, eligible, open_image, run_unit, write_json_atomic
+from kvsel.runner import NO_CONTEXT, Q, Unit, eligible, open_image, write_json_atomic
 from kvsel.verify import PASS, load_decisions
 
 from .family import NEXT
-from .model import prefill
+from .model import prefill, run_unit
 from .model_files import REVISION
 from .prompts import tokenize_prompt
 

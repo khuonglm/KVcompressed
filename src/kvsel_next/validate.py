@@ -19,12 +19,12 @@ from kvsel.cache import entries_hash
 from kvsel.engine import greedy, probe, replay
 from kvsel.model import Bundle, full_forward_logits
 from kvsel.prompts import candidate_ids, surface_forms
-from kvsel.runner import NO_CONTEXT, Q, Unit, open_image, run_unit
+from kvsel.runner import NO_CONTEXT, Q, Unit, open_image
 from kvsel.validate import SURFACE, margin_full_forward, margin_incremental, sample_differences
 
 from .family import NEXT
 from .layout import Layout, derive_layout, visual_span
-from .model import prefill
+from .model import prefill, run_unit
 from .model_files import REVISION
 from .comparative import units
 from .prompts import contexts_for
@@ -105,7 +105,9 @@ def replayed(bundle: Bundle, prefix, kept: torch.Tensor, suffix: torch.Tensor, m
     dense mode, is freed on return, so validate never holds more copies than a run unit does."""
     state, logits = replay(bundle.decoder, prefix, kept, suffix, mode)
     margin = margin_incremental(bundle, state, prompt, item["a_true"], item["a_alt"], surface)
-    decoded = greedy(bundle.decoder, state, max_new=greedy_steps, stop_at_eos=False) if greedy_steps else None
+    held = [state]
+    del state  # as the run's `run_unit`: greedy's frame holds the only reference, so the state is freed as it steps
+    decoded = greedy(bundle.decoder, held.pop(), max_new=greedy_steps, stop_at_eos=False) if greedy_steps else None
     return logits, margin, decoded
 
 

@@ -20,11 +20,11 @@ from kvsel.confirm_analysis import SURFACE, checks, load_run
 from kvsel.engine import probe
 from kvsel.freeze import sha256_file
 from kvsel.model import Bundle
-from kvsel.runner import NO_CONTEXT, Q, Unit, load_items, open_image, run_unit, write_json_atomic
+from kvsel.runner import NO_CONTEXT, Q, Unit, load_items, open_image, write_json_atomic
 from kvsel.verify import load_decisions
 
 from . import screen
-from .model import prefill
+from .model import prefill, run_unit
 from .prompts import contexts_for
 from .selection import SHARES, budget, kept_sets
 

@@ -256,3 +256,33 @@ def test_non_eager_attention_is_refused(tiny_llava_next, processor):
     model.config.text_config._attn_implementation = "sdpa"
     with pytest.raises(RuntimeError, match="eager"):
         bundle_from_model(model, processor.tokenizer, processor, family=NEXT)
+
+
+# --- memory: same outputs with fewer copies (20 GiB GPU) ------------------------------------------
+
+
+def test_run_unit_rows_equal_kvsels(bundle, aspect):
+    """The NeXT run_unit scores before greedy so it holds one cache copy fewer; its row is kvsel's exactly."""
+    from kvsel.runner import NO_CONTEXT, Unit
+    from kvsel.runner import run_unit as kvsel_run_unit
+    from kvsel_next.model import run_unit
+
+    item = {**ITEM, "a_true": "red", "a_alt": "blue"}
+    total = aspect["layout"].total
+    kept = np.sort(np.random.default_rng(0).choice(total, total // 4, replace=False))
+    for unit, keep in ((Unit("full", total, False, NO_CONTEXT, "Q"), np.arange(total)),
+                       (Unit("pw", len(kept), False, "mis", "mis"), kept)):
+        assert run_unit(bundle, item, unit, aspect["prefix"], keep, aspect["tokens"]) == \
+            kvsel_run_unit(bundle, item, unit, aspect["prefix"], keep, aspect["tokens"])
+
+
+def test_logits_without_the_fp32_head_copy_are_identical(tiny_llava_next, processor):
+    from kvsel.model import bundle_from_model
+    from kvsel_next.model import drop_fp32_head_copy
+
+    with_copy = bundle_from_model(tiny_llava_next, processor.tokenizer, processor, family=NEXT)
+    without = bundle_from_model(tiny_llava_next, processor.tokenizer, processor, family=NEXT)
+    drop_fp32_head_copy(without)
+    assert without.decoder.fp32_head is None and with_copy.decoder.fp32_head is not None
+    hidden = torch.randn(1, 5, tiny_llava_next.config.text_config.hidden_size, dtype=without.decoder.dtype)
+    assert torch.equal(with_copy.decoder.logits(hidden), without.decoder.logits(hidden))
