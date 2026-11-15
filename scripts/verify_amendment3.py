@@ -63,7 +63,7 @@ def main() -> None:
         if entry["to"] != current[entry["scope"]]:
             raise SystemExit(f"the code changed after the amendment was written ({entry['scope']}); rewrite the entry first")
     for stored, (command, out, exact) in REPORTS.items():
-        print(f"== {command[1]} -> {out}", flush=True)
+        print(f"== {stored} -> {out}", flush=True)
         subprocess.run(["uv", "run", *command, "--out", out], cwd=ROOT, check=True, stdout=subprocess.DEVNULL)
         old_text, new_text = (ROOT / stored / "results.json").read_text(), (ROOT / out / "results.json").read_text()
         if exact:
