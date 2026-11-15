@@ -291,7 +291,8 @@ and is safe to rerun; step 10 needs the replication's report and is skipped once
    GPU memory of a run, and `projected: screen <= X h, comparative run <= Y h` (upper bounds: every unit
    costed as a Full unit on the longest suffix). Stop here on NO-GO.
 4. With me: settle PREREG 4.5, fill in 4.1's model revision and AnyRes cap from step 3's numbers, then
-   review section 4 and delete its DRAFT line. Stage 1 refuses while the line is there.
+   review section 4 and delete its DRAFT line. Stage 1 refuses while the line or any "[to fill" blank is
+   there. No AnyRes cap is implemented yet: if step 3 says one is needed, it needs code before stage 1.
 5. Freeze stage 1 (no GPU, seconds) and commit `freeze/next_screening.json` with `PREREG.md` before step 6:
    ```
    uv run python -m kvsel_next freeze-screening --items manifests/gqa_confirm.jsonl
@@ -305,8 +306,9 @@ and is safe to rerun; step 10 needs the replication's report and is skipped once
    ```
    Send me its final funnel counts.
 7. Count (no GPU, seconds). It reads the flags only. You want `"main_set": 1000` and `"short_of_1000": false`.
-   If it is short with `"unscreened_passed": 0`, stop and send it to me: step 8 refuses a set smaller than
-   stage 1 froze, so a smaller set (PREREG 4.5(d)) needs a decision and a change before stage 3.
+   If it is short with `"unscreened_passed": 0`, the whole pool is screened and, by PREREG 4.5(d), the main set
+   is every eligible item: send me the count before step 8, which freezes that size. If it is short with
+   unscreened items left, rerun step 6.
    ```
    uv run python -m kvsel_next count --items manifests/gqa_confirm.jsonl --decisions verification/gqa_confirm.jsonl --screen results/next/screen
    ```

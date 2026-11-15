@@ -26,20 +26,29 @@ from .family import NEXT
 from .layout import Layout, derive_layout, visual_span
 from .model import prefill
 from .model_files import REVISION
+from .comparative import units
 from .prompts import contexts_for
+from .screen import SCREENING
+from .selection import SHARES
 
 CHECKS = ("E1", "E2", "E3", "E4", "E7")
-SHARES = (0.125, 0.25, 0.5)
-KINDS = ("random", "concentrated")  # no scored sets: selection is ticket 02, and E3 needs only some sparse sets
+KINDS = ("random", "concentrated")  # E3 compares compact and dense on any sparse sets; scored sets add nothing
 MARGIN_LIMIT = 0.01  # E3's mean |margin| limit, as kvsel validate
-# For the projections. Pool and set sizes from PREREG 4.1 and 4.5(d); units per item from 4.2.
-POOL, MAIN, CONTROL = 2335, 1000, 300
-MAIN_PROBES, MAIN_UNITS = 3, 3 * 7 + 3  # probes Q, mis, irr; per share A and B, C, D for mis and irr; 3 Full
-CONTROL_PROBES, CONTROL_UNITS = 1, 3 * 3 + 1  # probe match; per share B, C, D for match; Full_match
+POOL = 2335  # passed GQA confirmatory items, 16 November 2026 (PREREG 4.5(d)); for the projections only
 
 
-def kept_set(layout: Layout, share: float, kind: str, seed: int) -> np.ndarray:
-    """k = round(share x feature tokens) feature tokens, random or the first k, plus every newline."""
+def _projection_sizes() -> tuple[int, int, int, int, int, int]:
+    """Set sizes, probes and units per item for the projections, from the frozen settings and unit lists."""
+    main, control = units(control=False), units(control=True)
+    probes = {u.selection for u in main if u.selector == "pw"}
+    extra_probes = {u.selection for u in control if u.selector == "pw"} - probes
+    return (SCREENING["main_size"], SCREENING["control_size"], len(probes), len(main),
+            len(extra_probes), len(control) - len(main))
+
+
+def sparse_set(layout: Layout, share: float, kind: str, seed: int) -> np.ndarray:
+    """E3's sets, not selection's: k = round(share x feature tokens) feature tokens, random or the first k,
+    plus every newline (the Level 2 criteria, written before the run)."""
     newlines = np.array(layout.newlines, dtype=np.int64)
     features = np.setdiff1d(np.arange(layout.total), newlines)
     k = round(share * len(features))
@@ -133,7 +142,7 @@ def check_item(bundle: Bundle, item: dict, image, position: int, sparse: bool, s
             found["hash_failures"].append(f"{item['item_id']}: changed by probe {name}")
         for share in SHARES:
             for kind in KINDS:
-                kept = torch.from_numpy(kept_set(layout, share, kind, position))
+                kept = torch.from_numpy(sparse_set(layout, share, kind, position))
                 logits_c, margin_c, greedy_c = replayed(bundle, prefix, kept, suffix, "compact", t.prompt, item, surface, 10)
                 logits_d, margin_d, greedy_d = replayed(bundle, prefix, kept, suffix, "dense", t.prompt, item, surface, 10)
                 found["sparse_samples"].append(sample_differences(logits_c - logits_d, generator))
@@ -164,7 +173,7 @@ def fingerprint(bundle: Bundle, item: dict, image) -> str:
     tokens, inputs = contexts_for(bundle.image_processor, item, image)
     prefix, layout = prefill(bundle, tokens[Q].prefix_ids, inputs)
     attention = probe(bundle.decoder, prefix, torch.tensor([tokens["mis"].suffix_ids]))
-    kept = kept_set(layout, 0.25, "random", 0)
+    kept = sparse_set(layout, 0.25, "random", 0)
     rows = [run_unit(bundle, item, Unit("full", layout.total, False, NO_CONTEXT, Q), prefix, np.arange(layout.total), tokens),
             run_unit(bundle, item, Unit("random", len(kept), False, NO_CONTEXT, "mis"), prefix, kept, tokens)]
     return json.dumps({"prefix": entries_hash(prefix.entries),
@@ -185,8 +194,9 @@ def projection(prefill_seconds: float, probe_seconds: float, unit_seconds: float
     """Upper bounds: every unit costs a Full unit, and the screen runs Blind_Q on every pool item."""
     blind = prefill_seconds + unit_seconds
     screen = POOL * 2 * blind
-    comparative = (MAIN * (prefill_seconds + MAIN_PROBES * probe_seconds + MAIN_UNITS * unit_seconds + blind)
-                   + CONTROL * (CONTROL_PROBES * probe_seconds + CONTROL_UNITS * unit_seconds))
+    main, control, main_probes, main_units, control_probes, control_units = _projection_sizes()
+    comparative = (main * (prefill_seconds + main_probes * probe_seconds + main_units * unit_seconds + blind)
+                   + control * (control_probes * probe_seconds + control_units * unit_seconds))
     return {"screen_hours_upper": screen / 3600, "comparative_hours_upper": comparative / 3600}
 
 

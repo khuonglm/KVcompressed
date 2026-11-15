@@ -228,6 +228,8 @@ prefix. A kept set is k = round(share × feature tokens) feature tokens plus eve
 | E7 | Prefill, the mis probe and two units (Full_Q; QH_mis at a 25% random set), run twice on 5 items | Identical |
 
 Not run for NeXT: E5 (placebo, which needs selection) and scored kept sets (selection is ticket 02).
+(Note, 16 November 2026: selection now exists; validate still uses random and concentrated sets only,
+since E3 compares compact and dense replay on any sparse set. The criteria above are unchanged.)
 GO only if every check passes. Peak GPU memory, the visual-token range and time per item are reported,
 not judged. The memory that counts is the run peak (prefill, then a Full unit on the cache), not validate's
 own full forward passes; a run peak above 20 GB means an AnyRes cap in PREREG 4.1 before stage 1.

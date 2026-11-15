@@ -46,6 +46,9 @@ SCREENING = {
     "pool": "manifest items whose latest current-digest decision is pass, in manifest order",
     "main_size": 1000,
     "control_size": 300,
+    # PREREG 4.5(d), settled 16 November 2026: as 1.6, a short main set is every eligible item and is reported.
+    "shortfall": "fewer than main_size eligible after the whole pool is screened: the main set is every eligible "
+                 "item, the control subset its first control_size, and the shortfall is reported",
     "max_new_tokens": 16,
     "batch_size": 1,
 }
@@ -71,6 +74,15 @@ def is_draft(prereg: Path) -> bool:
     return any(line.startswith("DRAFT") for line in _section(prereg, SECTION, ("## ",)))
 
 
+def refuse_unsettled(prereg: Path) -> None:
+    """Both NeXT freezes: section 4 must have lost its DRAFT line and every '[to fill' blank."""
+    if is_draft(prereg):
+        raise SystemExit(f"section 4 of {prereg} is still marked DRAFT; review it and delete that line first")
+    blanks = [line.strip() for line in _section(prereg, SECTION, ("## ",)) if "[to fill" in line]
+    if blanks:
+        raise SystemExit(f"section 4 of {prereg} still has {len(blanks)} blank(s) to fill, first: {blanks[0][:120]}")
+
+
 def code_hash() -> str:
     """Every .py file under `src/kvsel/` and `src/kvsel_next/`, subpackages included."""
     digest = hashlib.sha256()
@@ -92,8 +104,7 @@ def current_state(prereg: Path, manifest: Path) -> dict:
 
 
 def freeze_screening(prereg: Path, manifest: Path, record: Path = RECORD) -> dict:
-    if is_draft(prereg):
-        raise SystemExit(f"section 4 of {prereg} is still marked DRAFT; review it and delete that line first")
+    refuse_unsettled(prereg)
     splits = {json.loads(line).get("split") for line in Path(manifest).read_text().splitlines() if line.strip()}
     if splits != {"confirm"}:
         raise SystemExit(f"{manifest} is not a confirmatory manifest (splits: {sorted(map(str, splits))})")

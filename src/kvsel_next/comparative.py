@@ -115,25 +115,28 @@ def run_comparative(bundle: Bundle, items: list[dict], images_dir: Path, out_dir
 # --- Freeze ----------------------------------------------------------------------------------------
 
 
-def main_set(items: list[dict], flags: dict[str, bool], decisions: Path, size: int) -> list[str]:
-    """The first `size` eligible items of the pool, in manifest order; stops at an unscreened pool item."""
+def main_set(items: list[dict], flags: dict[str, bool], decisions: Path, size: int) -> tuple[list[str], bool]:
+    """The first `size` eligible items of the pool, in manifest order, and whether that set is final: it is
+    full, or every pool item is screened (PREREG 4.5(d): then a short set is every eligible item)."""
     chosen = []
     for item in screen.pool(items, decisions):
-        if item["item_id"] not in flags or len(chosen) == size:
+        if len(chosen) == size:
             break
+        if item["item_id"] not in flags:
+            return chosen, False  # an unscreened pool item may not be skipped
         if flags[item["item_id"]]:
             chosen.append(item["item_id"])
-    return chosen
+    return chosen, True
 
 
 def current_state(prereg: Path, manifest: Path, screen_dir: Path, decisions: Path, stage1: Path) -> dict:
     stage1_record = screen.check_screening(prereg, manifest, stage1)
     size, control_size = stage1_record["settings"]["main_size"], stage1_record["settings"]["control_size"]
     items = load_items(manifest)
-    chosen = main_set(items, load_flags(screen_dir), decisions, size)
-    if len(chosen) < size:
-        raise SystemExit(f"the main set has {len(chosen)} of {size} items; screen the rest of the pool "
-                         "(`python -m kvsel_next count` shows what is left)")
+    chosen, final = main_set(items, load_flags(screen_dir), decisions, size)
+    if not final:
+        raise SystemExit(f"the main set has {len(chosen)} of {size} items and pool items are unscreened; screen the "
+                         "rest of the pool (`python -m kvsel_next count` shows what is left)")
     current, _ = load_decisions(decisions, items)
     return {
         "prereg_sha256": sha256_file(prereg),
@@ -142,6 +145,7 @@ def current_state(prereg: Path, manifest: Path, screen_dir: Path, decisions: Pat
         "screen_flags_sha256": sha256_file(Path(screen_dir) / "eligible.jsonl"),
         "main_set_sha256": hashlib.sha256(json.dumps([[i, current[i]["digest"]] for i in chosen]).encode()).hexdigest(),
         "main_ids": chosen,
+        "main_size_frozen_at_stage1": size,  # more than len(main_ids) means a shortfall (PREREG 4.5(d))
         "control_ids": chosen[:control_size],
         "code_sha256": screen.code_hash(),
         "settings": settings(),
@@ -149,8 +153,7 @@ def current_state(prereg: Path, manifest: Path, screen_dir: Path, decisions: Pat
 
 
 def freeze(prereg: Path, manifest: Path, screen_dir: Path, decisions: Path, stage1: Path, record: Path) -> dict:
-    if screen.is_draft(prereg):
-        raise SystemExit(f"section 4 of {prereg} is still marked DRAFT; review it and delete that line first")
+    screen.refuse_unsettled(prereg)
     return screen.write_once(record, "next_comparative", current_state(prereg, manifest, screen_dir, decisions, stage1))
 
 

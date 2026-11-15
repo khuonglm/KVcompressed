@@ -37,3 +37,16 @@ def test_next_family_is_not_in_kvsels_table():
     from kvsel.families import FAMILIES
 
     assert set(FAMILIES) == {"llava"}
+
+
+def test_section_1_still_matches_the_stage1_record():
+    """PREREG section 4 is appended after 3.6; section 1's hash must still equal the stage-1 record's."""
+    import hashlib
+
+    from kvsel.freeze import screening_section
+
+    record = FREEZE / DEFAULT_RECORD.name
+    if not record.exists():
+        pytest.skip(f"no {record.name} in this checkout")
+    section = screening_section(Path(__file__).parents[1] / "PREREG.md")
+    assert hashlib.sha256(section.encode()).hexdigest() == json.loads(record.read_text())["prereg_screening_sha256"]

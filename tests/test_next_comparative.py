@@ -115,15 +115,15 @@ def test_unit_lists_match_prereg_42():
     assert comparative.BLIND == comparative.NextUnit("full", 1.0, "none", "Q")
 
 
-def test_freeze_refuses_a_draft_a_short_set_and_a_different_record(world):
+def test_freeze_refuses_a_draft_a_blank_and_a_different_record(world):
+    settled = world["prereg"].read_text()
     world["prereg"].write_text(PREREG)
     with pytest.raises(SystemExit, match="DRAFT"):
         cli.main(["freeze", *common(world)])
-    world["prereg"].write_text(PREREG.replace("DRAFT (date): delete after review.\n\n", "Mentions DRAFT mid-line.\n\n"))
-    write_flags(world["screen"], {**ELIGIBLE, "q4": False, "q5": False})
-    with pytest.raises(SystemExit, match="2 of 3"):
+    world["prereg"].write_text(settled.replace("- Shares.", "- Shares: **[to fill before stage 3]**."))
+    with pytest.raises(SystemExit, match="blank"):
         cli.main(["freeze", *common(world)])
-    write_flags(world["screen"], ELIGIBLE)
+    world["prereg"].write_text(PREREG.replace("DRAFT (date): delete after review.\n\n", "Mentions DRAFT mid-line.\n\n"))
     cli.main(["freeze", *common(world)])
     first = world["record"].read_text()
     cli.main(["freeze", *common(world)])  # unchanged: the same record
@@ -131,6 +131,15 @@ def test_freeze_refuses_a_draft_a_short_set_and_a_different_record(world):
     world["prereg"].write_text(world["prereg"].read_text() + "\nMore text.\n")
     with pytest.raises(SystemExit, match="already exists"):
         cli.main(["freeze", *common(world)])
+
+
+def test_a_short_set_after_the_whole_pool_is_every_eligible_item(world):
+    """PREREG 4.5(d): stage 1 froze a size of 3; only q0 and q3 are eligible and every pool item is screened."""
+    write_flags(world["screen"], {**ELIGIBLE, "q4": False, "q5": False})
+    cli.main(["freeze", *common(world)])
+    record = json.loads(world["record"].read_text())
+    assert record["main_ids"] == ["q0", "q3"] and record["control_ids"] == CONTROL
+    assert record["main_size_frozen_at_stage1"] == 3
 
 
 def test_an_unscreened_pool_item_ends_the_main_set(world):
@@ -338,7 +347,8 @@ def planted(tmp_path):
 
     ids = [f"r{i}" for i in range(80)]
     record = tmp_path / "next_gqa.json"
-    record.write_text(json.dumps({"main_ids": ids, "control_ids": ids[:20], "settings": comparative.settings()}))
+    record.write_text(json.dumps({"main_ids": ids, "control_ids": ids[:20], "main_size_frozen_at_stage1": 80,
+                                  "settings": comparative.settings()}))
     run = synthetic_run(tmp_path / "run", ids, set(ids[:20]))
     llava15 = tmp_path / "replication_results.json"
     llava15.write_text(json.dumps(LLAVA15))
@@ -393,4 +403,12 @@ def test_report_prints_llava15_beside_and_states_the_checks(planted):
     assert "| S_H^(irr) | 25.0% | 144 | — | " in text  # absent from the replication file: shown, not dropped
     assert "never pooled" in text
     assert "Blind_Q eligible on 0 of 80" in text and "visual tokens 1656-1676" in text and "truncated answers 0.00%" in text
-    assert "24x44 (40)" in text
+    assert "24x44 (40)" in text and "Shortfall" not in text
+
+
+def test_report_states_a_shortfall(planted):
+    from kvsel_next import report
+
+    found, _ = planted
+    text = report.render({**found, "main_size_frozen_at_stage1": 1000})
+    assert "**Shortfall:** 80 eligible items, not 1000" in text

@@ -61,6 +61,14 @@ def test_freeze_refuses_while_section_4_has_its_draft_line(world):
     assert not world["record"].exists()
 
 
+def test_freeze_refuses_a_blank_left_to_fill(world):
+    undraft(world)
+    world["prereg"].write_text(world["prereg"].read_text().replace("- Model: NeXT.", "- Model: NeXT at **[to fill before stage 1]**."))
+    with pytest.raises(SystemExit, match="1 blank"):
+        freeze(world)
+    assert not world["record"].exists()
+
+
 def test_a_mention_of_the_word_is_not_the_draft_line(world):
     undraft(world)
     assert freeze(world)["stage"] == "next_screening"

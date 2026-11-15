@@ -13,9 +13,12 @@ from pathlib import Path
 
 import numpy as np
 
+from kvsel import NUM_VISUAL
 from kvsel.analysis import RESAMPLES, holm
 from kvsel.confirm_analysis import SURFACE, _fmt, _plain, _table, checks, load_run
 from kvsel.replication.report import _interval, behaviour_rates, budget_results, overlap
+
+from .selection import SHARES
 
 
 
@@ -24,7 +27,7 @@ def share_label(share: float) -> str:
 
 
 # LLaVA-1.5's K for each share of feature tokens (PREREG 4.3), keyed by the report's share labels.
-K_OF = {share_label(share): k for share, k in ((0.125, "72"), (0.25, "144"), (0.5, "288"))}
+K_OF = {share_label(share): str(round(share * NUM_VISUAL)) for share in SHARES}  # 72, 144, 288
 
 
 def results(run_dir: Path, record_path: Path, llava15: Path, resamples: int = RESAMPLES) -> dict:
@@ -51,6 +54,7 @@ def results(run_dir: Path, record_path: Path, llava15: Path, resamples: int = RE
     return {
         "run": str(run_dir), "surface": SURFACE, "items": len(items), "images": len({r["image_id"] for r in rows}),
         "control_items": len(record["control_ids"]),
+        "main_size_frozen_at_stage1": record["main_size_frozen_at_stage1"],
         "checks": {**checks(rows), "visual_tokens_min": min(x["total"] for x in layouts),
                    "visual_tokens_max": max(x["total"] for x in layouts),
                    "grids": dict(Counter(f"{x['grid'][0]}x{x['grid'][1]}" for x in layouts).most_common())},
@@ -66,6 +70,9 @@ def render(found: dict) -> str:
              (f"Surface rule `{found['surface']}`; PW-attn; image-clustered bootstrap, two-sided tests. "
               f"{found['items']} items on {found['images']} images; {found['control_items']} control items. "
               "LLaVA-1.5's comparative outcomes on many of these items were seen before NeXT's hypotheses were chosen (PREREG 4)."), "",
+             *([f"**Shortfall:** {found['items']} eligible items, not {found['main_size_frozen_at_stage1']}: the whole pool was "
+                "screened, so the main set is every eligible item (PREREG 4.5(d)).", ""]
+               if found["items"] < found["main_size_frozen_at_stage1"] else []),
              f"## Confirmatory: Holm family of {len(family['tests'])} (α = {family['alpha']}), final", "",
              "| Test | Mean (nats) | 95% interval | Two-sided p | Reading | Items / images | Holm |",
              "| --- | ---: | --- | ---: | --- | ---: | --- |"]

@@ -10,7 +10,8 @@ from kvsel.model_files import WEIGHT_INDEX
 from kvsel_next import __main__ as cli
 from kvsel_next.layout import Layout
 from kvsel_next.model_files import REQUIRED_FILES, REVISION, REVISION_FILE, fetch_model, missing_files, resolve_model
-from kvsel_next.validate import SHARES, kept_set
+from kvsel_next.selection import SHARES
+from kvsel_next.validate import _projection_sizes, sparse_set
 
 SHARDS = ["model-00001-of-00003.safetensors", "model-00002-of-00003.safetensors", "model-00003-of-00003.safetensors"]
 
@@ -70,10 +71,16 @@ def test_kept_sets_hold_k_features_and_every_newline(kind):
     layout = Layout(24, (24, 44))
     features = layout.total - len(layout.newlines)
     for share in SHARES:
-        kept = kept_set(layout, share, kind, 0)
+        kept = sparse_set(layout, share, kind, 0)
         assert set(layout.newlines) <= set(kept.tolist())
         assert len(kept) == round(share * features) + len(layout.newlines) == len(set(kept.tolist()))
         assert np.all(np.diff(kept) > 0)
+
+
+def test_projection_counts_match_prereg_42():
+    """By hand from 4.2: main items probe Q, mis, irr and run 3 shares x 7 cells + 3 Full = 24 units;
+    control items also probe match and run 3 x 3 match cells + Full_match = 10 more."""
+    assert _projection_sizes() == (1000, 300, 3, 24, 1, 10)
 
 
 # --- validate --------------------------------------------------------------------------------------
