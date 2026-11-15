@@ -118,6 +118,7 @@ def check_item(bundle: Bundle, item: dict, image, position: int, sparse: bool, s
     (prefix, layout), prefill_seconds = _timed(device, lambda: prefill(bundle, tokens[Q].prefix_ids, inputs))
     record = {"item_id": item["item_id"], "visual_tokens": layout.total, "grid": list(layout.grid),
               "prefill_peak_gb": _peak_gb(device), "prefill_seconds": prefill_seconds}
+    print(f"  {layout.total} visual tokens, grid {layout.grid[0]}x{layout.grid[1]}", flush=True)  # before any OOM
     vision = {"pixel_values": inputs["pixel_values"].to(device, next(bundle.model.parameters()).dtype),
               "image_sizes": inputs["image_sizes"].to(device)}
     keep_all = torch.arange(layout.total)
@@ -209,6 +210,10 @@ def validate(bundle: Bundle, items: list[dict], images_dir: Path, noise_items: i
 
     report: dict = {"model": NEXT.model_id, "revision": REVISION, "head_precision": bundle.decoder.head_precision,
                     "surface": surface, "device": str(bundle.device)}
+    if bundle.device.type == "cuda":  # what the GPU leaves for caches; memory held by other processes shows here
+        free, total = torch.cuda.mem_get_info(bundle.device)
+        print(f"GPU memory after loading the model: {free / 2**30:.2f} GiB free of {total / 2**30:.2f} GiB; "
+              f"this process holds {torch.cuda.memory_allocated(bundle.device) / 2**30:.2f} GiB of tensors", flush=True)
     stage(f"E1: serialization and layouts, {len(items)} items")
     report["E1"], report["layouts"] = check_serialization(bundle, items, images_dir)
 
