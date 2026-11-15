@@ -12,7 +12,7 @@
     "date": "2026-11-15",
     "scope": "stage 3 (code_hash_all)",
     "reason": "review fixes and clean-up before the replication analysis, no rule changed (PREREG 3.6, amendment 3)",
-    "evidence": "pending: run scripts/verify_amendment3.py on the server"
+    "evidence": "confirm-report results.json and the follow-up results.json byte-identical to those from the accepted code; replication results.json identical on every key the frozen code produced (the new code adds the 3.3 sign-rule reading); produced by scripts/verify_amendment3.py"
   },
   {
     "from": "b128ba39ac88fd48bbab5ad91b7d8353aa947257f0aece5b674f12cfe22798b2",
@@ -20,6 +20,6 @@
     "date": "2026-11-15",
     "scope": "replication (code_hash_tree)",
     "reason": "review fixes and clean-up before the replication analysis, no rule changed (PREREG 3.6, amendment 3)",
-    "evidence": "pending: run scripts/verify_amendment3.py on the server"
+    "evidence": "confirm-report results.json and the follow-up results.json byte-identical to those from the accepted code; replication results.json identical on every key the frozen code produced (the new code adds the 3.3 sign-rule reading); produced by scripts/verify_amendment3.py"
   }
 ]
