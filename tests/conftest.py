@@ -47,3 +47,23 @@ def tiny_llava():
     )
     return LlavaForConditionalGeneration(config).eval()
 
+
+@pytest.fixture(scope="session")
+def tiny_llava_next():
+    """LLaVA-NeXT classes with random weights: 24 x 24 base tile, AnyRes on with the real pinpoints."""
+    from transformers import LlavaNextConfig, LlavaNextForConditionalGeneration
+
+    torch.manual_seed(3)
+    text = LlamaConfig(
+        vocab_size=32064, hidden_size=32, intermediate_size=64, num_hidden_layers=4, num_attention_heads=4,
+        max_position_embeddings=4096,
+    )
+    vision = CLIPVisionConfig(
+        hidden_size=16, intermediate_size=32, num_hidden_layers=2, num_attention_heads=2, image_size=336, patch_size=14,
+    )
+    config = LlavaNextConfig(
+        vision_config=vision, text_config=text, image_token_index=32000, vision_feature_layer=-2,
+        vision_feature_select_strategy="default", attn_implementation="eager",
+        image_grid_pinpoints=[[336, 672], [672, 336], [672, 672], [1008, 336], [336, 1008]],
+    )
+    return LlavaNextForConditionalGeneration(config).eval()

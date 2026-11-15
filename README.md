@@ -256,6 +256,90 @@ EXCLUDE="results/confirm/gqa_run results/followup/gqa <folder with the 9 extra i
 6. After a code amendment (PREREG 1.9, 3.6), prove it reproduces every stored report, which also records
    its evidence: `uv run python scripts/verify_amendment3.py`. Commit `freeze/code_amendments.json` with the code.
 
+## LLaVA-NeXT (PREREG section 4; validation gate 24 November)
+
+The steering test on a second model, LLaVA-NeXT-7B with AnyRes, on GQA. It runs as `python -m kvsel_next`,
+kept outside `kvsel` so `kvsel`'s records stay valid. Run in this order and stop at the first step that
+fails; send me its output. **Never open the item files** under `results/next/screen/items` or
+`results/next/gqa_run/items`: send only what each step says.
+
+**No comparative unit may run on NeXT before `freeze/next_gqa.json` and `PREREG.md` are committed.**
+
+**Timing rule.** After the stage-1 freeze (step 5), section 4.1 is not edited, and nothing under
+`src/kvsel/` or `src/kvsel_next/` changes without a dated code amendment in `freeze/code_amendments.json`
+(PREREG 1.9): the NeXT records hash both packages, and `screen`, `freeze`, `run` and `report` refuse code
+that the amendments file doesn't list. After the stage-3 freeze (step 8), `PREREG.md` grows only by dated
+amendments.
+
+`scripts/overnight_next.sh` runs steps 5-10 in a row and stops after each freeze until you commit (see its
+header). Steps 1-4 stay by hand. It checks its inputs first, logs everything to `results/next/overnight.log`,
+and is safe to rerun; step 10 needs the replication's report and is skipped once `report.md` exists.
+
+1. Get the model (about 14 GB, in `tmux`; rerun to resume). It downloads the pinned revision into
+   `models/llava-v1.6-vicuna-7b-hf`; a partial copy, or one at another revision, stops every NeXT command.
+   ```
+   uv run python -m kvsel_next fetch-model
+   ```
+   Send me its last line (`model complete at …, revision …`), or the list it says is still missing.
+2. Validate on GQA development items (GPU). It refuses items that are not development items.
+   ```
+   uv run python -m kvsel_next validate --items manifests/gqa_dev.jsonl --images data/gqa/images
+   ```
+   Criteria: [tests/README.md](tests/README.md), "LLaVA-NeXT-7B, Level 2". They don't change after a failure.
+3. Send me the whole console output and `results/next_validate.json`, GO or NO-GO. The last line is
+   `GO` or `NO-GO` (exit code 1). Its last lines also give the time and memory for the steps below: the peak
+   GPU memory of a run, and `projected: screen <= X h, comparative run <= Y h` (upper bounds: every unit
+   costed as a Full unit on the longest suffix). Stop here on NO-GO.
+4. With me: settle PREREG 4.5, fill in 4.1's model revision and AnyRes cap from step 3's numbers, then
+   review section 4 and delete its DRAFT line. Stage 1 refuses while the line is there.
+5. Freeze stage 1 (no GPU, seconds) and commit `freeze/next_screening.json` with `PREREG.md` before step 6:
+   ```
+   uv run python -m kvsel_next freeze-screening --items manifests/gqa_confirm.jsonl
+   ```
+   It refuses while section 4 has its DRAFT line and if a different record exists. Send me its printed summary.
+6. Screen (GPU, in `tmux`; at most step 3's projected screen hours, usually far less since it stops at
+   1,000 eligible items). It runs Full_Q, then Blind_Q on items that pass, over the passed items in manifest
+   order, refuses if anything in the stage-1 record changed, writes flags only, and resumes if rerun.
+   ```
+   uv run python -m kvsel_next screen --items manifests/gqa_confirm.jsonl --decisions verification/gqa_confirm.jsonl --images data/gqa/images --out results/next/screen
+   ```
+   Send me its final funnel counts.
+7. Count (no GPU, seconds). It reads the flags only. You want `"main_set": 1000` and `"short_of_1000": false`.
+   If it is short with `"unscreened_passed": 0`, stop and send it to me: step 8 refuses a set smaller than
+   stage 1 froze, so a smaller set (PREREG 4.5(d)) needs a decision and a change before stage 3.
+   ```
+   uv run python -m kvsel_next count --items manifests/gqa_confirm.jsonl --decisions verification/gqa_confirm.jsonl --screen results/next/screen
+   ```
+8. Freeze stage 3 (no GPU) and commit `freeze/next_gqa.json` with `PREREG.md` before step 9:
+   ```
+   uv run python -m kvsel_next freeze --items manifests/gqa_confirm.jsonl --decisions verification/gqa_confirm.jsonl --screen results/next/screen
+   ```
+   It refuses while section 4 says DRAFT, if anything in the stage-1 record changed, if fewer items qualify
+   than stage 1 froze, or if a different record exists. Send me its printed summary.
+9. Run (GPU, in `tmux`; at most step 3's projected comparative hours; memory as step 3's run peak). Each
+   item runs 24 units, 34 on the 300 control items, plus Blind_Q. It refuses if anything changed since the
+   freeze, prints progress only, and resumes if rerun.
+   ```
+   uv run python -m kvsel_next run --items manifests/gqa_confirm.jsonl --decisions verification/gqa_confirm.jsonl --screen results/next/screen --images data/gqa/images --out results/next/gqa_run
+   ```
+   Send me only its final summary (the two consistency counts).
+10. The pre-registered analysis, once, no GPU (a few minutes). It needs the replication's report
+    (`results/replication/report/results.json`), whose estimates it prints beside NeXT's.
+    ```
+    uv run python -m kvsel_next report --items manifests/gqa_confirm.jsonl --decisions verification/gqa_confirm.jsonl --screen results/next/screen --run results/next/gqa_run --llava15 results/replication/report/results.json --out results/next/report
+    ```
+    It refuses, as `run` does, if anything changed since the freeze (code only through
+    `freeze/code_amendments.json`; `PREREG.md` may grow by dated amendments), and refuses missing or extra
+    item files. Send me `report.md`.
+11. With the script, also send `results/next/overnight.log`.
+
+**Memory.** The peak is expected in prefill (eager attention over the visual span). The number that
+counts is the printed run peak (prefill, then a Full unit on the cache); validate's own full forward
+passes are longer and don't happen in the real run. If the run peak is above 20 GB, or validate stops
+with CUDA out of memory, send me the output up to that point (each item prints its run peak): an AnyRes
+cap (the largest grid allowed) then goes into PREREG 4.1 before stage 1, chosen from these numbers only,
+and validate reruns under it.
+
 ## TextVQA data
 
 The manifests are in `manifests/`. Only the images are needed, not the 7 GB archive: about 0.4 GB for
@@ -281,4 +365,5 @@ uv run kvsel fetch-images manifests/textvqa_dev.jsonl --out data/textvqa/images 
 | `src/kvsel/validate.py` | Level 2 acceptance tests |
 | `src/kvsel/analysis.py` | Estimands, clustered bootstrap, development report |
 | `manifests/` | Built items and the funnel. Rebuild with `kvsel build-gqa` |
+| `src/kvsel_next/` | LLaVA-NeXT: prompt and layout, selection by share, validate, both NeXT freezes, run and report |
 | `tests/README.md` | Acceptance policy |

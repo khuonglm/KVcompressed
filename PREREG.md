@@ -266,3 +266,78 @@ Estimands are those of 2.3, computed separately at each K. One change: **T_irr =
 - **Change:** code only, in the stage-3 and replication hashes; no stage-1 (screening) module changed. Replication: the DRAFT check matches only a line starting with "DRAFT"; R4 uses the same "inside ±δ" rule as the interval readings (`<=`, as 2.3's equivalence now does too); the 3.3 sign rule is applied against the original estimates; the report rechecks the whole freeze, not only the code; the record stores the earlier run folders and the full settings. Clean-up: the consistency checks of 2.1 and 3.2 are one function; `validate` takes its surface rule as an argument; the model-file lookup has no LLaVA defaults; the 576 constant is written once. The analysis is otherwise the frozen code.
 - **Timing, stated plainly:** these findings came from a code review finished before the replication run ended, but they were applied after its report (the original code's) had been seen. None changes an estimate, interval, p-value or Holm decision.
 - **Evidence:** `scripts/verify_amendment3.py` reruns the confirmatory, follow-up and replication reports with the amended code: the first two `results.json` files are byte-identical to the stored ones, and the replication's is identical on every key the frozen code produced. The entries in `freeze/code_amendments.json` carry that evidence once the script has run.
+
+## 4. Second model: LLaVA-NeXT-7B on GQA
+
+DRAFT (16 November 2026): written for review. The researcher deletes this line after reviewing section 4 and settling 4.5; the NeXT freezes refuse while it is here.
+
+This section tests whether the steering found on LLaVA-1.5-7B also appears in a model that encodes images differently: LLaVA-NeXT (v1.6) with AnyRes, a 24 × 24 base tile plus a high-resolution grid of tiles, about 1,700–2,900 visual entries per GQA image instead of 576. It has its own three-stage freeze (4.4). Sections 1 to 3 are unchanged by it, and its results never enter their families.
+
+Everything not stated here is as in sections 1 to 3: the margin, the capitalized surface rule, scoring, greedy decoding and normalisation (1.3), PW-attn's probe, replay on the compact cache with logical positions, the bootstrap (image-clustered, 10,000 resamples, seed 0, 95% percentile interval), the two-sided p-value formula and the interval readings (2.3).
+
+**Items already seen.** NeXT's items come from the passed GQA confirmatory items, which include the original main set (section 2) and the replication set (section 3). LLaVA-1.5's comparative outcomes on these items have been seen. The hypotheses below are about NeXT, on which no comparative outcome exists, but they were chosen because of LLaVA-1.5's results on many of the same items. The report says so.
+
+### 4.1 Screening rules (frozen at NeXT stage 1)
+
+- **Model:** `llava-hf/llava-v1.6-vicuna-7b-hf` (LLaVA-NeXT, Vicuna-7B base, chosen on 15 November for template identity), at revision **[to fill before stage 1]**, loaded with eager attention.
+- **Software and numerics:** as 1.1: `torch==2.6.0`, `transformers==4.57.6`; fp16 backbone, KV cache and attention; fp32 output head on the fp32-cast hidden state; fp32 log-probabilities and sums; batch size 1; deterministic algorithms.
+- **Image:** the NeXT processor's own AnyRes handling: a 24 × 24 base tile, then the high-resolution feature map after the model's unpadding, with a newline entry at the end of each high-resolution row.
+- **AnyRes cap:** **[to fill before stage 1: "none", or the largest grid allowed]**, set from `validate`'s peak-memory numbers on development items, before stage 1 and never after any NeXT outcome on confirmatory items.
+- **Prompt:** template v3.1 (1.2), byte-identical apart from the image token's expansion into the visual span. The visual span is located from the processor's own expansion, never assumed.
+- **Eligibility:** as 1.4, under NeXT. An item is eligible if (1) under Full_Q its greedy outcome is "correct" and M > 0 under the capitalized rule, and (2) the same rule does not pass under Blind_Q. Blind_Q replaces the real image with one of the same width and height filled with the padding colour of 1.4 (the CLIP mean), so the blank gets the same AnyRes layout as the real image. Blind_Q runs only on items that pass condition 1.
+- **Pool:** items of `manifests/gqa_confirm.jsonl` whose latest decision, bound to the item's current digest, is "pass" (1.6), in manifest order. No item is verified again; a stale decision counts as unverified.
+- **Screen:** in pool order, until 1,000 items are eligible or the pool runs out. It writes the item id and the flags (`full_q_eligible`, `blind_eligible`, `eligible`) only, with no answers or margins, and prints progress and funnel counts only.
+- **Main set:** the first 1,000 eligible items in manifest order. **Control subset:** its first 300. If fewer than 1,000 are eligible: **[to fill before stage 1, from 4.5(d)]**.
+
+### 4.2 Configuration
+
+- **Shares:** 12.5%, 25% and 50% of each image's feature entries, the counterparts of K = 72, 144 and 288 of 576. Feature entries are the visual span minus the newline entries. Per item and share, k = share × feature entries, which is always a whole number: unpadding trims only one axis of the high-resolution map, so the feature count is a multiple of 24 and no rounding is needed. The code refuses a share that would not give a whole k. Rows carry the share, k and the item's layout.
+- **Always kept, outside the budget:** the non-visual prefix entries (as before) and every newline entry.
+- **Selector:** PW-attn only, with the probe of 2.1 unchanged (mean attention from the last 16 suffix tokens, over heads and layers 2 and up). Scores are 3 × 3-pooled within each spatial map (the base tile and the high-resolution map); at a map's edge the pool averages that map's in-bounds neighbours only, and it never crosses a map boundary or a newline entry. The top k feature entries are kept, ties to the lower index. One probe per context and item gives the kept sets for all three shares, so they are nested.
+- **Units on every main-set item:**
+  - for each share: cell A, and cells B_c, C_c, D_c for c = mis and irr;
+  - Full_Q, Full_mis and Full_irr;
+  - Blind_Q, with the blank of 4.1, as a consistency check (2.2).
+- **Control subset, additionally:** for each share, cells B_match, C_match, D_match; and Full_match.
+- **Run once,** resumable, each item's file written atomically when complete, printing progress and the two consistency counts only (Full_Q no longer eligible; Blind_Q now eligible, which should be 0).
+- **Not ported:**
+  - the uniform grid, the coverage reserve and H6's evidence retention, because each is defined on LLaVA-1.5's single 24 × 24 grid (even rows and columns, coverage cells, evidence boxes mapped to that grid) and has no agreed counterpart on a variable AnyRes layout;
+  - H5 (steering against kept-set overlap), because the replication did not carry it either; overlap is reported as an interval only;
+  - the question-span selector, LT-early, random sets and restoration, which the replication dropped too, so the two models' tables line up and the run fits overnight.
+
+### 4.3 Hypotheses and tests
+
+Estimands are those of 2.3, computed separately at each share. As in 3.3, T_irr = S_H^(mis) − S_H^(irr) is computed on all main-set items, because irr runs on every item.
+
+| Hypothesis | Test | Share | Set |
+| --- | --- | --- | --- |
+| N1 | S_H^(mis) ≠ 0 | 25% | main |
+| N2 | S_H^(irr) ≠ 0 | 25% | main |
+| N3 | E_harm^(mis) ≠ 0 | 25% | main |
+| N4 | T_irr ≠ 0 | 25% | main |
+
+- **Multiplicity:** N1–N4 are one Holm family of 4 tests at α = 0.05, separate from H1–H6 and R1–R5. NeXT is GQA-only by design, so the Holm decisions are final when the report runs.
+- **Reading:** a test supports its hypothesis if Holm rejects; the sign is reported. Whether NeXT's sign agrees with LLaVA-1.5's is reported descriptively, not tested.
+- **Equivalence:** not tested (see 4.5(c)).
+- **Intervals only:** N1–N4's estimands at 12.5% and 50%; S_Q^(c), I^(c) and E_harm^(irr) at every share; T_match and S_H^(match) on the control subset at every share; behaviour rates and the paired C − B differences in correct and a_alt rates; Jaccard overlap of each condition's kept set with S_Q.
+- **Beside LLaVA-1.5:** the report prints the replication's estimates (section 3) beside NeXT's, matched as 12.5% to K = 72, 25% to K = 144 and 50% to K = 288, labelled and never pooled. The item sets differ and the absolute budgets differ (25% of NeXT's feature entries is several hundred entries, not 144), so the comparison is descriptive.
+- **Checks reported:** Full_Q no longer eligible; Blind_Q eligible (should be 0); the share of truncated answers; the range of visual-entry counts and layouts.
+
+### 4.4 Records
+
+- **Stage 1:** `python -m kvsel_next freeze-screening` writes `freeze/next_screening.json`. It stores the sha256 of section 4.1 (from its `### 4.1` heading line up to the `### 4.2` heading, which is not included), of the manifest, of all code under `src/kvsel_next/` and `src/kvsel/`, and the screening settings (model id and revision, AnyRes cap, template, surface rule, eligibility rule, Blind_Q image rule). It refuses while this section still has its draft line and refuses to overwrite a different record. `screen` recomputes this state and refuses, before loading the model, if anything changed.
+- **Stage 2:** none. The pool is items already verified under 1.6.
+- **Stage 3:** `python -m kvsel_next freeze` writes `freeze/next_gqa.json`. It stores the sha256 of this file, of the stage-1 record, of the manifest and of the screen flags, the hash of the main set with its verification digests, the settings (shares, the exact unit lists, the hypotheses and α), and the code hash of both packages. It refuses while this section still has its draft line, if fewer items qualify than the frozen size, or if a different record exists.
+- **Run** recomputes the stage-3 state and refuses if anything changed. **Report** does the same, except that this file may have grown by dated amendments written after the run.
+- **Order:** section 4.1 is not edited after stage 1. No comparative unit runs on NeXT before the stage-3 record and this file are committed. Code changes after a NeXT freeze follow 1.9: dated, shown to reproduce, and listed in `freeze/code_amendments.json`.
+- `kvsel`'s own records do not hash `src/kvsel_next/`, so adding it changes no earlier record.
+
+### 4.5 Open choices (for the researcher; settled before stage 1)
+
+Each is written with the proposal. Once settled, the decision moves into 4.1–4.3 and this subsection records what was chosen.
+
+- **(a) Newline entries.** Proposed: always kept and outside the budget, like the non-visual prefix entries, so selection is over image content only and the row separators stay intact. Alternative: selectable like feature entries, which makes k count them and lets PW-attn drop them.
+- **(b) The confirmatory family.** Proposed: N1–N4 at 25%, the counterpart of LLaVA-1.5's primary K = 144. Alternatives: at 12.5%, the counterpart of K = 72, where LLaVA-1.5's replication tested R1–R3 and R5; or the replication's shape (N1 and N2 at two shares, six tests).
+- **(c) Equivalence.** Proposed: not tested. No NeXT development estimate of S_H^(mis) exists to project the interval's width, as 2.3 and 3.3 did, and getting one would need comparative runs on development items before the freeze. Alternative: run the 25% cells on the 150 verified GQA development items during validation, and test equivalence at 50% (δ = 0.10, 90% interval) only if the projected half-width is below 0.05.
+- **(d) Fewer than 1,000 eligible.** The pool holds 2,335 passed items (16 November 2026). Proposed: as 1.6, the main set is every eligible item and the shortfall is reported; the control subset stays the first 300; `count` reports the size before the stage-3 freeze, which then freezes that size. Alternative: a floor (for example 500) below which NeXT is dropped and reported as a limitation.
+- **(e) The Blind_Q image.** The existing blank is 336 × 336, which under AnyRes gets a different grid, and so a different number of visual entries, from the real image. Proposed (and written into 4.1): a blank of the padding colour at the real image's width and height, so Blind_Q differs from Full_Q only in pixel content. Alternative: keep the 336 × 336 blank, as in section 1.4.

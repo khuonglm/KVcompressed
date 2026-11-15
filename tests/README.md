@@ -199,6 +199,68 @@ from the physical entry count instead of the M-RoPE position fails, as it should
 at K = 288, 144 and 72 with generated tokens; the prefix is not mutated; E1 passes on all 600 GQA and
 1,500 TextVQA development items.
 
+## LLaVA-NeXT-7B, Level 1 (`tests/test_next.py`, CPU, added 16 November 2026)
+
+A tiny random LLaVA-NeXT (real processor, AnyRes on, real grid pinpoints) in fp32 runs the same
+engine on the expanded visual span of a wide and a tall image (1656 and 1676 visual tokens). Kept sets
+are feature tokens (random, concentrated, tail, probe-scored; 50, 25 and 12.5%) plus every newline token.
+Limits and controls are Level 1's, unchanged: compact vs dense below 1e-5; physical positions above
+1e-5; perturbed dropped entries exactly 0; perturbed kept entries above 1e-5; prefix hash unchanged.
+Numerics on the real model are LLaVA-1.5's: fp16 backbone and cache, fp32 head and log-probabilities.
+Selection by share (`tests/test_next_selection.py`, NeXT's E6): 3 x 3 pooling within each map, never across
+a map boundary or a newline; k = share x feature tokens, refused unless whole (real feature counts are multiples of 24);
+newlines always kept and outside k; kept sets nested across 12.5, 25 and 50%.
+
+## LLaVA-NeXT-7B, Level 2 (`python -m kvsel_next validate`, GPU, fp16; written 16 November 2026, before the run)
+
+Level 2's criteria, unchanged, on NeXT's expanded visual span; on the CPU it runs end to end on the tiny
+model in `tests/test_next_validate.py`. Each item is prefilled once, since every context shares Q's
+prefix. A kept set is k = round(share × feature tokens) feature tokens plus every newline token.
+
+**Noise floor.** As Level 2, on 50 development items, on each of Q and QH_mis. E3 uses the Q floor.
+
+| ID | Test | Pass |
+| --- | --- | --- |
+| E1 | On every given item: the processor's expansion leaves the tokens outside the span equal to LLaVA-1.5's; identical prefix for Q and every QH_c; identical question tokens; prompt tokens an exact prefix of prompt + candidate; derived layout equal to the span length | Exact, on all given items |
+| E2 | Compact replay with every visual token kept, on Q and QH_mis, vs one full forward pass and vs dense with nothing dropped | Max logit difference at most the maximum of that suffix's own noise floor, and compact equal to dense exactly |
+| E3 | Compact vs dense for random and concentrated (first k) feature sets; shares 12.5%, 25%, 50%; Q and QH_mis; 10 generated tokens; first 20 items | Level 2's E3 criteria |
+| E4 | Hash the shared prefix before and after each probe and replay | Unchanged |
+| E7 | Prefill, the mis probe and two units (Full_Q; QH_mis at a 25% random set), run twice on 5 items | Identical |
+
+Not run for NeXT: E5 (placebo, which needs selection) and scored kept sets (selection is ticket 02).
+GO only if every check passes. Peak GPU memory, the visual-token range and time per item are reported,
+not judged. The memory that counts is the run peak (prefill, then a Full unit on the cache), not validate's
+own full forward passes; a run peak above 20 GB means an AnyRes cap in PREREG 4.1 before stage 1.
+Projected times are upper bounds: every unit is costed as a Full unit on the longest suffix.
+
+## LLaVA-NeXT-7B, stage 1 (`tests/test_next_screen.py`, CPU, added 16 November 2026)
+
+`freeze-screening` refuses while section 4 has a line starting with DRAFT (a mention in prose is not the
+marker), refuses a different existing record and returns the same record on an unchanged rerun. The
+section hash runs from the `### 4.1` heading to the next `### ` or `## ` heading. `screen` refuses before
+loading the model if section 4.1, the manifest, the settings or the code changed; screens only items whose
+latest current-digest decision is pass, in manifest order; writes the item id and three flags only (every
+file's keys are checked); stops once the main set's size is eligible; and resumes after a stop without
+redoing an item. `count` works mid-screen and never loads the model. On the tiny model, Full_Q and Blind_Q
+run end to end with a resume; Blind_Q's blank gets the real image's layout (1656 visual tokens).
+
+## LLaVA-NeXT-7B, stage 3 (`tests/test_next_comparative.py`, CPU, added 16 November 2026)
+
+`freeze` records the main set (the first eligible passed items in manifest order, stopping at an unscreened
+one) with its digests, the control subset, and hashes of PREREG.md, the stage-1 record, the manifest, the
+flags, the settings and both packages' code. It refuses a DRAFT line, a short set and a different record.
+`run` refuses any change since the freeze, and missing images, before loading the model; code passes only
+through `freeze/code_amendments.json`, at stage 1 and stage 3 alike. On the tiny model: the run stops and
+resumes without redoing an item; rows follow section 4.2's unit lists (written out by hand in the test) and
+carry share, k and the layout record; each context is probed once per item and its kept sets are nested
+across shares; planting +0.7 nats on every C_mis margin moves N1 by exactly 0.7. On synthetic runs with
+planted margins, every estimand (S_H, S_Q, I, E_harm per condition, T_irr, T_match) is recovered at every
+share, match terms come from the 20 control items only, Holm over N1-N4 at 25% rejects the three planted
+tests and not N2 (Holm's step-down thresholds written out), and LLaVA-1.5's K = 72, 144 and 288 estimates
+are printed beside 12.5%, 25% and 50% with sign agreement; an estimand absent from the replication shows "—".
+Settings changed since a freeze (the thin path's unit lists) are refused. `report` refuses missing or extra
+item files and allows PREREG.md to grow, which `run` refuses.
+
 ## Not yet covered in the minimal version
 
 E6's coverage plots (the radius is checked), hand verification (D1, D2) and the timing test R1.
