@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ..confirm_analysis import load_run
+from ..confirm_analysis import checks, load_run
 from ..model import Bundle
 from ..runner import open_image, run_item, write_json_atomic
 from ..screening import blank_image
-from .protocol import BLIND, checks, units
+from .protocol import BLIND, units
 
 
 def run_replication(bundle: Bundle, items: list[dict], images_dir: Path, out_dir: Path, selection: dict) -> dict:

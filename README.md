@@ -251,7 +251,10 @@ EXCLUDE="results/confirm/gqa_run results/followup/gqa <folder with the 9 extra i
    uv run python -m kvsel.replication report --items manifests/gqa_confirm.jsonl --screen results/confirm/gqa_screen_a1 --decisions verification/gqa_confirm.jsonl --exclude-runs $EXCLUDE --run results/replication/gqa_run --original-confirm results/confirm/report/results.json --original-followup results/followup/gqa/report/results.json --out results/replication/report
    ```
    It refuses, as `run` does, if anything changed since the freeze (code changes only through
-   `freeze/code_amendments.json`), and refuses missing or extra item files. Send me `report.md`.
+   `freeze/code_amendments.json`; PREREG.md may grow by dated amendments), and refuses missing or extra
+   item files. Send me `report.md`.
+6. After a code amendment (PREREG 1.9, 3.6), prove it reproduces every stored report, which also records
+   its evidence: `uv run python scripts/verify_amendment3.py`. Commit `freeze/code_amendments.json` with the code.
 
 ## TextVQA data
 

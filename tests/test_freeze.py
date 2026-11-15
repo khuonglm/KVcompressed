@@ -1,6 +1,7 @@
 """Stage-1 freeze and the confirmatory eligibility screen, without the real model."""
 
 import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -172,3 +173,30 @@ def test_screen_runs_on_the_tiny_model(tiny_llava, tmp_path, frozen):
                 "irr": "The road in this image is gray."}}
     funnel = screening.run_confirm_screen(bundle, [item], tmp_path, tmp_path / "screen", json.loads(frozen[2].read_text()))
     assert funnel["screened"] == 1 and set(json.loads((tmp_path / "screen" / "items" / "c1.json").read_text())) == {"item_id", "full_q_eligible", "blind_eligible", "eligible"}
+
+
+# Imported by the screen but with no say in its outcome: `selectors` (Full_Q keeps every entry) and
+# `model_files` (finds the model folder). A new import anywhere in the closure must be classified here.
+OUTSIDE_SCREENING = {"selectors.py", "model_files.py"}
+
+
+def test_screening_modules_match_the_imports_of_the_screen():
+    """Amendment 2 closed a gap (`geometry.py`); this keeps the list honest when modules are added."""
+    import ast
+
+    from kvsel import freeze
+
+    package = Path(freeze.__file__).parent
+    todo, closure = ["screening.py"], set()
+    while todo:
+        name = todo.pop()
+        if name in closure:
+            continue
+        closure.add(name)
+        for node in ast.walk(ast.parse((package / name).read_text())):
+            if isinstance(node, ast.ImportFrom) and node.level == 1:
+                names = [alias.name for alias in node.names] if node.module is None else [node.module]
+                todo += [f"{n}.py" for n in names if (package / f"{n}.py").is_file()]
+                if node.module is None:
+                    todo.append("__init__.py")
+    assert closure - OUTSIDE_SCREENING == set(freeze.SCREENING_MODULES)

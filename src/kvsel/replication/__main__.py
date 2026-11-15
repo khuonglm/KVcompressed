@@ -58,8 +58,7 @@ def cmd_report(args) -> None:
     from .protocol import check
     from .report import replication_report
 
-    check(**_protocol_args(args))
-
+    check(**_protocol_args(args), prereg_frozen=False)
     results = replication_report(args.run, args.record, args.out, args.resamples, args.original_confirm,
                                  args.original_followup)
     print(f"wrote {args.out / 'report.md'} ({results['items']} items)")

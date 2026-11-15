@@ -19,7 +19,7 @@ from .runner import Q, contexts_for, open_image, pilot_units, run_item
 from .selectors import pw_attn, top_k
 
 SAMPLE_PER_COMPARISON = 20_000
-SURFACE = "capitalized"  # the form frozen for GQA; set per run with --surface
+SURFACE = "capitalized"  # default; `kvsel validate --surface` sets it per run
 
 
 def sample_differences(difference: torch.Tensor, generator: np.random.Generator) -> np.ndarray:
@@ -29,19 +29,19 @@ def sample_differences(difference: torch.Tensor, generator: np.random.Generator)
     return values[generator.integers(0, values.size, SAMPLE_PER_COMPARISON)]
 
 
-def margin_incremental(bundle: Bundle, state, prompt: str, a_true: str, a_alt: str) -> float:
+def margin_incremental(bundle: Bundle, state, prompt: str, a_true: str, a_alt: str, surface: str = SURFACE) -> float:
     total = {}
     for name, answer in (("true", a_true), ("alt", a_alt)):
-        ids = candidate_ids(bundle.tokenizer, prompt, surface_forms(answer)[SURFACE], bundle.family)
+        ids = candidate_ids(bundle.tokenizer, prompt, surface_forms(answer)[surface], bundle.family)
         total[name] = sum(score_sequence(bundle.decoder, state, ids))
     return total["true"] - total["alt"]
 
 
-def margin_full_forward(bundle: Bundle, tokens, pixels, a_true: str, a_alt: str) -> float:
+def margin_full_forward(bundle: Bundle, tokens, pixels, a_true: str, a_alt: str, surface: str = SURFACE) -> float:
     total = {}
     base = tokens.prefix_ids + tokens.suffix_ids
     for name, answer in (("true", a_true), ("alt", a_alt)):
-        ids = candidate_ids(bundle.tokenizer, tokens.prompt, surface_forms(answer)[SURFACE], bundle.family)
+        ids = candidate_ids(bundle.tokenizer, tokens.prompt, surface_forms(answer)[surface], bundle.family)
         logits = full_forward_logits(bundle, base + ids[:-1], pixels, len(base) - 1)
         log_probs = torch.log_softmax(logits[0], dim=-1)
         total[name] = sum(float(log_probs[i, token]) for i, token in enumerate(ids))
@@ -73,7 +73,7 @@ def check_serialization(tokenizer, items: list[dict], family: Family = LLAVA) ->
     return {"pass": not failures, "items": len(items), "failures": failures[:50], "window_composition": compositions}
 
 
-def noise_floor(bundle: Bundle, loaded: list[tuple[dict, object]], context: str = Q) -> dict:
+def noise_floor(bundle: Bundle, loaded: list[tuple[dict, object]], context: str = Q, surface: str = SURFACE) -> dict:
     """Full forward vs prefix-then-suffix with the full cache, on one suffix."""
     generator = np.random.default_rng(0)
     samples, maxima, margins = [], [], []
@@ -89,8 +89,8 @@ def noise_floor(bundle: Bundle, loaded: list[tuple[dict, object]], context: str 
         samples.append(sample_differences(difference, generator))
         maxima.append(float(difference.abs().max()))
         margins.append(abs(
-            margin_full_forward(bundle, tokens, pixels, item["a_true"], item["a_alt"])
-            - margin_incremental(bundle, state, tokens.prompt, item["a_true"], item["a_alt"])
+            margin_full_forward(bundle, tokens, pixels, item["a_true"], item["a_alt"], surface)
+            - margin_incremental(bundle, state, tokens.prompt, item["a_true"], item["a_alt"], surface)
         ))
     pooled = np.concatenate(samples)
     return {
@@ -136,7 +136,8 @@ def kept_sets(k: int, seed: int, attention: np.ndarray) -> dict[str, np.ndarray]
     return {"random": np.sort(random_set), "concentrated": np.arange(k), "scored": top_k(pw_attn(attention), k)}
 
 
-def run_e3_e4(bundle: Bundle, loaded, floor: dict, budgets=(288, 144, 72), progress=None) -> tuple[dict, dict]:
+def run_e3_e4(bundle: Bundle, loaded, floor: dict, budgets=(288, 144, 72), progress=None,
+              surface: str = SURFACE) -> tuple[dict, dict]:
     generator = np.random.default_rng(1)
     samples, margins, mismatches = [], [], []
     hash_failures = []
@@ -159,8 +160,8 @@ def run_e3_e4(bundle: Bundle, loaded, floor: dict, budgets=(288, 144, 72), progr
                     state_d, logits_d = replay(bundle.decoder, prefix, kept_tensor, suffix, "dense")
                     samples.append(sample_differences(logits_c - logits_d, generator))
                     margins.append(abs(
-                        margin_incremental(bundle, state_c, tokens[name].prompt, item["a_true"], item["a_alt"])
-                        - margin_incremental(bundle, state_d, tokens[name].prompt, item["a_true"], item["a_alt"])
+                        margin_incremental(bundle, state_c, tokens[name].prompt, item["a_true"], item["a_alt"], surface)
+                        - margin_incremental(bundle, state_d, tokens[name].prompt, item["a_true"], item["a_alt"], surface)
                     ))
                     greedy_c = greedy(bundle.decoder, state_c, max_new=10, stop_at_eos=False)
                     greedy_d = greedy(bundle.decoder, state_d, max_new=10, stop_at_eos=False)
@@ -230,6 +231,7 @@ def native_head(bundle: Bundle) -> Bundle:
 
 def validate(
     bundle: Bundle, items: list[dict], images_dir: Path, noise_items: int = 50, sparse_items: int = 20, repeat_items: int = 5,
+    surface: str = SURFACE,
 ) -> dict:
     start = time.time()
 
@@ -239,26 +241,27 @@ def validate(
     report: dict = {
         "model": bundle.family.name,
         "head_precision": bundle.decoder.head_precision,
+        "surface": surface,
     }
     stage(f"E1: serialization, {len(items)} items")
     report["E1"] = check_serialization(bundle.tokenizer, items, bundle.family)
     loaded = [(item, open_image(images_dir, item)) for item in items[:noise_items]]
     head = bundle.decoder.head_precision
     stage(f"noise floor, {head} head, {len(loaded)} items")
-    floor = noise_floor(bundle, loaded)
+    floor = noise_floor(bundle, loaded, surface=surface)
     report["noise_floor"] = floor
     if bundle.decoder.head_precision == "native":
         report["noise_floor_native_head"] = floor  # the default head is already the native one
     else:
         stage(f"noise floor, native head, {len(loaded)} items")
-        report["noise_floor_native_head"] = noise_floor(native_head(bundle), loaded)
+        report["noise_floor_native_head"] = noise_floor(native_head(bundle), loaded, surface=surface)
     stage(f"noise floor, {head} head, QH_mis suffix, {len(loaded)} items")
-    floor_mis = noise_floor(bundle, loaded, "mis")
+    floor_mis = noise_floor(bundle, loaded, "mis", surface)
     report["noise_floor_mis"] = floor_mis
     stage(f"E2: full fidelity, both suffixes, {len(loaded)} items")
     report["E2"] = run_e2(bundle, loaded, {Q: floor, "mis": floor_mis})
     stage(f"E3 and E4: sparse equivalence and cache hashes, {len(loaded[:sparse_items])} items (the slowest stage)")
-    report["E3"], report["E4"] = run_e3_e4(bundle, loaded[:sparse_items], floor, progress=stage)
+    report["E3"], report["E4"] = run_e3_e4(bundle, loaded[:sparse_items], floor, progress=stage, surface=surface)
     stage("E5: placebo")
     report["E5"] = run_e5(bundle, loaded[:sparse_items], floor)
     stage(f"E7: determinism, {len(loaded[:repeat_items])} items")

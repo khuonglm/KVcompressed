@@ -7,13 +7,12 @@ import os
 import sys
 from pathlib import Path
 
-from . import MODEL_ID
+from .families import LLAVA
 
-DEFAULT_MODEL_DIR = Path("models/llava-1.5-7b-hf")
 WEIGHT_INDEX = "model.safetensors.index.json"
 # Files each family needs besides its weights, from each repository's file listing.
 REQUIRED_FILES = {
-    MODEL_ID: (
+    LLAVA.model_id: (
         "tokenizer.json", "tokenizer_config.json", "special_tokens_map.json", "added_tokens.json",
         "config.json", "generation_config.json", "preprocessor_config.json", "processor_config.json",
     ),
@@ -22,7 +21,7 @@ REQUIRED_FILES = {
 DOWNLOAD_PATTERNS = ["*.json", "*.safetensors", "tokenizer.model", "*.jinja", "merges.txt"]
 
 
-def missing_files(model_dir: Path, weights: bool = True, model_id: str = MODEL_ID) -> list[str]:
+def missing_files(model_dir: Path, weights: bool = True, model_id: str = LLAVA.model_id) -> list[str]:
     """Files still absent. Hub downloads appear under their final name only once complete."""
     required = list(REQUIRED_FILES[model_id])
     if weights:
@@ -35,7 +34,7 @@ def missing_files(model_dir: Path, weights: bool = True, model_id: str = MODEL_I
     return missing
 
 
-def resolve_model(model_dir: Path = DEFAULT_MODEL_DIR, model_id: str = MODEL_ID, weights: bool = True) -> str:
+def resolve_model(model_dir: Path, model_id: str, weights: bool = True) -> str:
     """The local path if the copy is present, or the Hub id if nothing is there.
 
     An incomplete copy is an error: falling back would silently start a 14-17 GB download.
@@ -54,7 +53,7 @@ def resolve_model(model_dir: Path = DEFAULT_MODEL_DIR, model_id: str = MODEL_ID,
     return str(model_dir)
 
 
-def fetch_model(out_dir: Path = DEFAULT_MODEL_DIR, workers: int = 8, model_id: str = MODEL_ID) -> list[str]:
+def fetch_model(out_dir: Path, workers: int, model_id: str) -> list[str]:
     """Downloads into ``out_dir``. Rerunning resumes and skips finished files."""
     # Plain HTTP was about 3x faster than Xet in a 60 s comparison, and it resumes partial files.
     # Must be set before huggingface_hub is imported. Set HF_HUB_DISABLE_XET=0 to use Xet instead.

@@ -64,11 +64,7 @@ def cmd_validate(args) -> None:
 
     items = load_items(args.items)
     require_development(items)
-    from . import validate as validate_module
-
-    validate_module.SURFACE = args.surface
-    report = validate(_bundle(args), items, args.images, args.noise_items, args.sparse_items, args.repeat_items)
-    report["surface"] = args.surface
+    report = validate(_bundle(args), items, args.images, args.noise_items, args.sparse_items, args.repeat_items, args.surface)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(report, indent=2))
     for name in ("E1", "E2", "E3", "E4", "E5", "E7"):

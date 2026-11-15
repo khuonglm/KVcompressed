@@ -401,7 +401,7 @@ def test_commands_freeze_run_and_report(world, tmp_path, monkeypatch, capsys):
     from kvsel import cli
     from kvsel.replication import run as run_module
 
-    _, args, record = world
+    items, args, record = world
     undraft(args["prereg"])
     common = ["--prereg", str(args["prereg"]), "--items", str(args["manifest"]), "--screen", str(args["screen"]),
               "--decisions", str(args["decisions"]), "--stage1", str(args["stage1"]),
@@ -418,6 +418,8 @@ def test_commands_freeze_run_and_report(world, tmp_path, monkeypatch, capsys):
     run = synthetic_run(tmp_path / "synthetic", ["i2", "i3", "i4"], {"i2"})
     main(["report", *common, "--run", str(run), "--resamples", "50", "--out", str(tmp_path / "rep")])
     assert "K = 144" in (tmp_path / "rep" / "report.md").read_text()
-    args["prereg"].write_text(args["prereg"].read_text() + "\nAn edit after the freeze.\n")
-    with pytest.raises(SystemExit, match="prereg_sha256"):  # report rechecks the freeze, not only the code
+    args["prereg"].write_text(args["prereg"].read_text() + "\nA dated amendment after the run.\n")
+    main(["report", *common, "--run", str(run), "--resamples", "50", "--out", str(tmp_path / "rep")])  # PREREG may grow
+    append_decision(args["decisions"], items[3], FAIL, "tester")
+    with pytest.raises(SystemExit, match="replication_set_sha256"):  # everything else is still checked
         main(["report", *common, "--run", str(run), "--resamples", "50", "--out", str(tmp_path / "rep")])

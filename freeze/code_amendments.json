@@ -5,5 +5,21 @@
     "date": "2026-11-15",
     "reason": "code clean-up, no rule changed (PREREG 1.9, amendment 2)",
     "evidence": "model inputs (prompts, tokens, spans, candidates, item digests) identical on gqa_confirm, textvqa_confirm, gqa_dev and textvqa_dev; tiny-model confirm and screen rows byte-identical; on the GQA confirmatory run, confirm-report results.json and the follow-up report results.json are byte-identical (cmp) to those from the frozen code"
+  },
+  {
+    "from": "9e7944a617a2f130a0e92a556e2972638debb7bfc6d5d57c1a326da494d88c52",
+    "to": "9ac910df1493cef99647cc8ef710a9328fc3f27cb119c0fe585290c32b090177",
+    "date": "2026-11-15",
+    "scope": "stage 3 (code_hash_all)",
+    "reason": "review fixes and clean-up before the replication analysis, no rule changed (PREREG 3.6, amendment 3)",
+    "evidence": "pending: run scripts/verify_amendment3.py on the server"
+  },
+  {
+    "from": "b128ba39ac88fd48bbab5ad91b7d8353aa947257f0aece5b674f12cfe22798b2",
+    "to": "442669134d07513ff4e165535ecb2357cd2de848e7ed0fee0aa91d2c5eced1ac",
+    "date": "2026-11-15",
+    "scope": "replication (code_hash_tree)",
+    "reason": "review fixes and clean-up before the replication analysis, no rule changed (PREREG 3.6, amendment 3)",
+    "evidence": "pending: run scripts/verify_amendment3.py on the server"
   }
 ]

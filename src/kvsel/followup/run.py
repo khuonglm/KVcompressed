@@ -20,6 +20,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
+from .. import NUM_VISUAL
 from ..confirm import code_hash_all
 from ..confirm_analysis import CODE_AMENDMENTS, code_accepted, evidence_sets
 from ..model import Bundle, pixel_values, prefill
@@ -40,7 +41,6 @@ BUDGETS = (288, 72)
 SEEDS = tuple(range(5))
 RESTORE_M = (4, 8)
 EVIDENCE_RULE = "primary"
-NUM_VISUAL = 576
 
 
 @dataclass(frozen=True)

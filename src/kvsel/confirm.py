@@ -16,12 +16,13 @@ from pathlib import Path
 
 import numpy as np
 
+from . import NUM_VISUAL
+from .confirm_analysis import checks, load_run
 from .freeze import SCREENING, check_screening, sha256_file
 from .model import Bundle
 from .runner import (
     Q,
     Unit,
-    eligible,
     open_image,
     pilot_units,
     run_item,
@@ -159,20 +160,13 @@ def run_confirm(bundle: Bundle, items: list[dict], images_dir: Path, out_dir: Pa
         item = by_id[item_id]
         units = control_units if item_id in control else main_units
         result, attention = run_item(bundle, item, open_image(images_dir, item), units)
-        blind, _ = run_item(bundle, item, blank, [Unit("full", 576, False, "none", Q)])
+        blind, _ = run_item(bundle, item, blank, [Unit("full", NUM_VISUAL, False, "none", Q)])
         result["rows"].append({**blind["rows"][0], "selector": "blind"})
         result["subset"] = "control" if item_id in control else "main"
         np.savez_compressed(out_dir / "attention" / f"{item_id}.npz", **attention)
         write_json_atomic(target, result)
         if position % 25 == 0 or position == len(selection["main"]):
             print(f"{position}/{len(selection['main'])} items", flush=True)
-    # Consistency with the screen: Full_Q must still be eligible (a determinism check, flags only).
-    not_eligible = blind_eligible = 0
-    for item_id in selection["main"]:
-        rows = json.loads((out_dir / "items" / f"{item_id}.json").read_text())["rows"]
-        full_q = next(r for r in rows if r["selector"] == "full" and r["cell"] == "Q")
-        not_eligible += not eligible(full_q, SCREENING["surface"])
-        blind = next(r for r in rows if r["selector"] == "blind")
-        blind_eligible += eligible(blind, SCREENING["surface"])
-    return {"items": len(selection["main"]), "control": len(control), "full_q_no_longer_eligible": not_eligible,
-            "blind_now_eligible": blind_eligible}
+    found = checks(load_run(out_dir)[0])  # flags and counts only, never margins per item
+    return {"items": len(selection["main"]), "control": len(control),
+            "full_q_no_longer_eligible": found["full_q_no_longer_eligible"], "blind_now_eligible": found["blind_now_eligible"]}

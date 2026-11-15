@@ -16,13 +16,12 @@ from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
 
-import numpy as np
-
-from ..analysis import DELTA, margin
+from .. import NUM_VISUAL
+from ..analysis import DELTA
 from ..confirm import load_flags, main_set
 from ..confirm_analysis import CODE_AMENDMENTS, SURFACE, code_accepted
 from ..freeze import check_screening, sha256_file
-from ..runner import NO_CONTEXT, Q, Unit, eligible, load_items
+from ..runner import NO_CONTEXT, Q, Unit, load_items
 from ..verify import load_decisions
 from . import select
 
@@ -30,7 +29,7 @@ SECTION = "## 3. GQA replication"
 BUDGETS = (72, 144, 288)
 CONDITIONS = ("mis", "irr")
 CONTROL_CONDITIONS = ("match",)
-BLIND = Unit("full", 576, False, NO_CONTEXT, Q)
+BLIND = Unit("full", NUM_VISUAL, False, NO_CONTEXT, Q)
 ALPHA = 0.05
 FAMILY = (("R1", "S_H^(mis)", "72"), ("R1", "S_H^(mis)", "144"), ("R2", "S_H^(irr)", "72"),
           ("R2", "S_H^(irr)", "144"), ("R3", "E_harm^(mis)", "72"), ("R5", "T_irr", "72"))
@@ -45,7 +44,7 @@ def units(*, control: bool) -> list[Unit]:
         out.append(Unit("pw", k, False, Q, Q))
         for c in conditions:
             out += [Unit("pw", k, False, c, c), Unit("pw", k, False, Q, c), Unit("pw", k, False, c, Q)]
-    out += [Unit("full", 576, False, NO_CONTEXT, answering) for answering in (Q, *conditions)]
+    out += [Unit("full", NUM_VISUAL, False, NO_CONTEXT, answering) for answering in (Q, *conditions)]
     return out
 
 
@@ -55,19 +54,6 @@ def settings() -> dict:
             "control_units": [asdict(u) for u in units(control=True)], "blind_unit": asdict(BLIND),
             "surface": SURFACE, "family": [list(t) for t in FAMILY], "alpha": ALPHA,
             "equivalence": list(EQUIVALENCE), "delta": DELTA}
-
-
-def checks(rows: list[dict]) -> dict:
-    """The run's consistency checks (PREREG 3.2): Full_Q still eligible, Blind_Q eligible should be 0."""
-    full_q = [r for r in rows if r["selector"] == "full" and r["cell"] == "Q"]
-    blind = [r for r in rows if r["selector"] == "blind"]
-    return {
-        "full_q_no_longer_eligible": sum(not eligible(r, SURFACE) for r in full_q),
-        "blind_rows": len(blind),
-        "blind_now_eligible": sum(eligible(r, SURFACE) for r in blind),
-        "blind_mean_margin": float(np.mean([margin(r["scores"], SURFACE) for r in blind])) if blind else None,
-        "truncated_share": float(np.mean([r["truncated"] for r in rows])),
-    }
 
 
 def code_hash_tree() -> str:
@@ -138,12 +124,14 @@ def freeze(prereg: Path, manifest: Path, screen: Path, decisions: Path, stage1: 
 
 
 def check(prereg: Path, manifest: Path, screen: Path, decisions: Path, stage1: Path, gqa_record: Path,
-          exclude_runs: list[Path], record: Path) -> dict:
+          exclude_runs: list[Path], record: Path, prereg_frozen: bool = True) -> dict:
+    """`prereg_frozen=False` (the report) lets PREREG.md carry dated amendments written after the run."""
     if not record.exists():
         raise SystemExit(f"no replication freeze at {record}: run `python -m kvsel.replication freeze` first")
     frozen = json.loads(record.read_text())
     now = current_state(prereg, manifest, screen, decisions, stage1, gqa_record, exclude_runs)
-    changed = [key for key in now if key != "code_sha256" and frozen.get(key) != now[key]]
+    skipped = {"code_sha256"} | (set() if prereg_frozen else {"prereg_sha256"})
+    changed = [key for key in now if key not in skipped and frozen.get(key) != now[key]]
     if not code_accepted(frozen["code_sha256"], now["code_sha256"], Path(record).parent / CODE_AMENDMENTS):
         changed.append("code_sha256")
     if changed:

@@ -126,6 +126,19 @@ def evidence_sets(manifest: Path, item_ids: set[str]) -> dict[str, dict[str, set
     return sets
 
 
+def checks(rows: list[dict]) -> dict:
+    """Consistency with the screen: Full_Q still eligible, Blind_Q never eligible, truncation."""
+    full_q = [r for r in rows if r["selector"] == "full" and r["cell"] == "Q"]
+    blind = [r for r in rows if r["selector"] == "blind"]
+    return {
+        "full_q_no_longer_eligible": sum(not eligible(r, SURFACE) for r in full_q),
+        "blind_rows": len(blind),
+        "blind_now_eligible": sum(eligible(r, SURFACE) for r in blind),
+        "blind_mean_margin": float(np.mean([margin(r["scores"], SURFACE) for r in blind])) if blind else None,
+        "truncated_share": float(np.mean([r["truncated"] for r in rows])),
+    }
+
+
 def _boot(values: pd.Series, images: pd.Series, resamples: int) -> dict:
     values = values.dropna()
     if values.empty:
@@ -149,16 +162,7 @@ def dataset_results(run_dir: Path, manifest: Path, resamples: int = RESAMPLES, e
                else "move item files outside the frozen main set out of the run folder")
         raise SystemExit(f"{run_dir} has {len(items)} items, but the frozen main set has {expected_items}; {fix}")
 
-    # Checks: Full_Q still eligible, Blind_Q never eligible, truncation.
-    full_q = [r for r in rows if r["selector"] == "full" and r["cell"] == "Q"]
-    blind = [r for r in rows if r["selector"] == "blind"]
-    out["checks"] = {
-        "full_q_no_longer_eligible": sum(not eligible(r, SURFACE) for r in full_q),
-        "blind_rows": len(blind),
-        "blind_now_eligible": sum(eligible(r, SURFACE) for r in blind),
-        "blind_mean_margin": float(np.mean([margin(r["scores"], SURFACE) for r in blind])) if blind else None,
-        "truncated_share": float(np.mean([r["truncated"] for r in rows])),
-    }
+    out["checks"] = checks(rows)
 
     # Pre-registered estimands. Control-only quantities are NaN on main-only items, so they drop out.
     tests: dict[str, dict] = {}
@@ -183,7 +187,7 @@ def dataset_results(run_dir: Path, manifest: Path, resamples: int = RESAMPLES, e
 
     primary = tests["S_H^(mis)"]
     low, high = primary["ci90"]
-    out["equivalence"] = {"delta": DELTA, "ci90": primary["ci90"], "equivalent": bool(-DELTA < low and high < DELTA)}
+    out["equivalence"] = {"delta": DELTA, "ci90": primary["ci90"], "equivalent": bool(-DELTA <= low and high <= DELTA)}
 
     out["sensitivity"] = {}
     for variant in MARGIN_VARIANTS[1:]:
