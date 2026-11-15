@@ -31,8 +31,8 @@ def load_bundle(device: str = "cuda", model_dir: Path | None = None) -> Bundle:
 
     The bundle's `image_processor` holds the whole processor, which expands the image token.
     """
+    # No PYTORCH_CUDA_ALLOC_CONF=expandable_segments: its virtual-memory API is unsupported on the 20 GiB GPU slice.
     os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")  # must be set before CUDA starts
-    os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")  # less fragmentation; numerics unchanged
     torch.use_deterministic_algorithms(True)
     model = LlavaNextForConditionalGeneration.from_pretrained(
         resolve_model(model_dir or NEXT.default_dir), revision=REVISION, dtype=NEXT.dtype,
