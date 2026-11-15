@@ -90,6 +90,16 @@ def check_serialization(bundle: Bundle, items: list[dict], images_dir: Path) -> 
     return {"pass": not failures, "items": len(items), "failures": failures[:50]}, layouts
 
 
+def replayed(bundle: Bundle, prefix, kept: torch.Tensor, suffix: torch.Tensor, mode: str, prompt: str, item: dict,
+             surface: str, greedy_steps: int = 0):
+    """(suffix logits, incremental margin, greedy or None) for one replay. Its state, a whole cache copy in
+    dense mode, is freed on return, so validate never holds more copies than a run unit does."""
+    state, logits = replay(bundle.decoder, prefix, kept, suffix, mode)
+    margin = margin_incremental(bundle, state, prompt, item["a_true"], item["a_alt"], surface)
+    decoded = greedy(bundle.decoder, state, max_new=greedy_steps, stop_at_eos=False) if greedy_steps else None
+    return logits, margin, decoded
+
+
 def check_item(bundle: Bundle, item: dict, image, position: int, sparse: bool, surface: str, found: dict) -> dict:
     """Noise floor and E2 on Q and mis; on sparse items also E3 and E4. Raw numbers go into ``found``."""
     decoder, device = bundle.decoder, bundle.device
@@ -106,13 +116,12 @@ def check_item(bundle: Bundle, item: dict, image, position: int, sparse: bool, s
     for name in (Q, "mis"):
         t, suffix = tokens[name], torch.tensor([tokens[name].suffix_ids])
         full = full_forward_logits(bundle, t.prefix_ids + t.suffix_ids, vision, len(t.prefix_ids))
-        state, dense = replay(decoder, prefix, keep_all, suffix, "dense")
-        _, compact = replay(decoder, prefix, keep_all, suffix, "compact")
+        dense, margin_dense, _ = replayed(bundle, prefix, keep_all, suffix, "dense", t.prompt, item, surface)
+        compact = replay(decoder, prefix, keep_all, suffix, "compact")[1]  # the state is dropped at once
         found[f"floor_samples_{name}"].append(sample_differences(full - dense, generator))
         found[f"floor_max_{name}"].append(float((full - dense).abs().max()))
         found[f"floor_margin_{name}"].append(abs(
-            margin_full_forward(bundle, t, vision, item["a_true"], item["a_alt"], surface)
-            - margin_incremental(bundle, state, t.prompt, item["a_true"], item["a_alt"], surface)
+            margin_full_forward(bundle, t, vision, item["a_true"], item["a_alt"], surface) - margin_dense
         ))
         found[f"full_vs_compact_{name}"].append(float((full - compact).abs().max()))
         found[f"compact_vs_dense_{name}"].append(float((compact - dense).abs().max()))
@@ -125,15 +134,10 @@ def check_item(bundle: Bundle, item: dict, image, position: int, sparse: bool, s
         for share in SHARES:
             for kind in KINDS:
                 kept = torch.from_numpy(kept_set(layout, share, kind, position))
-                state_c, logits_c = replay(decoder, prefix, kept, suffix, "compact")
-                state_d, logits_d = replay(decoder, prefix, kept, suffix, "dense")
+                logits_c, margin_c, greedy_c = replayed(bundle, prefix, kept, suffix, "compact", t.prompt, item, surface, 10)
+                logits_d, margin_d, greedy_d = replayed(bundle, prefix, kept, suffix, "dense", t.prompt, item, surface, 10)
                 found["sparse_samples"].append(sample_differences(logits_c - logits_d, generator))
-                found["sparse_margins"].append(abs(
-                    margin_incremental(bundle, state_c, t.prompt, item["a_true"], item["a_alt"], surface)
-                    - margin_incremental(bundle, state_d, t.prompt, item["a_true"], item["a_alt"], surface)
-                ))
-                greedy_c = greedy(decoder, state_c, max_new=10, stop_at_eos=False)
-                greedy_d = greedy(decoder, state_d, max_new=10, stop_at_eos=False)
+                found["sparse_margins"].append(abs(margin_c - margin_d))
                 for step, (logit_c, logit_d) in enumerate(zip(greedy_c.step_logits, greedy_d.step_logits)):
                     found["sparse_samples"].append(sample_differences(logit_c - logit_d, generator))
                     if greedy_c.token_ids[step] != greedy_d.token_ids[step]:
