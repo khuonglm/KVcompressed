@@ -269,8 +269,6 @@ Estimands are those of 2.3, computed separately at each K. One change: **T_irr =
 
 ## 4. Second model: LLaVA-NeXT-7B on GQA
 
-DRAFT (16 November 2026): written for review. The researcher deletes this line after reviewing section 4 and settling 4.5; the NeXT freezes refuse while it is here.
-
 This section tests whether the steering found on LLaVA-1.5-7B also appears in a model that encodes images differently: LLaVA-NeXT (v1.6) with AnyRes, a 24 × 24 base tile plus a high-resolution grid of tiles, about 1,700–2,900 visual entries per GQA image instead of 576. It has its own three-stage freeze (4.4). Sections 1 to 3 are unchanged by it, and its results never enter their families.
 
 Everything not stated here is as in sections 1 to 3: the margin, the capitalized surface rule, scoring, greedy decoding and normalisation (1.3), PW-attn's probe, replay on the compact cache with logical positions, the bootstrap (image-clustered, 10,000 resamples, seed 0, 95% percentile interval), the two-sided p-value formula and the interval readings (2.3).
