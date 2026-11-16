@@ -240,12 +240,11 @@ def test_end_to_end_on_the_tiny_model_with_a_resume(frozen_world, monkeypatch, t
     import numpy as np
     from PIL import Image
 
-    from kvsel.model import bundle_from_model
     from kvsel_next.family import NEXT
-    from kvsel_next.model import load_processor
+    from kvsel_next.model import load_processor, make_bundle
 
     processor = load_processor()
-    bundle = bundle_from_model(tiny_llava_next, processor.tokenizer, processor, family=NEXT)
+    bundle = make_bundle(tiny_llava_next, processor)
     monkeypatch.setattr(cli, "load_bundle", lambda device, model_dir: bundle)
     generator = np.random.default_rng(0)
     for i in range(8):

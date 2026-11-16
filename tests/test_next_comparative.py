@@ -209,12 +209,11 @@ def plant(run, effect):
 
 @pytest.mark.network
 def test_freeze_run_resume_and_report_on_the_tiny_model(world, monkeypatch, capsys, tiny_llava_next):
-    from kvsel.model import bundle_from_model
     from kvsel_next.family import NEXT
-    from kvsel_next.model import load_processor
+    from kvsel_next.model import load_processor, make_bundle
 
     processor = load_processor()
-    bundle = bundle_from_model(tiny_llava_next, processor.tokenizer, processor, family=NEXT)
+    bundle = make_bundle(tiny_llava_next, processor)
     monkeypatch.setattr(cli, "load_bundle", lambda device, model_dir: bundle)
     cli.main(["freeze", *common(world)])
 

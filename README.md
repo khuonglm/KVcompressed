@@ -335,7 +335,8 @@ and is safe to rerun; step 10 needs the replication's report and is skipped once
     item files. Send me `report.md`.
 11. With the script, also send `results/next/overnight.log`.
 
-**Memory.** The peak is expected in prefill (eager attention over the visual span). The number that
+**Memory.** The weights take about 13.2 GiB of the 20 GiB slice. The prefix cache (up to 1.45 GiB for a
+square image) waits in CPU memory, and a unit holds at most two cache copies on the GPU. The peak is expected in prefill (eager attention over the visual span). The number that
 counts is the printed run peak (prefill, then a Full unit on the cache); validate's own full forward
 passes are longer and don't happen in the real run. If the run peak is above 20 GB, or validate stops
 with CUDA out of memory, send me the output up to that point (each item prints its run peak): an AnyRes

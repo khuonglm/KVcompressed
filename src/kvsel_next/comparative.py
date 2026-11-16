@@ -24,7 +24,7 @@ from kvsel.runner import NO_CONTEXT, Q, Unit, load_items, open_image, write_json
 from kvsel.verify import load_decisions
 
 from . import screen
-from .model import prefill, run_unit
+from .model import on_device, prefill, run_unit
 from .prompts import contexts_for
 from .selection import SHARES, budget, kept_sets
 
@@ -75,7 +75,8 @@ def run_item(bundle: Bundle, item: dict, image: Image.Image, plan: list[NextUnit
     tokens, inputs = contexts_for(bundle.image_processor, item, image)
     prefix, layout = prefill(bundle, tokens[Q].prefix_ids, inputs)
     contexts = sorted({u.selection for u in plan if u.selector == "pw"})
-    kept = {c: kept_sets(layout, probe(bundle.decoder, prefix, torch.tensor([tokens[c].suffix_ids]))) for c in contexts}
+    kept = {c: kept_sets(layout, probe(bundle.decoder, on_device(prefix, bundle.device), torch.tensor([tokens[c].suffix_ids])))
+            for c in contexts}  # each probe gets its own GPU copy of the prefix, freed when it returns
     record = {"base": layout.base, "grid": list(layout.grid), "total": layout.total}
     rows = []
     for u in plan:

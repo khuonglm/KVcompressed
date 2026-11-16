@@ -11,22 +11,24 @@ import json
 import time
 from collections import Counter, defaultdict
 from pathlib import Path
+from typing import NamedTuple
 
 import numpy as np
 import torch
 
 from kvsel.cache import entries_hash
-from kvsel.engine import greedy, probe, replay
+from kvsel.engine import probe, replay
 from kvsel.model import Bundle, full_forward_logits
 from kvsel.prompts import candidate_ids, surface_forms
 from kvsel.runner import NO_CONTEXT, Q, Unit, open_image
 from kvsel.validate import SURFACE, margin_full_forward, margin_incremental, sample_differences
 
+from .comparative import units
 from .family import NEXT
 from .layout import Layout, derive_layout, visual_span
-from .model import prefill, release_cached_memory, run_unit
+from .model import (gather, greedy_releasing, on_device, prefill, release_cached_memory, replay_gathered,
+                    replay_offloaded, run_unit)
 from .model_files import REVISION
-from .comparative import units
 from .prompts import contexts_for
 from .screen import SCREENING
 from .selection import SHARES
@@ -37,13 +39,22 @@ MARGIN_LIMIT = 0.01  # E3's mean |margin| limit, as kvsel validate
 POOL = 2335  # passed GQA confirmatory items, 16 November 2026 (PREREG 4.5(d)); for the projections only
 
 
-def _projection_sizes() -> tuple[int, int, int, int, int, int]:
+class ProjectionSizes(NamedTuple):
+    main: int  # main-set items
+    control: int  # control items
+    main_probes: int  # probes per main item
+    main_units: int  # units per main item
+    control_probes: int  # extra probes per control item
+    control_units: int  # extra units per control item
+
+
+def _projection_sizes() -> ProjectionSizes:
     """Set sizes, probes and units per item for the projections, from the frozen settings and unit lists."""
     main, control = units(control=False), units(control=True)
     probes = {u.selection for u in main if u.selector == "pw"}
     extra_probes = {u.selection for u in control if u.selector == "pw"} - probes
-    return (SCREENING["main_size"], SCREENING["control_size"], len(probes), len(main),
-            len(extra_probes), len(control) - len(main))
+    return ProjectionSizes(SCREENING["main_size"], SCREENING["control_size"], len(probes), len(main),
+                           len(extra_probes), len(control) - len(main))
 
 
 def sparse_set(layout: Layout, share: float, kind: str, seed: int) -> np.ndarray:
@@ -100,14 +111,25 @@ def check_serialization(bundle: Bundle, items: list[dict], images_dir: Path) -> 
 
 
 def replayed(bundle: Bundle, prefix, kept: torch.Tensor, suffix: torch.Tensor, mode: str, prompt: str, item: dict,
-             surface: str, greedy_steps: int = 0):
-    """(suffix logits, incremental margin, greedy or None) for one replay. Its state, a whole cache copy in
-    dense mode, is freed on return, so validate never holds more copies than a run unit does."""
-    state, logits = replay(bundle.decoder, prefix, kept, suffix, mode)
+             surface: str, greedy_steps: int = 0, changed: list | None = None):
+    """(suffix logits, incremental margin, greedy or None) for one replay of the CPU-held prefix, holding at most
+    two cache copies on the GPU, as a run unit. Compact replays gather the kept entries as the run does; dense
+    replays go through kvsel's own replay on a GPU copy of the prefix. Either input copy is dropped once the step
+    has concatenated it into the state, before scoring. With ``changed`` (E4), the input copy the step received is
+    hashed before and after, and the mode is appended if it differs."""
+    given = gather(bundle.decoder, prefix, kept) if mode == "compact" else on_device(prefix, bundle.device)
+    before = entries_hash(given.entries) if changed is not None else None
+    if mode == "compact":
+        state, logits = replay_gathered(bundle.decoder, given, suffix)
+    else:
+        state, logits = replay(bundle.decoder, given, kept, suffix, mode)
+    if changed is not None and entries_hash(given.entries) != before:
+        changed.append(mode)
+    del given
     margin = margin_incremental(bundle, state, prompt, item["a_true"], item["a_alt"], surface)
-    held = [state]
-    del state  # as the run's `run_unit`: greedy's frame holds the only reference, so the state is freed as it steps
-    decoded = greedy(bundle.decoder, held.pop(), max_new=greedy_steps, stop_at_eos=False) if greedy_steps else None
+    box = [state]
+    del state
+    decoded = greedy_releasing(bundle.decoder, box, max_new=greedy_steps, stop_at_eos=False) if greedy_steps else None
     return logits, margin, decoded
 
 
@@ -124,16 +146,15 @@ def check_item(bundle: Bundle, item: dict, image, position: int, sparse: bool, s
     vision = {"pixel_values": inputs["pixel_values"].to(device, next(bundle.model.parameters()).dtype),
               "image_sizes": inputs["image_sizes"].to(device)}
     keep_all = torch.arange(layout.total)
-    before = entries_hash(prefix.entries)
     for name in (Q, "mis"):
         t, suffix = tokens[name], torch.tensor([tokens[name].suffix_ids])
-        release_cached_memory(bundle)  # before each uncached full pass, as before prefill
+        release_cached_memory(device)  # before each uncached full pass, as before prefill
         full = full_forward_logits(bundle, t.prefix_ids + t.suffix_ids, vision, len(t.prefix_ids))
         dense, margin_dense, _ = replayed(bundle, prefix, keep_all, suffix, "dense", t.prompt, item, surface)
-        compact = replay(decoder, prefix, keep_all, suffix, "compact")[1]  # the state is dropped at once
+        compact = replay_offloaded(decoder, prefix, keep_all, suffix)[1]  # the state is dropped at once
         found[f"floor_samples_{name}"].append(sample_differences(full - dense, generator))
         found[f"floor_max_{name}"].append(float((full - dense).abs().max()))
-        release_cached_memory(bundle)
+        release_cached_memory(device)
         found[f"floor_margin_{name}"].append(abs(
             margin_full_forward(bundle, t, vision, item["a_true"], item["a_alt"], surface) - margin_dense
         ))
@@ -141,15 +162,21 @@ def check_item(bundle: Bundle, item: dict, image, position: int, sparse: bool, s
         found[f"compact_vs_dense_{name}"].append(float((compact - dense).abs().max()))
         if not sparse:
             continue
-        _, seconds = _timed(device, lambda: probe(decoder, prefix, suffix))
+        changed: list[str] = []  # E4, on the copies the engine received; hashing is outside the timed probe
+        given = on_device(prefix, device)
+        before = entries_hash(given.entries)
+        _, seconds = _timed(device, lambda: probe(decoder, given, suffix))
         found["probe_seconds"].append(seconds)
-        if entries_hash(prefix.entries) != before:
-            found["hash_failures"].append(f"{item['item_id']}: changed by probe {name}")
+        if entries_hash(given.entries) != before:
+            changed.append("probe")
+        del given
         for share in SHARES:
             for kind in KINDS:
                 kept = torch.from_numpy(sparse_set(layout, share, kind, position))
-                logits_c, margin_c, greedy_c = replayed(bundle, prefix, kept, suffix, "compact", t.prompt, item, surface, 10)
-                logits_d, margin_d, greedy_d = replayed(bundle, prefix, kept, suffix, "dense", t.prompt, item, surface, 10)
+                logits_c, margin_c, greedy_c = replayed(bundle, prefix, kept, suffix, "compact", t.prompt, item, surface, 10,
+                                                        changed)
+                logits_d, margin_d, greedy_d = replayed(bundle, prefix, kept, suffix, "dense", t.prompt, item, surface, 10,
+                                                        changed)
                 found["sparse_samples"].append(sample_differences(logits_c - logits_d, generator))
                 found["sparse_margins"].append(abs(margin_c - margin_d))
                 for step, (logit_c, logit_d) in enumerate(zip(greedy_c.step_logits, greedy_d.step_logits)):
@@ -160,8 +187,7 @@ def check_item(bundle: Bundle, item: dict, image, position: int, sparse: bool, s
                             "gap": min(greedy_c.top_two_gaps[step], greedy_d.top_two_gaps[step]),
                         })
                         break
-                if entries_hash(prefix.entries) != before:
-                    found["hash_failures"].append(f"{item['item_id']}: changed by replay")
+        found["hash_failures"] += [f"{item['item_id']}: input copy changed by {what} ({name})" for what in changed]
     record["peak_gb"] = _peak_gb(device)  # includes validation-only full forward passes
     # The run's own peak: a Full unit on top of the prefix cache, on the longest suffix, so its time is an upper bound.
     longest = max(tokens, key=lambda name: len(tokens[name].suffix_ids))
@@ -177,7 +203,7 @@ def fingerprint(bundle: Bundle, item: dict, image) -> str:
     """Everything a run would store for a few units, plus the prefix and probe, for the determinism check."""
     tokens, inputs = contexts_for(bundle.image_processor, item, image)
     prefix, layout = prefill(bundle, tokens[Q].prefix_ids, inputs)
-    attention = probe(bundle.decoder, prefix, torch.tensor([tokens["mis"].suffix_ids]))
+    attention = probe(bundle.decoder, on_device(prefix, bundle.device), torch.tensor([tokens["mis"].suffix_ids]))
     kept = sparse_set(layout, 0.25, "random", 0)
     rows = [run_unit(bundle, item, Unit("full", layout.total, False, NO_CONTEXT, Q), prefix, np.arange(layout.total), tokens),
             run_unit(bundle, item, Unit("random", len(kept), False, NO_CONTEXT, "mis"), prefix, kept, tokens)]
@@ -199,9 +225,9 @@ def projection(prefill_seconds: float, probe_seconds: float, unit_seconds: float
     """Upper bounds: every unit costs a Full unit, and the screen runs Blind_Q on every pool item."""
     blind = prefill_seconds + unit_seconds
     screen = POOL * 2 * blind
-    main, control, main_probes, main_units, control_probes, control_units = _projection_sizes()
-    comparative = (main * (prefill_seconds + main_probes * probe_seconds + main_units * unit_seconds + blind)
-                   + control * (control_probes * probe_seconds + control_units * unit_seconds))
+    n = _projection_sizes()
+    comparative = (n.main * (prefill_seconds + n.main_probes * probe_seconds + n.main_units * unit_seconds + blind)
+                   + n.control * (n.control_probes * probe_seconds + n.control_units * unit_seconds))
     return {"screen_hours_upper": screen / 3600, "comparative_hours_upper": comparative / 3600}
 
 

@@ -115,12 +115,11 @@ def test_validate_refuses_items_that_are_not_development_items(tmp_path, monkeyp
 
 @pytest.mark.network
 def test_whole_validate_command_on_tiny_model(tmp_path, monkeypatch, capsys, tiny_llava_next):
-    from kvsel.model import bundle_from_model
     from kvsel_next.family import NEXT
-    from kvsel_next.model import load_processor
+    from kvsel_next.model import load_processor, make_bundle
 
     processor = load_processor()
-    bundle = bundle_from_model(tiny_llava_next, processor.tokenizer, processor, family=NEXT)
+    bundle = make_bundle(tiny_llava_next, processor)
     monkeypatch.setattr(cli, "load_bundle", lambda device, model_dir: bundle)
     items = [make_item(i) for i in range(3)]
     manifest = write_dataset(tmp_path, items, [(560, 300), (300, 560), (560, 300)])
@@ -147,3 +146,31 @@ def test_whole_validate_command_on_tiny_model(tmp_path, monkeypatch, capsys, tin
     assert [line.split(":")[0] for line in printed if line.endswith(("PASS", "FAIL"))] == ["E1", "E2", "E3", "E4", "E7"]
     assert printed[-1] == ("GO" if report["go"] else "NO-GO")
     assert exit_code == (0 if report["go"] else 1)
+
+
+@pytest.mark.network
+@pytest.mark.parametrize("culprit", ["probe", "replay_gathered", "replay"])
+def test_e4_catches_an_engine_call_that_changes_its_input(culprit, tmp_path, monkeypatch, tiny_llava_next):
+    """E4 hashes the copy each probe and replay receives, so changing it in place is reported."""
+    from collections import defaultdict
+
+    from kvsel_next import validate
+    from kvsel_next.model import load_processor, make_bundle
+
+    bundle = make_bundle(tiny_llava_next, load_processor())
+    real = getattr(validate, culprit)
+
+    def tampering(decoder, prefix, *args, **kwargs):
+        import torch
+
+        with torch.inference_mode():
+            prefix.entries[0][0].add_(1.0)
+        return real(decoder, prefix, *args, **kwargs)
+
+    monkeypatch.setattr(validate, culprit, tampering)
+    item = make_item(0)
+    write_dataset(tmp_path, [item], [(560, 300)])
+    found = defaultdict(list)
+    validate.check_item(bundle, item, validate.open_image(tmp_path, item), 0, True, "capitalized", found)
+    expected = {"probe": "probe", "replay_gathered": "compact", "replay": "dense"}[culprit]
+    assert any(f"changed by {expected}" in failure for failure in found["hash_failures"])

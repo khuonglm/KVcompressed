@@ -42,9 +42,9 @@ def processor():
 
 @pytest.fixture(scope="module")
 def bundle(tiny_llava_next, processor):
-    from kvsel.model import bundle_from_model
+    from kvsel_next.model import make_bundle
 
-    return bundle_from_model(tiny_llava_next, processor.tokenizer, processor, family=NEXT)
+    return make_bundle(tiny_llava_next, processor)
 
 
 @pytest.fixture(scope="module", params=sorted(ASPECTS))
@@ -243,19 +243,22 @@ def test_numerics_match_llava_15():
     assert NEXT.dtype == torch.float16 and NEXT.default_head_precision == "fp32"
 
 
-def test_bundle_has_an_fp32_head(bundle):
-    assert bundle.decoder.fp32_head.weight.dtype == torch.float32
+def test_bundle_has_an_fp32_head(bundle, aspect):
+    """fp32 logits from the fp32-cast hidden state, through the sliced head (no fp32 copy kept)."""
+    assert bundle.decoder.head_precision == "fp32" and bundle.decoder.fp32_head is None
+    hidden = torch.randn(1, 2, bundle.model.config.text_config.hidden_size, dtype=bundle.decoder.dtype)
+    assert bundle.decoder.logits(hidden).dtype == torch.float32
 
 
 def test_non_eager_attention_is_refused(tiny_llava_next, processor):
     import copy
 
-    from kvsel.model import bundle_from_model
+    from kvsel_next.model import make_bundle  # what load_bundle uses
 
     model = copy.deepcopy(tiny_llava_next)
     model.config.text_config._attn_implementation = "sdpa"
     with pytest.raises(RuntimeError, match="eager"):
-        bundle_from_model(model, processor.tokenizer, processor, family=NEXT)
+        make_bundle(model, processor)
 
 
 # --- memory: same outputs with fewer copies (20 GiB GPU) ------------------------------------------
@@ -277,12 +280,32 @@ def test_run_unit_rows_equal_kvsels(bundle, aspect):
 
 
 def test_logits_without_the_fp32_head_copy_are_identical(tiny_llava_next, processor):
+    """kvsel's bundle keeps an fp32 head copy; NeXT's upcasts 4,096-row slices on each call, never making the copy."""
     from kvsel.model import bundle_from_model
-    from kvsel_next.model import drop_fp32_head_copy
+    from kvsel_next.model import make_bundle
 
     with_copy = bundle_from_model(tiny_llava_next, processor.tokenizer, processor, family=NEXT)
-    without = bundle_from_model(tiny_llava_next, processor.tokenizer, processor, family=NEXT)
-    drop_fp32_head_copy(without)
+    without = make_bundle(tiny_llava_next, processor)
     assert without.decoder.fp32_head is None and with_copy.decoder.fp32_head is not None
+    assert without.decoder.HEAD_ROWS_PER_SLICE == 4096 and without.decoder.head_precision == "fp32"
     hidden = torch.randn(1, 5, tiny_llava_next.config.text_config.hidden_size, dtype=without.decoder.dtype)
     assert torch.equal(with_copy.decoder.logits(hidden), without.decoder.logits(hidden))
+
+
+def test_prefill_returns_the_prefix_in_cpu_memory(aspect):
+    assert all(k.device.type == "cpu" and v.device.type == "cpu" for k, v in aspect["prefix"].entries)
+
+
+def test_replay_offloaded_equals_kvsels_compact_replay(bundle, aspect):
+    """Same logits, same state entries and positions as kvsel's compact replay, for full and sparse kept sets."""
+    from kvsel_next.model import on_device, replay_offloaded
+
+    prefix, suffix = aspect["prefix"], torch.tensor([aspect["tokens"]["mis"].suffix_ids])
+    total = aspect["layout"].total
+    for kept in (torch.arange(total), torch.from_numpy(np.sort(np.random.default_rng(1).choice(total, total // 8, replace=False)))):
+        state_e, logits_e = replay(bundle.decoder, on_device(prefix, bundle.device), kept, suffix, "compact")
+        state_o, logits_o = replay_offloaded(bundle.decoder, prefix, kept, suffix)
+        assert torch.equal(logits_e, logits_o)
+        assert (state_e.logical_next, state_e.physical_next, state_e.dropped) == (state_o.logical_next, state_o.physical_next, None)
+        assert all(torch.equal(a, b) for layer_e, layer_o in zip(state_e.entries, state_o.entries) for a, b in zip(layer_e, layer_o))
+        assert torch.equal(state_e.last_logits, state_o.last_logits)

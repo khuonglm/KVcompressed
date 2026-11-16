@@ -230,6 +230,15 @@ prefix. A kept set is k = round(share × feature tokens) feature tokens plus eve
 Not run for NeXT: E5 (placebo, which needs selection) and scored kept sets (selection is ticket 02).
 (Note, 16 November 2026: selection now exists; validate still uses random and concentrated sets only,
 since E3 compares compact and dense replay on any sparse set. The criteria above are unchanged.)
+(Note, 16 November 2026, after the first GPU attempts ran out of memory on the 20 GiB slice, before any check
+had a result: the prefix cache now waits in CPU memory. Compact replays gather the kept entries on the CPU and
+move them to the GPU; dense replays and probes use a GPU copy of the prefix, freed before scoring. Both copy
+values exactly, and `tests/test_next.py` checks the rows, logits and states equal kvsel's own path. The
+checks and limits are unchanged. E4 now hashes the copy each probe and replay receives, before and after, since
+the CPU-held prefix itself is never given to the engine. The fp32 head is upcast in 4,096-row slices on each call
+instead of kept as an fp32 copy: each logit is the same fp32 dot product, though on CUDA a different matrix shape
+may move its last bits. Prefill, probe and unit times now include moving entries between CPU and GPU, as the run
+does, so they are not comparable with earlier attempts.)
 GO only if every check passes. Peak GPU memory, the visual-token range and time per item are reported,
 not judged. The memory that counts is the run peak (prefill, then a Full unit on the cache), not validate's
 own full forward passes; a run peak above 20 GB means an AnyRes cap in PREREG 4.1 before stage 1.
