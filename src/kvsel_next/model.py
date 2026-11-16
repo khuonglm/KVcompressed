@@ -44,6 +44,14 @@ def load_bundle(device: str = "cuda", model_dir: Path | None = None) -> Bundle:
     return bundle
 
 
+def release_cached_memory(bundle: Bundle) -> None:
+    """Return PyTorch's cached, fragmented blocks to the driver before a pass whose eager attention needs one large
+    block (about 1 GiB of fp32 softmax at 2,928 visual tokens). expandable_segments, which would avoid the
+    fragmentation, is unsupported on the GPU slice. Numerics are unchanged."""
+    if bundle.device.type == "cuda":
+        torch.cuda.empty_cache()
+
+
 def drop_fp32_head_copy(bundle: Bundle) -> None:
     """Upcast the head a slice of rows at a time instead of keeping a 0.49 GiB fp32 copy on a 20 GiB GPU.
     kvsel's Decoder supports both; each logit is the same fp32 dot product of the fp32 hidden state."""
@@ -85,6 +93,7 @@ def prefill(bundle: Bundle, prefix_ids: list[int], inputs) -> tuple[Prefix, Layo
     layout = derive_layout(bundle.model.config, inputs["image_sizes"][0].tolist())
     if stop - start != layout.total:
         raise ValueError(f"the visual span has {stop - start} tokens but the derived layout has {layout.total}")
+    release_cached_memory(bundle)
     output = bundle.model.model(
         input_ids=torch.tensor([prefix_ids], device=bundle.device),
         pixel_values=inputs["pixel_values"].to(bundle.device, next(bundle.model.parameters()).dtype),

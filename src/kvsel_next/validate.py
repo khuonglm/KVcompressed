@@ -24,7 +24,7 @@ from kvsel.validate import SURFACE, margin_full_forward, margin_incremental, sam
 
 from .family import NEXT
 from .layout import Layout, derive_layout, visual_span
-from .model import prefill, run_unit
+from .model import prefill, release_cached_memory, run_unit
 from .model_files import REVISION
 from .comparative import units
 from .prompts import contexts_for
@@ -127,11 +127,13 @@ def check_item(bundle: Bundle, item: dict, image, position: int, sparse: bool, s
     before = entries_hash(prefix.entries)
     for name in (Q, "mis"):
         t, suffix = tokens[name], torch.tensor([tokens[name].suffix_ids])
+        release_cached_memory(bundle)  # before each uncached full pass, as before prefill
         full = full_forward_logits(bundle, t.prefix_ids + t.suffix_ids, vision, len(t.prefix_ids))
         dense, margin_dense, _ = replayed(bundle, prefix, keep_all, suffix, "dense", t.prompt, item, surface)
         compact = replay(decoder, prefix, keep_all, suffix, "compact")[1]  # the state is dropped at once
         found[f"floor_samples_{name}"].append(sample_differences(full - dense, generator))
         found[f"floor_max_{name}"].append(float((full - dense).abs().max()))
+        release_cached_memory(bundle)
         found[f"floor_margin_{name}"].append(abs(
             margin_full_forward(bundle, t, vision, item["a_true"], item["a_alt"], surface) - margin_dense
         ))
