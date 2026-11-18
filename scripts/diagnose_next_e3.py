@@ -73,11 +73,13 @@ def main() -> None:
                     margins.append(margin)
                     for key in keys:
                         groups[key]["margins"].append(margin)
-                    for logit_c, logit_d in zip(greedy_c.step_logits, greedy_d.step_logits):
+                    for step, (logit_c, logit_d) in enumerate(zip(greedy_c.step_logits, greedy_d.step_logits)):
                         sample = sample_differences(logit_c - logit_d, generator)
                         pooled.append(sample)
                         for key in (*keys, "source=greedy step"):
                             groups[key]["samples"].append(sample)
+                        if greedy_c.token_ids[step] != greedy_d.token_ids[step]:
+                            break  # as sparse_equivalence: past a mismatch the two decode different text
     found = {
         "pooled": {"logit_p99": p99(pooled), "margin_mean_abs": float(np.mean(margins))},
         "reported": REPORTED,
