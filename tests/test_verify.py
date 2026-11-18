@@ -10,7 +10,13 @@ from PIL import Image
 
 from kvsel.models.llava15 import box_to_square, evidence_patches, pad_to_square
 from kvsel.verification import (
-    FAILURE_REASONS, append_decision, build_queue, load_decisions, make_server, passed_items, summarize, view_of,
+    FAILURE_REASONS,
+    append_decision,
+    build_queue,
+    load_decisions,
+    make_server,
+    summarize,
+    view_of,
 )
 
 
@@ -68,7 +74,8 @@ def test_latest_decision_wins_and_failed_items_are_not_passed(tmp_path):
     append_decision(path, make_item("b"), "bad_box", "me")
     append_decision(path, make_item("c"), "pass", "me")
     append_decision(path, make_item("c"), "wording", "me")
-    assert passed_items(path) == {"a"}
+    decisions, _ = load_decisions(path)
+    assert {item_id for item_id, record in decisions.items() if record["decision"] == "pass"} == {"a"}
     assert sum(1 for _ in open(path)) == 4  # append-only: nothing is overwritten
 
 

@@ -1,17 +1,17 @@
 """Follow-ups (PREREG 2.4): unit lists, selectors, restoration sets, the run and the report."""
 
 import json
-from dataclasses import asdict
 
 import numpy as np
 import pytest
 from PIL import Image
 from test_confirm_analysis import make_run, scores
 
-from kvsel.confirm import code_hash_all
-from kvsel.followup import run as fu
-from kvsel.followup.report import followup_report, followup_results
-from kvsel.runner import cell_name, pilot_units
+from kvsel.protocol import Refusal, code_identity
+from kvsel.runner import Unit, cell_name
+from kvsel.studies.followups import run as fu
+from kvsel.studies.followups.report import followup_report, followup_results
+from kvsel.studies.pilot import pilot_units
 
 
 def test_part_units():
@@ -27,14 +27,14 @@ def test_part_units():
     with pytest.raises(ValueError):
         fu.part_units("restore")
     # the follow-up units carry the confirmatory unit fields, so rows look the same
-    assert set(asdict(pilot_units()[0])) <= set(asdict(budgets[0]))
+    assert set(pilot_units()[0].record()) <= set(budgets[0].record())
 
 
 def test_random_sets_are_seeded_per_item():
     from kvsel.models.llava15 import LAYOUT
 
     def random_set(item_id, seed):
-        return fu.kept_for(fu.FUnit("random", 144, False, "none", "Q", seed=seed), item_id, LAYOUT, {}, {})
+        return fu.kept_for(Unit("random", 144, False, "none", "Q", seed=seed, followup=True), item_id, LAYOUT, {}, {})
 
     a = random_set("i1", 0)
     assert len(a) == 144 == len(set(a.tolist())) and np.all(np.diff(a) > 0) and a.max() < 576
@@ -79,7 +79,7 @@ def test_restoration_needs_enough_pushed_out_entries():
 def confirm_fixture(tmp_path, n=20, n_control=8):
     run, manifest = make_run(tmp_path, "confirm", n=n, n_control=n_control, effect=0.3)
     record = tmp_path / "record.json"
-    record.write_text(json.dumps({"main_items": n, "control_items": n_control, "code_sha256": code_hash_all()}))
+    record.write_text(json.dumps({"main_items": n, "control_items": n_control, "code_sha256": code_identity()}))
     items = [json.loads(line) for line in manifest.read_text().splitlines()]
     return run, manifest, record, items
 
@@ -89,7 +89,7 @@ def test_confirm_selection(tmp_path):
     selection = fu.confirm_selection(run, record, items)
     assert len(selection["main"]) == 20 and len(selection["control"]) == 8 and selection["code_unchanged"]
     (run / "items" / "extra.json").write_text(json.dumps({"item_id": "extra", "subset": "main"}))
-    with pytest.raises(SystemExit, match="move files outside the main set"):
+    with pytest.raises(Refusal, match="move files outside the main set"):
         fu.confirm_selection(run, record, items)
 
 
@@ -104,7 +104,7 @@ def confirm_margins(run):
 
 
 def row(unit, value, outcome="correct"):
-    return {**asdict(unit), "cell": cell_name(unit), "kept": None, "scores": scores(value), "outcome": outcome}
+    return {**unit.record(), "cell": cell_name(unit), "kept": None, "scores": scores(value), "outcome": outcome}
 
 
 def write_followups(tmp_path, run, items, grounding):
@@ -124,11 +124,11 @@ def write_followups(tmp_path, run, items, grounding):
             "random": [row(u, values["pw|A"] - 0.1 if u.answering == "Q" else b - 0.25) for u in fu.part_units("random")],
         }
         if item_id in grounding:
-            reference = fu.FUnit("restore", 144, False, "mis", "mis", arm="reference")
+            reference = Unit("restore", 144, False, "mis", "mis", arm="reference", followup=True)
             rows = [row(reference, b)]
             for m in fu.RESTORE_M:
-                rows.append(row(fu.FUnit("restore", 144, False, "mis", "mis", m=m, arm="treatment"), b + 0.4))
-                rows += [row(fu.FUnit("restore", 144, False, "mis", "mis", seed=s, m=m, arm="control"), b) for s in fu.SEEDS]
+                rows.append(row(Unit("restore", 144, False, "mis", "mis", m=m, arm="treatment", followup=True), b + 0.4))
+                rows += [row(Unit("restore", 144, False, "mis", "mis", seed=s, m=m, arm="control", followup=True), b) for s in fu.SEEDS]
             parts["restore"] = rows
         for part, rows in parts.items():
             (out / part / "items").mkdir(parents=True, exist_ok=True)
@@ -175,18 +175,18 @@ def test_report_marks_incomplete_parts_and_writes_files(tmp_path):
 
 
 def test_cli_parses():
-    from kvsel.followup.__main__ import build_parser
+    from kvsel.cli import build_parser
 
-    args = build_parser().parse_args(["run", "--items", "m.jsonl", "--images", "img", "--confirm-run", "r",
+    args = build_parser().parse_args(["followups", "run", "--items", "m.jsonl", "--images", "img", "--confirm-run", "r",
                                       "--record", "rec.json", "--out", "o", "--parts", "budgets", "restore"])
-    assert args.parts == ["budgets", "restore"] and args.head_precision is None
-    args = build_parser().parse_args(["report", "--run", "o", "--confirm-run", "r", "--items", "m.jsonl", "--out", "x"])
+    assert args.parts == ["budgets", "restore"] and "head_precision" not in vars(args)
+    args = build_parser().parse_args(["followups", "report", "--run", "o", "--confirm-run", "r", "--items", "m.jsonl", "--out", "x"])
     assert args.resamples == 10000
 
 
 @pytest.mark.network
 def test_followup_runs_on_the_tiny_model(tiny_llava, tmp_path):
-    from test_confirm import make_item
+    from test_confirmatory import make_confirm_item as make_item
 
     from kvsel.model import bundle_from_model
     from kvsel.models.llava15 import LLAVA
@@ -201,7 +201,7 @@ def test_followup_runs_on_the_tiny_model(tiny_llava, tmp_path):
     manifest.write_text("".join(json.dumps(i) + "\n" for i in items))
 
     selection = {"main": ["i0", "i1"], "control": ["i0"]}
-    summary = fu.run_followup(bundle, items, manifest, tmp_path, tmp_path / "fu", selection)
+    summary = fu.run_followup(bundle, items, manifest, tmp_path, tmp_path / "fu", selection, "rec")
     assert summary["files_per_part"] == {"budgets": 2, "lt": 2, "random": 2, "restore": 1}
     budgets = json.loads((tmp_path / "fu" / "budgets" / "items" / "i1.json").read_text())
     assert len(budgets["rows"]) == 12 and budgets["subset"] == "main" and len(budgets["kept_144"]["mis"]) == 144
@@ -210,5 +210,5 @@ def test_followup_runs_on_the_tiny_model(tiny_llava, tmp_path):
     expected = 1 + sum(6 for m in fu.RESTORE_M if restore["qualifying"][str(m)])
     assert len(restore["rows"]) == expected and {len(r["kept"]) for r in restore["rows"]} == {144}
     mtime = (tmp_path / "fu" / "lt" / "items" / "i0.json").stat().st_mtime
-    fu.run_followup(bundle, items, manifest, tmp_path, tmp_path / "fu", selection)
+    fu.run_followup(bundle, items, manifest, tmp_path, tmp_path / "fu", selection, "rec")
     assert (tmp_path / "fu" / "lt" / "items" / "i0.json").stat().st_mtime == mtime  # finished items are skipped

@@ -139,9 +139,10 @@ def _changed(stage: Stage, frozen: dict, report: bool = False) -> list[str]:
     return changed
 
 
-def freeze(stage: Stage) -> dict:
+def freeze(stage: Stage, extra: dict | None = None) -> dict:
     """Writes the record once. An equal state, code included through the amendment log, returns the existing
-    record; a different one is refused."""
+    record; a different one is refused. ``extra`` is stored after the state and never compared (a stage-1
+    amendment's `amends`)."""
     if stage.draft is not None:
         _refuse_draft(stage.draft)
     record = Path(stage.record)
@@ -151,6 +152,7 @@ def freeze(stage: Stage) -> dict:
             return frozen
         raise Refusal(f"{record} already exists with different contents; {stage.name} is frozen")
     payload = {"stage": stage.name, "frozen_at": datetime.now(UTC).isoformat(timespec="seconds"), **stage.state()}
+    payload |= extra or {}
     _write_atomic(record, payload)
     return payload
 
@@ -166,3 +168,71 @@ def check(stage: Stage, report: bool = False) -> dict:
     if changed:
         raise Refusal(f"Refusing: changed since {record}: " + ", ".join(changed))
     return frozen
+
+
+def check_code(record: Path) -> dict:
+    """The record, if the current code is its frozen code or reached from it through the amendment log: the
+    report-time check of a record whose other inputs the caller doesn't hold (PREREG 1.9)."""
+    record = Path(record)
+    if not record.exists():
+        raise Refusal(f"no freeze record at {record}")
+    frozen = json.loads(record.read_text())
+    if not code_accepted(frozen["code_sha256"], code_identity(), record.parent / CODE_AMENDMENTS):
+        raise Refusal(f"the code changed since {record} was frozen; analyse with the frozen code, or document the fix "
+                      "as a dated amendment (PREREG 1.9) and rerun every affected condition")
+    return frozen
+
+
+# --- The amendment log ----------------------------------------------------------------------------------------
+
+PENDING = "pending"  # the evidence of an entry not yet shown to reproduce
+
+
+def live_records(freeze_dir: Path) -> dict[str, dict]:
+    """Every freeze record by file name, except those another record amends (superseded: no command checks them)."""
+    records = {path.name: json.loads(path.read_text()) for path in sorted(Path(freeze_dir).glob("*.json"))
+               if path.name != CODE_AMENDMENTS}
+    superseded = {Path(r["amends"]["record"]).name for r in records.values() if "amends" in r}
+    return {name: record for name, record in records.items() if name not in superseded}
+
+
+def latest_accepted(frozen: str, amendments: list[dict]) -> str:
+    """The last code reached from ``frozen`` through the log, in log order."""
+    latest = frozen
+    for entry in amendments:
+        if entry["from"] == latest:
+            latest = entry["to"]
+    return latest
+
+
+def write_pending(freeze_dir: Path, reason: str, date: str) -> list[dict]:
+    """One pending entry from each live record's latest accepted code to the current code, replacing pending
+    entries written for other code. Returns the pending entries now in the log (PREREG 1.9)."""
+    path = Path(freeze_dir) / CODE_AMENDMENTS
+    current = code_identity()
+    entries = [e for e in (json.loads(path.read_text()) if path.exists() else [])
+               if not (e["evidence"].startswith(PENDING) and e["to"] != current)]
+    for record in live_records(freeze_dir).values():
+        latest = latest_accepted(record["code_sha256"], entries)
+        if latest != current:
+            entries.append({"from": latest, "to": current, "date": date, "scope": "package (code_identity)",
+                            "reason": reason, "evidence": f"{PENDING}: run `kvsel reproduce`"})
+    _write_atomic(path, entries)
+    return [e for e in entries if e["evidence"].startswith(PENDING)]
+
+
+def fill_evidence(freeze_dir: Path, evidence: str) -> int:
+    """Writes ``evidence`` into every pending entry that leads to the current code; returns how many."""
+    path = Path(freeze_dir) / CODE_AMENDMENTS
+    entries = json.loads(path.read_text()) if path.exists() else []
+    pending = [e for e in entries if e["evidence"].startswith(PENDING)]
+    if not pending:
+        return 0
+    stale = [e["to"][:12] for e in pending if e["to"] != code_identity()]
+    if stale:
+        raise Refusal(f"pending entries lead to code {', '.join(stale)}, not the current code: the code changed after "
+                      "they were written; rerun with --reason to rewrite them")
+    for entry in pending:
+        entry["evidence"] = evidence
+    _write_atomic(path, entries)
+    return len(pending)

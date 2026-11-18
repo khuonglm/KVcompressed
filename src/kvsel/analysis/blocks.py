@@ -7,7 +7,7 @@ from pathlib import Path
 
 import numpy as np
 
-from ..protocol import sha256_file
+from ..protocol import Refusal, sha256_file
 from .statistics import RESAMPLES, bootstrap, estimands, holm
 from .tables import PRIMARY, has_cells, paired_behaviour, wide_margins
 
@@ -18,9 +18,9 @@ def check_complete(run_dir: Path, found: set[str], expected: set[str], what: str
     """Refuse a run missing frozen items or holding items outside the frozen set."""
     missing, extra = expected - found, found - expected
     if missing:
-        raise SystemExit(f"{run_dir} is missing {len(missing)} {what}; rerun {rerun} to finish it")
+        raise Refusal(f"{run_dir} is missing {len(missing)} {what}; rerun {rerun} to finish it")
     if extra:
-        raise SystemExit(f"{run_dir} has {len(extra)} extra item files outside the frozen set; move them out")
+        raise Refusal(f"{run_dir} has {len(extra)} extra item files outside the frozen set; move them out")
 
 
 def budget_results(rows: list[dict], conditions: tuple[str, ...], resamples: int = RESAMPLES) -> dict:

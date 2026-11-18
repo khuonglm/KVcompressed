@@ -37,10 +37,22 @@ build-backend = "hatchling.build"
 [dependency-groups]
 dev = [
     "matplotlib>=3.11.2",
+    "ruff>=0.17.5",
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/kvsel", "src/kvsel_next"]
+packages = ["src/kvsel"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+# Unused code, import order and modern syntax (CODING_STANDARDS.md); tests/test_standards.py runs it with the suite.
+select = ["F", "I", "UP"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["kvsel"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

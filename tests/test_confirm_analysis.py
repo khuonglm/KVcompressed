@@ -7,9 +7,11 @@ import numpy as np
 import pytest
 
 from kvsel.analysis.statistics import clustered_ols, margin_variant
-from kvsel.confirm_analysis import apply_families, confirm_report, dataset_results
-from kvsel.runner import cell_name, pilot_units
+from kvsel.protocol import Refusal, code_identity
+from kvsel.runner import cell_name
 from kvsel.selectors import jaccard
+from kvsel.studies.confirmatory.report import apply_families, confirm_report, dataset_results
+from kvsel.studies.pilot import pilot_units
 
 FORMS = ("lower", "capitalized", "upper")
 
@@ -131,7 +133,7 @@ def test_checks_flag_blind_and_full_q_problems(tmp_path):
 
 def test_incomplete_run_is_refused(tmp_path):
     run, manifest = make_run(tmp_path, n=10, n_control=4)
-    with pytest.raises(SystemExit, match="frozen main set has 1000"):
+    with pytest.raises(Refusal, match="frozen main set has 1000"):
         dataset_results(run, manifest, resamples=100, expected_items=1000)
 
 
@@ -179,7 +181,7 @@ def test_report_files(tmp_path):
     text = (tmp_path / "out" / "report.md").read_text()
     assert text.startswith("# Confirmatory report") and "pending (family incomplete)" in text and "## gqa" in text
     assert out["datasets"]["gqa"]["tests"]["S_H^(mis)"]["items"] == 20
-    with pytest.raises(SystemExit, match="unknown datasets"):
+    with pytest.raises(Refusal, match="unknown datasets"):
         confirm_report({"vqa": (run, manifest)}, tmp_path / "x", resamples=10)
 
 
@@ -190,21 +192,19 @@ def test_h5_recovers_a_planted_slope(tmp_path):
 
 
 def test_record_checks_code_and_completeness(tmp_path):
-    from kvsel.confirm import code_hash_all
-
     run, manifest = make_run(tmp_path, n=10, n_control=4)
     record = tmp_path / "record.json"
-    record.write_text(json.dumps({"code_sha256": code_hash_all(), "main_items": 10}))
+    record.write_text(json.dumps({"code_sha256": code_identity(), "main_items": 10}))
     confirm_report({"gqa": (run, manifest)}, tmp_path / "ok", resamples=50, records={"gqa": record})
     record.write_text(json.dumps({"code_sha256": "0" * 64, "main_items": 10}))
-    with pytest.raises(SystemExit, match="code changed"):
+    with pytest.raises(Refusal, match="code changed"):
         confirm_report({"gqa": (run, manifest)}, tmp_path / "bad", resamples=50, records={"gqa": record})
     # a dated code amendment from the frozen code to the current code is accepted; a broken chain is not
     amendments = tmp_path / "code_amendments.json"
-    amendments.write_text(json.dumps([{"from": "1" * 64, "to": code_hash_all()}]))
-    with pytest.raises(SystemExit, match="code changed"):
+    amendments.write_text(json.dumps([{"from": "1" * 64, "to": code_identity()}]))
+    with pytest.raises(Refusal, match="code changed"):
         confirm_report({"gqa": (run, manifest)}, tmp_path / "bad", resamples=50, records={"gqa": record})
-    amendments.write_text(json.dumps([{"from": "0" * 64, "to": "2" * 64}, {"from": "2" * 64, "to": code_hash_all()}]))
+    amendments.write_text(json.dumps([{"from": "0" * 64, "to": "2" * 64}, {"from": "2" * 64, "to": code_identity()}]))
     confirm_report({"gqa": (run, manifest)}, tmp_path / "chain", resamples=50, records={"gqa": record})
 
 
@@ -214,5 +214,5 @@ def test_run_without_misleading_cells_is_refused(tmp_path):
     (run / "items" / "a.json").write_text(json.dumps({"item_id": "a", "image_id": "i", "rows": [
         {"selector": "full", "reserve": False, "cell": "Q", "kept": None, "selection": "none", "answering": "Q",
          "scores": scores(1.0), "outcome": "correct", "truncated": False}]}))
-    with pytest.raises(SystemExit, match="lacks the misleading-condition cells"):
+    with pytest.raises(Refusal, match="lacks the misleading-condition cells"):
         dataset_results(run, tmp_path / "m.jsonl", resamples=10)

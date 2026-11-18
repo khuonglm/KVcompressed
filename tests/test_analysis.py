@@ -15,6 +15,7 @@ from kvsel.analysis.statistics import (
     read_interval,
 )
 from kvsel.analysis.tables import behaviour_rates, overlap, paired_behaviour
+from kvsel.protocol import Refusal
 
 
 def scores(true_lower, alt_lower, true_cap=None, alt_cap=None):
@@ -158,9 +159,9 @@ def test_paired_behaviour_drops_items_without_the_b_cell():
 
 def test_completeness_names_missing_and_extra_items(tmp_path):
     check_complete(tmp_path, {"a", "b"}, {"a", "b"}, "main-set items", "the run")
-    with pytest.raises(SystemExit, match="missing 1 main-set items; rerun the run to finish it"):
+    with pytest.raises(Refusal, match="missing 1 main-set items; rerun the run to finish it"):
         check_complete(tmp_path, {"a"}, {"a", "b"}, "main-set items", "the run")
-    with pytest.raises(SystemExit, match="1 extra item files"):
+    with pytest.raises(Refusal, match="1 extra item files"):
         check_complete(tmp_path, {"a", "b", "c"}, {"a", "b"}, "main-set items", "the run")
 
 

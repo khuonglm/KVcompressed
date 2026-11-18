@@ -8,10 +8,11 @@ import time
 import urllib.request
 import zipfile
 import zlib
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Callable
 
+from ..protocol import Refusal
 from .manifest import load_items
 
 GQA_IMAGES_URL = "https://downloads.cs.stanford.edu/nlp/data/gqa/images.zip"
@@ -115,7 +116,7 @@ def fetch(manifests: list[Path], out_dir: Path, url: str = GQA_IMAGES_URL, worke
     members = {Path(info.filename).name: info for info in zipfile.ZipFile(RangeFile(read_range, size)).infolist()}
     missing = [name for name in pending if name not in members]
     if missing:
-        raise SystemExit(f"{len(missing)} images are not in the archive (first: {missing[0]})")
+        raise Refusal(f"{len(missing)} images are not in the archive (first: {missing[0]})")
     start = time.time()
     with ThreadPoolExecutor(workers) as pool:
         futures = {pool.submit(fetch_one, read_range, members[name], out_dir / name): name for name in pending}

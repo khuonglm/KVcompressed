@@ -1,0 +1,125 @@
+# Confirmatory report
+
+Surface rule `capitalized`; primary selector PW-attn, K = 144; image-clustered bootstrap, two-sided tests.
+
+## Holm families
+
+| Family | Test | Two-sided p | Holm decision |
+| --- | --- | ---: | --- |
+| H1 | S_H^(mis) [gqa] | 0.5098 | pending (family incomplete) |
+| H2 | T_match [gqa] | 0.0392 | pending (family incomplete) |
+| H2 | T_irr [gqa] | 0.0392 | pending (family incomplete) |
+| H3_H4 | E_harm^(mis) [gqa] | 0.5098 | pending (family incomplete) |
+| H3_H4 | S_Q^(mis) [gqa] | 0.5098 | pending (family incomplete) |
+
+Holm decisions become final when every pre-registered dataset has run (PREREG.md 2.3).
+
+## gqa
+
+2 items on 2 images; 1 control items; 1 grounding items.
+
+Checks: Full_Q no longer eligible on 0 items; Blind_Q eligible on 0 of 2 (should be 0); mean Blind_Q margin +0.587; truncated answers 4.00%.
+
+### Pre-registered tests
+
+| Estimand | Mean (nats) | 95% interval | Two-sided p | Reading | Items / images |
+| --- | ---: | --- | ---: | --- | ---: |
+| S_H^(mis) | +0.005 | [-0.001, +0.011] | 0.5098 | practically small | 2 / 2 |
+| E_harm^(mis) | +0.005 | [-0.002, +0.012] | 0.5098 | practically small | 2 / 2 |
+| S_Q^(mis) | +0.006 | [-0.000, +0.012] | 0.5098 | practically small | 2 / 2 |
+| T_match | +0.001 | [+0.001, +0.001] | 0.0392 | positive, practically small | 1 / 1 |
+| T_irr | +0.001 | [+0.001, +0.001] | 0.0392 | positive, practically small | 1 / 1 |
+
+Equivalence (δ = 0.1): 90% interval [-0.001, +0.011], inside ±δ: practically small.
+
+### Exploratory (intervals only)
+
+| Estimand | Mean (nats) | 95% interval | Two-sided p | Reading | Items / images |
+| --- | ---: | --- | ---: | --- | ---: |
+| S_H^(match) | +0.010 | [+0.010, +0.010] | 0.0392 | positive, practically small | 1 / 1 |
+| S_H^(irr) | +0.010 | [+0.010, +0.010] | 0.0392 | positive, practically small | 1 / 1 |
+| I^(mis) | -0.001 | [-0.001, -0.001] | 0.0392 | opposite direction, practically small | 2 / 2 |
+| S_H^(mis), question-span | +0.000 | [-0.004, +0.004] | 0.5098 | practically small | 2 / 2 |
+
+### Sensitivity of S_H^(mis) to the margin form
+
+| Estimand | Mean (nats) | 95% interval | Two-sided p | Reading | Items / images |
+| --- | ---: | --- | ---: | --- | ---: |
+| logsum | +0.001 | [+0.001, +0.002] | 0.0392 | positive, practically small | 2 / 2 |
+| content_only | +0.000 | [-0.005, +0.006] | 0.5098 | practically small | 2 / 2 |
+| length_normalised | +0.003 | [-0.000, +0.006] | 0.5098 | practically small | 2 / 2 |
+
+### Behaviour, paired difference in the share of answers
+
+| Estimand | Mean (share) | 95% interval | Two-sided p | — | Items / images |
+| --- | ---: | --- | ---: | --- | ---: |
+| correct: C_mis - B_mis | +0.000 | [+0.000, +0.000] | 1.0000 |  | 2 / 2 |
+| alt: C_mis - B_mis | +0.000 | [+0.000, +0.000] | 1.0000 |  | 2 / 2 |
+
+### H6: ERR(S_Q) − ERR(S_mis), by evidence mapping rule
+
+| Estimand | Mean (share of region) | 95% interval | Two-sided p | — | Items / images |
+| --- | ---: | --- | ---: | --- | ---: |
+| primary | +0.015 | [+0.015, +0.015] | 0.0392 |  | 1 / 1 |
+| fallback | +0.000 | [+0.000, +0.000] | 1.0000 |  | 1 / 1 |
+| center | +0.015 | [+0.015, +0.015] | 0.0392 |  | 1 / 1 |
+| expanded | +0.016 | [+0.016, +0.016] | 0.0392 |  | 1 / 1 |
+
+### Mitigation (EQ1): margin gain over B_mis unless noted
+
+| Estimand | Mean (nats) | 95% interval | Two-sided p | Reading | Items / images |
+| --- | ---: | --- | ---: | --- | ---: |
+| isolation (C_mis) | +0.005 | [-0.001, +0.011] | 0.5098 | practically small | 2 / 2 |
+| reserve (B_mis + r) | +0.006 | [+0.004, +0.007] | 0.0392 | positive, practically small | 2 / 2 |
+| both (C_mis + r) | +0.006 | [-0.002, +0.014] | 0.5098 | practically small | 2 / 2 |
+| reserve cost, neutral (A + r − A) | +0.000 | [-0.002, +0.003] | 0.5098 | practically small | 2 / 2 |
+| reserve cost, matching (B_match + r − B_match) | +0.007 | [+0.007, +0.007] | 0.0392 | positive, practically small | 1 / 1 |
+| isolation cost, matching (C_match − B_match) | +0.010 | [+0.010, +0.010] | 0.0392 | positive, practically small | 1 / 1 |
+| uniform (mis) | +0.009 | [-0.006, +0.025] | 0.4314 | practically small | 2 / 2 |
+
+### Kept-set overlap with S_Q (PW-attn)
+
+| Condition | Mean Jaccard | Share changed |
+| --- | ---: | ---: |
+| mis | 0.783 | 1.000 |
+| match | 0.767 | 1.000 |
+| irr | 0.767 | 1.000 |
+
+### Behaviour rates
+
+| Run | Correct | Alternative | Other |
+| --- | ---: | ---: | ---: |
+| blind|Q | 0.000 | 0.000 | 1.000 |
+| full|Q | 1.000 | 0.000 | 0.000 |
+| full|irr | 1.000 | 0.000 | 0.000 |
+| full|match | 1.000 | 0.000 | 0.000 |
+| full|mis | 1.000 | 0.000 | 0.000 |
+| pw+r|A | 1.000 | 0.000 | 0.000 |
+| pw+r|B_match | 1.000 | 0.000 | 0.000 |
+| pw+r|B_mis | 1.000 | 0.000 | 0.000 |
+| pw+r|C_match | 1.000 | 0.000 | 0.000 |
+| pw+r|C_mis | 1.000 | 0.000 | 0.000 |
+| pw|A | 1.000 | 0.000 | 0.000 |
+| pw|B_irr | 1.000 | 0.000 | 0.000 |
+| pw|B_match | 1.000 | 0.000 | 0.000 |
+| pw|B_mis | 1.000 | 0.000 | 0.000 |
+| pw|C_irr | 1.000 | 0.000 | 0.000 |
+| pw|C_match | 1.000 | 0.000 | 0.000 |
+| pw|C_mis | 1.000 | 0.000 | 0.000 |
+| pw|D_irr | 1.000 | 0.000 | 0.000 |
+| pw|D_match | 1.000 | 0.000 | 0.000 |
+| pw|D_mis | 1.000 | 0.000 | 0.000 |
+| qspan|A | 1.000 | 0.000 | 0.000 |
+| qspan|B_irr | 1.000 | 0.000 | 0.000 |
+| qspan|B_match | 1.000 | 0.000 | 0.000 |
+| qspan|B_mis | 1.000 | 0.000 | 0.000 |
+| qspan|C_irr | 1.000 | 0.000 | 0.000 |
+| qspan|C_match | 1.000 | 0.000 | 0.000 |
+| qspan|C_mis | 1.000 | 0.000 | 0.000 |
+| qspan|D_irr | 1.000 | 0.000 | 0.000 |
+| qspan|D_match | 1.000 | 0.000 | 0.000 |
+| qspan|D_mis | 1.000 | 0.000 | 0.000 |
+| uniform|Q | 1.000 | 0.000 | 0.000 |
+| uniform|irr | 1.000 | 0.000 | 0.000 |
+| uniform|match | 1.000 | 0.000 | 0.000 |
+| uniform|mis | 1.000 | 0.000 | 0.000 |

@@ -10,7 +10,7 @@ import torch
 from PIL import Image
 
 from ..cache import entries_from_cache
-from ..engine import Prefix, on_device
+from ..engine import Prefix, on_device, release_cached_memory
 from .family import Family, Tokens, visual_span
 from .layout import Layout, Map
 from .llava15 import LLAVA, PAD_COLOR
@@ -44,13 +44,6 @@ def derive_layout(config, image_size: list[int]) -> Layout:
     return anyres_layout(side, *unpadded.shape[1:])
 
 
-def release_cached_memory(device: torch.device) -> None:
-    """Return PyTorch's cached, fragmented blocks to the driver before a pass whose eager attention needs one large
-    block (about 1 GiB of fp32 softmax at 2,928 visual tokens). Numerics are unchanged."""
-    if device.type == "cuda":
-        torch.cuda.empty_cache()
-
-
 @dataclass(frozen=True)
 class LlavaNext(Family):
     def build_prompt(self, question: str, description: str | None = None) -> str:
@@ -78,6 +71,10 @@ class LlavaNext(Family):
                 raise ValueError(f"the {name} prefix differs from Q's")
         return tokens, inputs
 
+    def device_inputs(self, bundle, inputs: dict) -> dict:
+        return {"pixel_values": inputs["pixel_values"].to(bundle.device, next(bundle.model.parameters()).dtype),
+                "image_sizes": inputs["image_sizes"].to(bundle.device)}
+
     def layout(self, config, inputs: dict) -> Layout:
         if len(inputs["image_sizes"]) != 1:
             raise ValueError("expected exactly one image")
@@ -93,12 +90,8 @@ class LlavaNext(Family):
         if stop - start != layout.total:
             raise ValueError(f"the visual span has {stop - start} tokens but the derived layout has {layout.total}")
         release_cached_memory(bundle.device)
-        output = bundle.model.model(
-            input_ids=torch.tensor([prefix_ids], device=bundle.device),
-            pixel_values=inputs["pixel_values"].to(bundle.device, next(bundle.model.parameters()).dtype),
-            image_sizes=inputs["image_sizes"].to(bundle.device),
-            use_cache=True,
-        )
+        output = bundle.model.model(input_ids=torch.tensor([prefix_ids], device=bundle.device), use_cache=True,
+                                    **self.device_inputs(bundle, inputs))
         prefix = Prefix(entries_from_cache(output.past_key_values), start, stop - start)
         return (on_device(prefix, "cpu") if self.prefix_residency == "cpu" else prefix), layout
 
@@ -132,7 +125,7 @@ NEXT = LlavaNext(**{
     "model_id": "llava-hf/llava-v1.6-vicuna-7b-hf",
     "revision": REVISION,
     "default_dir": Path("models/llava-v1.6-vicuna-7b-hf"),
-    "fetch_command": "python -m kvsel_next fetch-model",
+    "fetch_command": "kvsel model fetch --model llava_next",
     "required_files": (
         "tokenizer.json", "tokenizer_config.json", "tokenizer.model", "special_tokens_map.json", "added_tokens.json",
         "chat_template.json", "config.json", "generation_config.json", "preprocessor_config.json",

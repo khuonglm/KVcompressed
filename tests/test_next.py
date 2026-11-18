@@ -3,9 +3,8 @@
 import numpy as np
 import pytest
 import torch
-from PIL import Image
-
 from conftest import ACCELERATOR
+from PIL import Image
 
 from kvsel.cache import compact, dropped_columns, entries_hash
 from kvsel.engine import Prefix, advance, greedy, on_device, probe, replay
@@ -14,7 +13,8 @@ from kvsel.models.family import visual_span
 from kvsel.models.layout import Map
 from kvsel.models.llava15 import IMAGE_TOKEN, LLAVA
 from kvsel.models.llava_next import NEXT
-from kvsel_next.selection import SHARES, kept_sets_per_share
+from kvsel.selectors import Budget, kept_set
+from kvsel.studies.next.comparative import SHARES
 
 pytestmark = pytest.mark.network
 
@@ -34,6 +34,11 @@ ITEM = {
 # (Images smaller than every canvas tie and all take the first, 336 x 672, whatever their aspect.)
 ASPECTS = {"wide": ((560, 300), (24, 44), 1656), "tall": ((300, 560), (44, 24), 1676),
            "four_three": ((640, 480), (36, 48), 2340)}
+
+
+def pw_per_share(layout, attention):
+    """Every share's PW-attn kept set from one probe."""
+    return {share: kept_set(layout, "pw", Budget(share=share), attention=attention) for share in SHARES}
 
 
 def image(size):
@@ -171,7 +176,7 @@ def level1_kept(layout, share, kind, decoder=None, prefix=None, suffix=None):
     elif kind == "tail":
         chosen = features[-k:]
     else:  # scored: NeXT's PW-attn selection, which keeps the newlines itself
-        return torch.from_numpy(kept_sets_per_share(layout, probe(decoder, prefix, suffix))[share])
+        return torch.from_numpy(pw_per_share(layout, probe(decoder, prefix, suffix))[share])
     return torch.cat([chosen, newlines])
 
 
@@ -244,7 +249,7 @@ def test_one_probe_per_context_gives_every_shares_kept_set(bundle, aspect):
     decoder, prefix, layout = bundle.decoder, aspect["prefix"], aspect["layout"]
     for context in ("Q", "mis", "match", "irr"):
         suffix = suffix_of(aspect, context)
-        sets = kept_sets_per_share(layout, probe(decoder, prefix, suffix))
+        sets = pw_per_share(layout, probe(decoder, prefix, suffix))
         assert set(sets) == set(SHARES)
         for kept in sets.values():
             state, _ = replay(decoder, prefix, torch.from_numpy(kept), suffix, "compact")
@@ -282,21 +287,6 @@ def test_non_eager_attention_is_refused(tiny_llava_next, processor):
 # --- memory: same outputs with fewer copies (20 GiB GPU) ------------------------------------------
 
 
-def test_run_unit_rows_equal_kvsels(bundle, aspect):
-    """The NeXT run_unit scores before greedy so it holds one cache copy fewer; its row is kvsel's exactly."""
-    from kvsel.runner import NO_CONTEXT, Unit
-    from kvsel.runner import run_unit as kvsel_run_unit
-    from kvsel_next.model import run_unit
-
-    item = {**ITEM, "a_true": "red", "a_alt": "blue"}
-    total = aspect["layout"].total
-    kept = np.sort(np.random.default_rng(0).choice(total, total // 4, replace=False))
-    for unit, keep in ((Unit("full", total, False, NO_CONTEXT, "Q"), np.arange(total)),
-                       (Unit("pw", len(kept), False, "mis", "mis"), kept)):
-        assert run_unit(bundle, item, unit, aspect["prefix"], keep, aspect["tokens"]) == \
-            kvsel_run_unit(bundle, item, unit, aspect["prefix"], keep, aspect["tokens"])
-
-
 def test_logits_without_the_fp32_head_copy_are_identical(tiny_llava_next, processor):
     """On an fp16 copy: with a head copy (LLaVA-1.5's path) and with NeXT's 4,096-row slices upcast on each call
     (eight slices of the 32,064-row head), never making the copy."""
@@ -321,8 +311,7 @@ def test_device_and_cpu_held_prefixes_give_identical_rows(tiny_llava_next, proce
     """The decoder on an accelerator, the prefix held there or in CPU memory: Full and sparse rows, and the probe."""
     import copy
 
-    from kvsel.runner import NO_CONTEXT, Unit
-    from kvsel_next.model import run_unit
+    from kvsel.runner import NO_CONTEXT, Unit, run_unit
 
     model = copy.deepcopy(tiny_llava_next).to(ACCELERATOR)
     accelerated = bundle_from_model(model, processor.tokenizer, processor, family=NEXT)

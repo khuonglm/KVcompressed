@@ -5,7 +5,13 @@ import json
 import pytest
 
 from kvsel.items.textvqa import (
-    build, build_items, character_class, choose_alternative, find_spans, modal_answer, normalize_text,
+    build,
+    build_items,
+    character_class,
+    choose_alternative,
+    find_spans,
+    modal_answer,
+    normalize_text,
 )
 
 

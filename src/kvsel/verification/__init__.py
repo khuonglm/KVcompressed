@@ -70,10 +70,6 @@ def append_decision(path: Path, item: dict, decision: str, verifier: str, note: 
     return record
 
 
-def passed_items(path: Path) -> set[str]:
-    return {item_id for item_id, record in load_decisions(path)[0].items() if record["decision"] == PASS}
-
-
 def summarize(decisions: dict[str, dict], queue: list[dict]) -> dict:
     queued = {item["item_id"] for item in queue}
     relevant = [record for item_id, record in decisions.items() if item_id in queued]

@@ -37,6 +37,9 @@ Added to the proposal's Level 1, to show the test can detect the bugs it targets
 
 ## Level 2: LLaVA pipeline (`kvsel validate`, GPU, fp16)
 
+The checks are `kvsel.validation`, shared with LLaVA-NeXT's Level 2 below; `tests/test_validation.py` runs each
+one on both tiny models and the whole command to GO and NO-GO.
+
 **Noise floor.** One full forward pass vs prefix-then-suffix with the full cache, on 50 development
 items, on each of Q and QH_mis. The distribution of logit and margin differences is the fp16 noise
 floor. E3 and E5 keep the Q floor, which was the tighter limit on the first GPU run.
@@ -211,11 +214,11 @@ Selection by share (`tests/test_next_selection.py`, NeXT's E6): 3 x 3 pooling wi
 a map boundary or a newline; k = share x feature tokens, refused unless whole (real feature counts are multiples of 24);
 newlines always kept and outside k; kept sets nested across 12.5, 25 and 50%.
 
-## LLaVA-NeXT-7B, Level 2 (`python -m kvsel_next validate`, GPU, fp16; written 16 November 2026, before the run)
+## LLaVA-NeXT-7B, Level 2 (`kvsel validate --model llava_next`, GPU, fp16; written 16 November 2026, before the run)
 
 Level 2's criteria, unchanged, on NeXT's expanded visual span; on the CPU it runs end to end on the tiny
-model in `tests/test_next_validate.py`. Each item is prefilled once, since every context shares Q's
-prefix. A kept set is k = round(share × feature tokens) feature tokens plus every newline token.
+model in `tests/test_validation.py`, with the same code as LLaVA-1.5's Level 2 (`kvsel.validation`). Every context
+shares Q's prefix. A kept set is k = round(share × feature tokens) feature tokens plus every newline token.
 
 **Noise floor.** As Level 2, on 50 development items, on each of Q and QH_mis. E3 uses the Q floor.
 
@@ -226,6 +229,9 @@ prefix. A kept set is k = round(share × feature tokens) feature tokens plus eve
 | E3 | Compact vs dense for random and concentrated (first k) feature sets; shares 12.5%, 25%, 50%; Q and QH_mis; 10 generated tokens; first 20 items | Level 2's E3 criteria |
 | E4 | Hash the shared prefix before and after each probe and replay | Unchanged |
 | E7 | Prefill, the mis probe and two units (Full_Q; QH_mis at a 25% random set), run twice on 5 items | Identical |
+
+(Note, 18 November 2026, ticket 09: E7 now reruns every unit of the control list and compares the rows and the
+probe attention, as LLaVA-1.5's E7 reruns every pilot unit; the pass rule, identical, is unchanged.)
 
 Not run for NeXT: E5 (placebo, which needs selection) and scored kept sets (selection is ticket 02).
 (Note, 16 November 2026: selection now exists; validate still uses random and concentrated sets only,
@@ -244,8 +250,12 @@ compact replays receive the CPU-held prefix itself. E4 hashes the shared prefix 
 replay, as the table says, and also the GPU copy that probes and dense replays still receive; a compact replay's
 gathered copy is made inside the engine and is not hashed (the same step code's input is, in dense replays). `tests/test_next.py` checks that a device-held and a CPU-held prefix give identical rows, and the
 Level-1 invariants run for both residencies when an accelerator is present. The checks and limits are unchanged.)
+(Note, 18 November 2026, ticket 09: one validation module now runs both families, one check at a time, so E4 hashes the
+shared prefix before and after each probe and each compact and dense replay of E3's kept sets; the engine makes
+every device copy itself. The noise floor under the native head is now reported for NeXT too. The checks and limits
+are unchanged; on the tiny models every verdict and measured value equals the earlier module's.)
 GO only if every check passes. Peak GPU memory, the visual-token range and time per item are reported,
-not judged. The memory that counts is the run peak (prefill, then a Full unit on the cache), not validate's
+not judged. The memory that counts is the run peak (prefill, the probe, then a Full unit on the cache), not validate's
 own full forward passes; a run peak above 20 GB means an AnyRes cap in PREREG 4.1 before stage 1.
 Projected times are upper bounds: every unit is costed as a Full unit on the longest suffix.
 

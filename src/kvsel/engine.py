@@ -132,6 +132,13 @@ def on_device(prefix: Prefix, device) -> Prefix:
     return Prefix(_to_device(prefix.entries, target), prefix.num_nonvisual, prefix.num_visual)
 
 
+def release_cached_memory(device: torch.device) -> None:
+    """Return PyTorch's cached, fragmented blocks to the driver before a pass whose eager attention needs one large
+    block (about 1 GiB of fp32 softmax at 2,928 visual tokens). Numerics are unchanged."""
+    if device.type == "cuda":
+        torch.cuda.empty_cache()
+
+
 def probe(decoder: Decoder, prefix: Prefix, suffix_ids: torch.Tensor, layer2_last: bool = False):
     """Attention from each suffix token to each visual entry, averaged over heads and layers 2 up.
 
@@ -228,3 +235,9 @@ def greedy(decoder: Decoder, state: State, max_new: int = 16, stop_at_eos: bool 
         tokens.append(token)
         state, _ = advance(decoder, state, [token])
     return Greedy(tokens, gaps, not finished, step_logits)
+
+
+def greedy_releasing(decoder: Decoder, box: list[State], **options) -> Greedy:
+    """`greedy` on the one state in ``box``, emptied first: greedy's frame then holds the only reference, so each
+    decoding step frees the state before it. The caller must keep no other reference."""
+    return greedy(decoder, box.pop(), **options)

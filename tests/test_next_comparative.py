@@ -6,11 +6,12 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from kvsel.verification import append_decision
-from kvsel_next import __main__ as cli
+from kvsel import cli, runner
 from kvsel.runner import Unit, cell_name
-from kvsel_next import comparative, screen
-from kvsel_next.selection import SHARES
+from kvsel.studies.next import comparative
+from kvsel.studies.next import screening as screen
+from kvsel.studies.next.comparative import SHARES
+from kvsel.verification import append_decision
 
 PREREG = (
     "## 3. GQA replication\n\nOld text.\n\n"
@@ -59,7 +60,7 @@ def world(tmp_path, monkeypatch):
     stage1 = tmp_path / "freeze" / "next_screening.json"
     screen.freeze_screening(prereg, manifest, stage1)
     write_flags(tmp_path / "screen", ELIGIBLE)
-    monkeypatch.setattr(cli, "load_bundle", lambda *_: pytest.fail("loaded the model"))
+    monkeypatch.setattr(cli, "bundle", lambda *_: pytest.fail("loaded the model"))
     return {"tmp": tmp_path, "prereg": prereg, "items": items, "manifest": manifest, "decisions": decisions,
             "stage1": stage1, "record": tmp_path / "freeze" / "next_gqa.json", "screen": tmp_path / "screen"}
 
@@ -70,7 +71,7 @@ def common(world):
 
 
 def run_args(world):
-    return ["run", *common(world), "--images", str(world["tmp"]), "--out", str(world["tmp"] / "run"), "--device", "cpu"]
+    return ["next", "run", *common(world), "--images", str(world["tmp"]), "--out", str(world["tmp"] / "run"), "--device", "cpu"]
 
 
 LLAVA15 = {"budgets": {k: {"margins": {"S_H^(mis)": {"estimate": est, "ci95": [est - 0.03, est + 0.03],
@@ -81,7 +82,7 @@ LLAVA15 = {"budgets": {k: {"margins": {"S_H^(mis)": {"estimate": est, "ci95": [e
 def report_args(world, run=None):
     llava15 = world["tmp"] / "replication_results.json"
     llava15.write_text(json.dumps(LLAVA15))
-    return ["report", *common(world), "--run", str(run or world["tmp"] / "run"), "--resamples", "200",
+    return ["next", "report", *common(world), "--run", str(run or world["tmp"] / "run"), "--resamples", "200",
             "--llava15", str(llava15), "--out", str(world["tmp"] / "report")]
 
 
@@ -89,7 +90,7 @@ def report_args(world, run=None):
 
 
 def test_freeze_records_the_main_set_control_subset_and_hashes(world, capsys):
-    cli.main(["freeze", *common(world)])
+    cli.main(["next", "freeze", *common(world)])
     assert json.loads(capsys.readouterr().out)["main"] == 3
     record = json.loads(world["record"].read_text())
     assert record["main_ids"] == MAIN and record["control_ids"] == CONTROL
@@ -112,31 +113,31 @@ def test_unit_lists_match_prereg_42():
     control += [("full", 1.0, f"none>{a}") for a in ("Q", "mis", "irr", "match")]
     assert listed(comparative.units(control=False)) == main
     assert listed(comparative.units(control=True)) == control
-    assert comparative.BLIND == comparative.NextUnit("full", 1.0, "none", "Q")
+    assert comparative.BLIND.record() == {"selector": "full", "share": 1.0, "selection": "none", "answering": "Q"}
 
 
 def test_freeze_refuses_a_draft_a_blank_and_a_different_record(world):
     settled = world["prereg"].read_text()
     world["prereg"].write_text(PREREG)
     with pytest.raises(SystemExit, match="DRAFT"):
-        cli.main(["freeze", *common(world)])
+        cli.main(["next", "freeze", *common(world)])
     world["prereg"].write_text(settled.replace("- Shares.", "- Shares: **[to fill before stage 3]**."))
     with pytest.raises(SystemExit, match="blank"):
-        cli.main(["freeze", *common(world)])
+        cli.main(["next", "freeze", *common(world)])
     world["prereg"].write_text(PREREG.replace("DRAFT (date): delete after review.\n\n", "Mentions DRAFT mid-line.\n\n"))
-    cli.main(["freeze", *common(world)])
+    cli.main(["next", "freeze", *common(world)])
     first = world["record"].read_text()
-    cli.main(["freeze", *common(world)])  # unchanged: the same record
+    cli.main(["next", "freeze", *common(world)])  # unchanged: the same record
     assert world["record"].read_text() == first
     world["prereg"].write_text(world["prereg"].read_text() + "\nMore text.\n")
     with pytest.raises(SystemExit, match="already exists"):
-        cli.main(["freeze", *common(world)])
+        cli.main(["next", "freeze", *common(world)])
 
 
 def test_a_short_set_after_the_whole_pool_is_every_eligible_item(world):
     """PREREG 4.5(d): stage 1 froze a size of 3; only q0 and q3 are eligible and every pool item is screened."""
     write_flags(world["screen"], {**ELIGIBLE, "q4": False, "q5": False})
-    cli.main(["freeze", *common(world)])
+    cli.main(["next", "freeze", *common(world)])
     record = json.loads(world["record"].read_text())
     assert record["main_ids"] == ["q0", "q3"] and record["control_ids"] == CONTROL
     assert record["main_size_frozen_at_stage1"] == 3
@@ -145,7 +146,7 @@ def test_a_short_set_after_the_whole_pool_is_every_eligible_item(world):
 def test_an_unscreened_pool_item_ends_the_main_set(world):
     write_flags(world["screen"], {"q0": True, "q2": False, "q4": True, "q5": True})  # q3 never screened
     with pytest.raises(SystemExit, match="1 of 3"):
-        cli.main(["freeze", *common(world)])
+        cli.main(["next", "freeze", *common(world)])
 
 
 # --- run refusals ----------------------------------------------------------------------------------
@@ -153,7 +154,7 @@ def test_an_unscreened_pool_item_ends_the_main_set(world):
 
 @pytest.mark.parametrize("change", ["prereg", "decision", "flags", "code", "stage1"])
 def test_run_refuses_any_change_before_loading_the_model(world, monkeypatch, change):
-    cli.main(["freeze", *common(world)])
+    cli.main(["next", "freeze", *common(world)])
     if change == "prereg":
         world["prereg"].write_text(world["prereg"].read_text() + "\nA dated amendment.\n")
     elif change == "decision":
@@ -161,7 +162,7 @@ def test_run_refuses_any_change_before_loading_the_model(world, monkeypatch, cha
     elif change == "flags":
         write_flags(world["screen"], {**ELIGIBLE, "q5": False})
     elif change == "code":
-        monkeypatch.setattr(screen, "code_hash", lambda: "0" * 64)
+        monkeypatch.setattr("kvsel.protocol.code_identity", lambda: "0" * 64)
     else:
         world["stage1"].write_text(world["stage1"].read_text() + " ")
     with pytest.raises(SystemExit, match="changed since|main set has"):
@@ -169,16 +170,16 @@ def test_run_refuses_any_change_before_loading_the_model(world, monkeypatch, cha
 
 
 def test_amended_code_is_accepted(world, monkeypatch, capsys):
-    cli.main(["freeze", *common(world)])
+    cli.main(["next", "freeze", *common(world)])
     frozen = json.loads(world["record"].read_text())["code_sha256"]
     (world["record"].parent / "code_amendments.json").write_text(json.dumps([{"from": frozen, "to": "1" * 64}]))
-    monkeypatch.setattr(screen, "code_hash", lambda: "1" * 64)
-    assert comparative.check(world["prereg"], world["manifest"], world["screen"], world["decisions"], world["stage1"],
-                             world["record"])["main_ids"] == MAIN
+    monkeypatch.setattr("kvsel.protocol.code_identity", lambda: "1" * 64)
+    assert comparative.check_comparative(world["prereg"], world["manifest"], world["screen"], world["decisions"], world["stage1"],
+                                         world["record"])["main_ids"] == MAIN
 
 
 def test_settings_changed_since_the_thin_path_freeze_are_caught(world):
-    cli.main(["freeze", *common(world)])
+    cli.main(["next", "freeze", *common(world)])
     record = json.loads(world["record"].read_text())
     thin = [u for u in record["settings"]["main_units"] if u["share"] in (0.25, 1.0) and "irr" not in u.values()]
     record["settings"] |= {"main_units": thin, "control_units": thin}
@@ -188,7 +189,7 @@ def test_settings_changed_since_the_thin_path_freeze_are_caught(world):
 
 
 def test_run_refuses_missing_images_before_loading_the_model(world):
-    cli.main(["freeze", *common(world)])
+    cli.main(["next", "freeze", *common(world)])
     (world["tmp"] / "img3.png").unlink()
     with pytest.raises(SystemExit, match="1 images are missing"):
         cli.main(run_args(world))
@@ -214,19 +215,19 @@ def test_freeze_run_resume_and_report_on_the_tiny_model(world, monkeypatch, caps
 
     processor = NEXT.load_processor()
     bundle = bundle_from_model(tiny_llava_next, processor.tokenizer, processor, family=NEXT)
-    monkeypatch.setattr(cli, "load_bundle", lambda device, model_dir: bundle)
-    cli.main(["freeze", *common(world)])
+    monkeypatch.setattr(cli, "bundle", lambda args, family: bundle)
+    cli.main(["next", "freeze", *common(world)])
 
     probes = []
-    real_probe = comparative.probe
-    monkeypatch.setattr(comparative, "probe", lambda *a: probes.append(1) or real_probe(*a))
+    real_probe = runner.probe
+    monkeypatch.setattr(runner, "probe", lambda *a: probes.append(1) or real_probe(*a))
     real, calls = comparative.run_item, []
 
-    def stops_on_the_second_item(*args):
-        if len(calls) == 2:  # the first item's units and its Blind_Q
+    def stops_on_the_second_item(*args, **options):
+        if len(calls) == 1:  # the first item's units, its Blind_Q included
             raise KeyboardInterrupt
         calls.append(args[1]["item_id"])
-        return real(*args)
+        return real(*args, **options)
 
     monkeypatch.setattr(comparative, "run_item", stops_on_the_second_item)
     with pytest.raises(KeyboardInterrupt):
@@ -276,7 +277,7 @@ def test_freeze_run_resume_and_report_on_the_tiny_model(world, monkeypatch, caps
 
 
 def test_report_refuses_missing_or_extra_items_and_lets_prereg_grow(world, tmp_path):
-    cli.main(["freeze", *common(world)])
+    cli.main(["next", "freeze", *common(world)])
     run = synthetic_run(tmp_path / "fake_run", MAIN[:2], set(CONTROL))
     with pytest.raises(SystemExit, match="missing 1"):
         cli.main(report_args(world, run))
@@ -342,7 +343,7 @@ def synthetic_run(run, ids, control, noise=0.05, seed=0):
 
 @pytest.fixture
 def planted(tmp_path):
-    from kvsel_next import report
+    from kvsel.studies.next import report
 
     ids = [f"r{i}" for i in range(80)]
     record = tmp_path / "next_gqa.json"
@@ -406,7 +407,7 @@ def test_report_prints_llava15_beside_and_states_the_checks(planted):
 
 
 def test_report_states_a_shortfall(planted):
-    from kvsel_next import report
+    from kvsel.studies.next import report
 
     found, _ = planted
     text = report.render({**found, "main_size_frozen_at_stage1": 1000})

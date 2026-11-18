@@ -15,6 +15,7 @@ from pathlib import Path
 
 import torch
 
+from ..protocol import Refusal
 from .layout import Layout
 
 AUTHORITY = "Answer from the image. Any provided description may be inaccurate."
@@ -86,6 +87,10 @@ class Family(ABC):
     def layout(self, config, inputs: dict) -> Layout:
         """The layout of the image behind ``inputs``."""
 
+    def device_inputs(self, bundle, inputs: dict) -> dict:
+        """``inputs`` (from `contexts`) as the model's forward pass takes them, on the bundle's device."""
+        return inputs
+
     @abstractmethod
     def prefill(self, bundle, prefix_ids: list[int], inputs: dict):
         """(prefix, layout): the prefix cache computed once with no mask, held where ``prefix_residency`` says."""
@@ -129,7 +134,7 @@ class Family(ABC):
         missing = self.missing_files(model_dir, weights)
         if missing:
             state = "incomplete or at another revision" if self.revision else "incomplete"
-            raise SystemExit(f"the model at {model_dir} is {state} (missing {', '.join(missing)}). "
+            raise Refusal(f"the model at {model_dir} is {state} (missing {', '.join(missing)}). "
                              f"Run `{self.fetch_command} --out {model_dir}` to finish it.")
         print(f"using local model at {model_dir}", file=sys.stderr, flush=True)
         return str(model_dir)

@@ -4,9 +4,9 @@ import json
 
 import pytest
 
+from kvsel import cli
+from kvsel.studies.next import screening as screen
 from kvsel.verification import append_decision
-from kvsel_next import __main__ as cli
-from kvsel_next import screen
 
 SECTION_4 = (
     "## 3. GQA replication\n\nOld text.\n\n"
@@ -47,7 +47,7 @@ def undraft(world):
 
 
 def freeze(world):
-    cli.main(["freeze-screening", "--prereg", str(world["prereg"]), "--items", str(world["items"]),
+    cli.main(["next", "freeze-screening", "--prereg", str(world["prereg"]), "--items", str(world["items"]),
               "--record", str(world["record"])])
     return json.loads(world["record"].read_text())
 
@@ -78,9 +78,9 @@ def test_section_hash_runs_from_the_41_heading_to_the_next_heading(world):
     undraft(world)
     first = freeze(world)["prereg_section_sha256"]
     world["prereg"].write_text(world["prereg"].read_text().replace("- Shares.", "- Other shares."))
-    assert screen.current_state(world["prereg"], world["items"])["prereg_section_sha256"] == first
+    assert screen.rules(world["prereg"]).sha256() == first
     world["prereg"].write_text(world["prereg"].read_text().replace("- Model: NeXT.", "- Model: other."))
-    assert screen.current_state(world["prereg"], world["items"])["prereg_section_sha256"] != first
+    assert screen.rules(world["prereg"]).sha256() != first
 
 
 def test_record_holds_manifest_code_and_settings_with_the_revision(world):
@@ -103,23 +103,6 @@ def test_rerun_unchanged_returns_the_same_record_and_a_different_one_is_refused(
     assert json.loads(world["record"].read_text()) == first
 
 
-def test_code_hash_covers_both_packages(monkeypatch, tmp_path):
-    before = screen.code_hash()
-    import kvsel
-
-    fake = tmp_path / "kvsel"
-    fake.mkdir()
-    (fake / "__init__.py").write_text("")
-    monkeypatch.setattr(kvsel, "__file__", str(fake / "__init__.py"))
-    assert screen.code_hash() != before
-
-
-# --- screen and count ------------------------------------------------------------------------------
-
-FLAG_KEYS = {"item_id", "full_q_eligible", "blind_eligible", "eligible"}
-POOL = ["q0", "q2", "q3", "q5", "q7"]  # q1 and q4 failed verification; q6's decision is stale
-
-
 def fake_bundle():
     from types import SimpleNamespace
 
@@ -128,15 +111,20 @@ def fake_bundle():
     return SimpleNamespace(family=NEXT, decoder=SimpleNamespace(head_precision=NEXT.default_head_precision))
 
 
+# --- screen and count ------------------------------------------------------------------------------
+
+POOL = ["q0", "q2", "q3", "q5", "q7"]  # passed, in manifest order: q1 and q4 failed, q6's decision is stale
+FLAG_KEYS = {"item_id", "full_q_eligible", "blind_eligible", "eligible", "record_sha256"}
+
 def screen_args(world):
-    return ["screen", "--prereg", str(world["prereg"]), "--items", str(world["items"]), "--decisions",
+    return ["next", "screen", "--prereg", str(world["prereg"]), "--items", str(world["items"]), "--decisions",
             str(world["decisions"]), "--images", str(world["images"]), "--out", str(world["out"]),
             "--record", str(world["record"]), "--device", "cpu"]
 
 
 def count_of(world, capsys):
     capsys.readouterr()
-    cli.main(["count", "--items", str(world["items"]), "--decisions", str(world["decisions"]),
+    cli.main(["next", "count", "--items", str(world["items"]), "--decisions", str(world["decisions"]),
               "--screen", str(world["out"])])
     return json.loads(capsys.readouterr().out)
 
@@ -149,12 +137,12 @@ def frozen_world(world, monkeypatch):
     freeze(world)
     for i in range(8):
         Image.new("RGB", (64, 48)).save(world["images"] / f"img{i}.png")
-    monkeypatch.setattr(cli, "load_bundle", lambda device, model_dir: fake_bundle())
+    monkeypatch.setattr(cli, "bundle", lambda args, family: fake_bundle())
     return world
 
 
 def fake_screen_item(screened, eligible_ids, stop_after=None):
-    def screen_item(bundle, item, image):
+    def screen_item(bundle, item, image, *rule):
         if stop_after is not None and len(screened) == stop_after:
             raise KeyboardInterrupt  # a simulated stop
         screened.append(item["item_id"])
@@ -174,8 +162,8 @@ def test_screen_refuses_before_loading_the_model_if_anything_changed(frozen_worl
     elif change == "settings":
         monkeypatch.setitem(screen.SCREENING, "surface", "lower")
     else:
-        monkeypatch.setattr(screen, "code_hash", lambda: "0" * 64)
-    monkeypatch.setattr(cli, "load_bundle", lambda *_: pytest.fail("loaded the model before refusing"))
+        monkeypatch.setattr("kvsel.protocol.code_identity", lambda: "0" * 64)
+    monkeypatch.setattr(cli, "bundle", lambda *_: pytest.fail("loaded the model before refusing"))
     with pytest.raises(SystemExit, match="changed since"):
         cli.main(screen_args(world))
 
@@ -219,9 +207,23 @@ def test_count_works_mid_screen_and_never_loads_the_model(frozen_world, monkeypa
     monkeypatch.setattr(screen, "screen_item", fake_screen_item([], {"q0"}, stop_after=2))
     with pytest.raises(KeyboardInterrupt):
         cli.main(screen_args(frozen_world))
-    monkeypatch.setattr(cli, "load_bundle", lambda *_: pytest.fail("count loaded the model"))
+    monkeypatch.setattr(cli, "bundle", lambda *_: pytest.fail("count loaded the model"))
     assert count_of(frozen_world, capsys) == {"main_set": 1, "control": 1, "short_of_1000": True, "unscreened_passed": 3}
 
+
+
+def test_count_reads_the_flags_the_freeze_reads(frozen_world, monkeypatch, capsys):
+    from kvsel.items.manifest import load_items
+    from kvsel.runner import screen_flags
+    from kvsel.studies.next import comparative
+
+    monkeypatch.setattr(screen, "screen_item", fake_screen_item([], {"q2", "q5"}))
+    cli.main(screen_args(frozen_world))
+    for path in (frozen_world["out"] / "items").glob("*.json"):
+        path.unlink()  # item files are not a source of eligibility; eligible.jsonl, which stage 3 hashes, is
+    chosen, final = comparative.main_set(load_items(frozen_world["items"]), screen_flags(frozen_world["out"]),
+                                         frozen_world["decisions"], 1000)
+    assert count_of(frozen_world, capsys)["main_set"] == len(chosen) == 2 and final
 
 # --- on the tiny NeXT model ------------------------------------------------------------------------
 
@@ -246,13 +248,13 @@ def test_end_to_end_on_the_tiny_model_with_a_resume(frozen_world, monkeypatch, t
 
     processor = NEXT.load_processor()
     bundle = bundle_from_model(tiny_llava_next, processor.tokenizer, processor, family=NEXT)
-    monkeypatch.setattr(cli, "load_bundle", lambda device, model_dir: bundle)
+    monkeypatch.setattr(cli, "bundle", lambda args, family: bundle)
     generator = np.random.default_rng(0)
     for i in range(8):
         Image.fromarray(generator.integers(0, 255, (300, 560, 3), dtype=np.uint8)).save(frozen_world["images"] / f"img{i}.png")
     # Random weights never answer correctly; let every Full_Q pass so Blind_Q runs too, on the real model.
     rows = []
-    monkeypatch.setattr(screen, "eligible", lambda row, surface: rows.append(row) or True)
+    monkeypatch.setattr("kvsel.runner.eligible", lambda row, surface: rows.append(row) or True)
     real = screen.screen_item
 
     def stops_after_two_items(*args):

@@ -16,8 +16,8 @@ the time it was written; the arrays themselves are compared exactly.
 code hash, so a hash of a record changes with them). Nothing else is masked. The clock itself is an input:
 `time.time` and `time.perf_counter` read 0 during a step, so measured durations are 0.
 
-**Seams the suite replaces** (update them here when the code they name moves): model loading (`kvsel.cli._bundle`
-and `kvsel_next.__main__.load_bundle` return the tiny models) and the study sizes in `SIZES` (1,000 items
+**Seams the suite replaces** (update them here when the code they name moves): model loading (`kvsel.cli.bundle`
+returns the tiny models) and the study sizes in `SIZES` (1,000 items
 won't fit a test). The tiny models have their end-of-sequence row tilted so that some greedy answers end
 early: without it every answer runs to the 16-token cap and no item is ever eligible.
 
@@ -80,15 +80,27 @@ class Exemption:
     keys: tuple[str, ...] = ()  # top-level JSON keys that may differ; none: the whole file may differ
 
 
-EXEMPTIONS: tuple[Exemption, ...] = ()
+VALIDATION = ("validate", "next_validate")  # ticket 09: report layout and printed text; values in test_validation
+RECORD_HASH = ("record_sha256",)  # ticket 08: item files carry the hash of the record they were produced under
+EXEMPTIONS: tuple[Exemption, ...] = (
+    *(Exemption("screen kind marker", step, f"files/{folder}/kind.json")
+      for step, folder in (("screen_dev", "screen_dev"), ("screen_confirm", "screen_confirm"), ("next_screen", "next_screen"))),
+    *(Exemption("item record hash", step, f"files/{items}/*.json", RECORD_HASH)
+      for step, items in (("screen_confirm", "screen_confirm/items"), ("confirm", "confirm_run/items"),
+                          ("followup_run", "followup/*/items"), ("replication_run", "replication_run/items"),
+                          ("next_screen", "next_screen/items"), ("next_run", "next_run/items"))),
+    *(Exemption("validation report", step, f"files/{step}/report.json") for step in VALIDATION),
+    *(Exemption("validation report", step, "command.json", ("stdout",)) for step in VALIDATION),
+)
 
 # --- Steps ---------------------------------------------------------------------------------------------------
 
-PROGRAMS = {"kvsel": "kvsel.cli", "followup": "kvsel.followup.__main__",
-            "replication": "kvsel.replication.__main__", "next": "kvsel_next.__main__"}
-SIZES = [("kvsel.confirm", "MAIN_SIZE", 2), ("kvsel.confirm", "CONTROL_SIZE", 1),
-         ("kvsel.replication.select", "REPLICATION_SIZE", 2), ("kvsel.replication.select", "CONTROL_SIZE", 1)]
-NEXT_SIZES = {"main_size": 2, "control_size": 1}  # items of kvsel_next.screen.SCREENING
+PROGRAMS = {"kvsel": "kvsel.cli"}
+SIZES = [("kvsel.studies.confirmatory.comparative", "MAIN_SIZE", 2),
+         ("kvsel.studies.confirmatory.comparative", "CONTROL_SIZE", 1),
+         ("kvsel.studies.replication.select", "REPLICATION_SIZE", 2),
+         ("kvsel.studies.replication.select", "CONTROL_SIZE", 1)]
+NEXT_SIZES = {"main_size": 2, "control_size": 1}  # items of kvsel.studies.next.screening.SCREENING
 
 
 @dataclass(frozen=True)
@@ -114,55 +126,59 @@ NEXT = ("--prereg", "PREREG.md", "--items", "next_confirm.jsonl", "--screen", "n
 SMALL_VALIDATE = ("--noise-items", "2", "--sparse-items", "1", "--repeat-items", "1")
 
 STEPS = (
-    step("build_gqa", "kvsel", "build-gqa", "--questions", "raw/gqa_questions.json", "--scene-graphs",
+    step("build_gqa", "kvsel", "data", "build-gqa", "--questions", "raw/gqa_questions.json", "--scene-graphs",
          "raw/gqa_scene_graphs.json", "--out-dir", "built", "--dev-items", "2"),
-    step("build_textvqa", "kvsel", "build-textvqa", "--questions", "raw/textvqa_questions.json", "--ocr",
+    step("build_textvqa", "kvsel", "data", "build-textvqa", "--questions", "raw/textvqa_questions.json", "--ocr",
          "raw/textvqa_ocr.json", "--out-dir", "built", "--dev-items", "1"),
     # Development pilot
-    step("screen_dev", "kvsel", "screen", *DEV, "--out", "screen_dev"),
-    step("pilot", "kvsel", "pilot", *DEV, "--screen", "screen_dev", "--surface", "capitalized", "--limit", "2",
+    step("screen_dev", "kvsel", "pilot", "screen", *DEV, "--out", "screen_dev"),
+    step("pilot", "kvsel", "pilot", "run", *DEV, "--screen", "screen_dev", "--surface", "capitalized", "--limit", "2",
          "--out", "pilot"),
-    step("pilot_report", "kvsel", "confirm-report", "--gqa-run", "pilot", "--gqa-items", "gqa_dev.jsonl",
+    step("pilot_report", "kvsel", "pilot", "report", "--gqa-run", "pilot", "--gqa-items", "gqa_dev.jsonl",
          "--resamples", "50", "--out", "pilot_report"),
     step("validate", "kvsel", "validate", *DEV, *SMALL_VALIDATE, "--out", "validate/report.json"),
     step("verify_dev", "kvsel", "verify", "--items", "gqa_dev.jsonl", "--images", "images", "--decisions",
          "verify/dev.jsonl", "--screen", "screen_dev", "--verifier", "tester", http="verify/dev_page"),
     # Confirmatory study
-    step("freeze_screening", "kvsel", "freeze-screening", "--prereg", "PREREG.md", "--manifests", "gqa_confirm.jsonl",
+    step("freeze_screening", "kvsel", "confirmatory", "freeze-screening", "--prereg", "PREREG.md", "--manifests", "gqa_confirm.jsonl",
          "--record", "freeze/screening.json"),
-    step("screen_confirm", "kvsel", "screen-confirm", "--items", "gqa_confirm.jsonl", "--images", "images",
+    step("screen_confirm", "kvsel", "confirmatory", "screen", "--items", "gqa_confirm.jsonl", "--images", "images",
          "--device", "cpu", "--prereg", "PREREG.md", "--record", "freeze/screening.json", "--out", "screen_confirm"),
     step("verify_confirm", "kvsel", "verify", "--items", "gqa_confirm.jsonl", "--images", "images", "--decisions",
          "verify/confirm.jsonl", "--screen", "screen_confirm", "--verifier", "tester", http="verify/confirm_page"),
-    step("freeze_comparative", "kvsel", "freeze-comparative", *COMPARATIVE),
-    step("confirm", "kvsel", "confirm", *COMPARATIVE, "--images", "images", "--device", "cpu", "--out", "confirm_run"),
-    step("confirm_report", "kvsel", "confirm-report", "--gqa-run", "confirm_run", "--gqa-items", "gqa_confirm.jsonl",
+    step("freeze_comparative", "kvsel", "confirmatory", "freeze", *COMPARATIVE),
+    step("confirm", "kvsel", "confirmatory", "run", *COMPARATIVE, "--images", "images", "--device", "cpu", "--out", "confirm_run"),
+    step("confirm_report", "kvsel", "confirmatory", "report", "--gqa-run", "confirm_run", "--gqa-items", "gqa_confirm.jsonl",
          "--gqa-record", "freeze/comparative_gqa.json", "--resamples", "50", "--out", "confirm_report"),
     # Follow-ups
-    step("followup_run", "followup", "run", "--items", "gqa_confirm.jsonl", "--images", "images", "--confirm-run",
+    step("followup_run", "kvsel", "followups", "run", "--items", "gqa_confirm.jsonl", "--images", "images", "--confirm-run",
          "confirm_run", "--record", "freeze/comparative_gqa.json", "--device", "cpu", "--out", "followup"),
-    step("followup_report", "followup", "report", "--run", "followup", "--confirm-run", "confirm_run", "--items",
+    step("followup_report", "kvsel", "followups", "report", "--run", "followup", "--confirm-run", "confirm_run", "--items",
          "gqa_confirm.jsonl", "--resamples", "50", "--out", "followup_report"),
     # Replication
-    step("replication_count", "replication", "count", *REPLICATION),
-    step("replication_freeze", "replication", "freeze", *REPLICATION),
-    step("replication_run", "replication", "run", *REPLICATION, "--images", "images", "--device", "cpu",
+    step("replication_count", "kvsel", "replication", "count", *REPLICATION),
+    step("replication_freeze", "kvsel", "replication", "freeze", *REPLICATION),
+    step("replication_run", "kvsel", "replication", "run", *REPLICATION, "--images", "images", "--device", "cpu",
          "--out", "replication_run"),
-    step("replication_report", "replication", "report", *REPLICATION, "--run", "replication_run", "--resamples", "50",
+    step("replication_report", "kvsel", "replication", "report", *REPLICATION, "--run", "replication_run", "--resamples", "50",
          "--original-confirm", "confirm_report/results.json", "--original-followup", "followup_report/results.json",
          "--out", "replication_report"),
+    # Proving a code amendment: every stored report and a few items of each run, rerun and compared
+    step("reproduce", "kvsel", "reproduce", "--list", "stored_reports.json", "--images", "images", "--device", "cpu",
+         "--rows", "1", "--out", "reproduce"),
     # LLaVA-NeXT
-    step("next_validate", "next", "validate", *DEV, *SMALL_VALIDATE, "--out", "next_validate/report.json"),
-    step("next_freeze_screening", "next", "freeze-screening", "--prereg", "PREREG.md", "--items", "next_confirm.jsonl",
+    step("next_validate", "kvsel", "validate", "--model", "llava_next", *DEV, *SMALL_VALIDATE,
+         "--out", "next_validate/report.json"),
+    step("next_freeze_screening", "kvsel", "next", "freeze-screening", "--prereg", "PREREG.md", "--items", "next_confirm.jsonl",
          "--record", "freeze/next_screening.json"),
-    step("next_screen", "next", "screen", "--prereg", "PREREG.md", "--items", "next_confirm.jsonl", "--decisions",
+    step("next_screen", "kvsel", "next", "screen", "--prereg", "PREREG.md", "--items", "next_confirm.jsonl", "--decisions",
          "next_decisions.jsonl", "--images", "images", "--device", "cpu", "--record", "freeze/next_screening.json",
          "--out", "next_screen"),
-    step("next_count", "next", "count", "--items", "next_confirm.jsonl", "--decisions", "next_decisions.jsonl",
+    step("next_count", "kvsel", "next", "count", "--items", "next_confirm.jsonl", "--decisions", "next_decisions.jsonl",
          "--screen", "next_screen"),
-    step("next_freeze", "next", "freeze", *NEXT),
-    step("next_run", "next", "run", *NEXT, "--images", "images", "--device", "cpu", "--out", "next_run"),
-    step("next_report", "next", "report", *NEXT, "--run", "next_run", "--resamples", "50", "--llava15",
+    step("next_freeze", "kvsel", "next", "freeze", *NEXT),
+    step("next_run", "kvsel", "next", "run", *NEXT, "--images", "images", "--device", "cpu", "--out", "next_run"),
+    step("next_report", "kvsel", "next", "report", *NEXT, "--run", "next_run", "--resamples", "50", "--llava15",
          "replication_report/results.json", "--out", "next_report"),
 )
 
@@ -328,12 +344,11 @@ def captures(tmp_path_factory) -> Path:
     with pytest.MonkeyPatch.context() as patch:
         patch.chdir(workspace)
         patch.setattr(sys, "argv", list(sys.argv))
-        patch.setattr("kvsel.cli._bundle", lambda args: llava)
-        patch.setattr("kvsel_next.__main__.load_bundle", lambda device, model_dir: nxt)
+        patch.setattr("kvsel.cli.bundle", lambda args, family: llava if family.name == "llava" else nxt)
         for module, name, value in SIZES:
             patch.setattr(importlib.import_module(module), name, value)
         for key, value in NEXT_SIZES.items():
-            patch.setitem(importlib.import_module("kvsel_next.screen").SCREENING, key, value)
+            patch.setitem(importlib.import_module("kvsel.studies.next.screening").SCREENING, key, value)
         patch.setattr(time, "time", lambda: 0.0)
         patch.setattr(time, "perf_counter", lambda: 0.0)
         for spec in STEPS:
@@ -486,3 +501,77 @@ def test_first_difference_names_the_file_and_the_place(tmp_path):
     (actual / "files" / "b.md").write_text("one\ntwo\n")
     assert first_difference(expected, actual, [Exemption("item record hash", "s", "files/a.json", ("rows",))]) \
         == "files/c.txt: unexpected (not in the golden files)"
+
+
+# --- Validation values (ticket 09) -----------------------------------------------------------------------------
+
+BEFORE = HERE / "validation_before"  # both validate reports as the two separate modules wrote them
+
+
+def _old_values(report: dict, family: str) -> dict[tuple, object]:
+    """Every verdict and measured value of a report from before the merge, by (family, section, key)."""
+    values = {}
+    for section, body in report.items():
+        if not isinstance(body, dict) or section in ("memory", "time", "layouts"):
+            continue
+        for key, value in body.items():
+            if key not in ("shares", "kinds"):  # E3's settings, now in the plan
+                values[(family, section, "passed" if key == "pass" else key)] = value
+    values[(family, "go", "")] = report.get("all_pass", report.get("go"))
+    for key, value in report.get("layouts", {}).items():
+        values[(family, "E1", key)] = value
+    for n, item in enumerate(report.get("items", [])):
+        for key in ("item_id", "visual_tokens", "grid", "prefill_peak_gb", "prefill_seconds", "unit_seconds"):
+            values[(family, "costs", f"{n}.{key}")] = item[key]
+    if "time" in report:
+        values[(family, "hours", "screen_hours_upper")] = report["time"]["screen_hours_upper"]
+        values[(family, "hours", "run_hours_upper")] = report["time"]["comparative_hours_upper"]
+    return values
+
+
+def _new_value(report: dict, family: str, section: str, key: str):
+    if section == "go":
+        return report["go"]
+    if section == "costs":
+        n, field = key.split(".")
+        return report["costs"][int(n)][field]
+    if section == "hours":
+        return report["hours"][key]
+    body = report[section] if section.startswith("noise_floor") else report["checks"][section]
+    value = body[key]
+    if key == "by_suffix":
+        return {name: {("pass" if k == "passed" else k): v for k, v in suffix.items()} for name, suffix in value.items()}
+    if key == "greedy_mismatches":
+        return [{("k" if k == "budget" else k): v for k, v in m.items()} for m in value]
+    return value
+
+
+@pytest.mark.parametrize(("family", "step"), [("llava15", "validate"), ("next", "next_validate")])
+def test_validation_gives_the_same_verdicts_and_values_as_before_the_merge(captures, family, step):
+    before = _old_values(json.loads((BEFORE / f"{family}.json").read_text()), family)
+    after = json.loads((captures / step / "files" / step / "report.json").read_text())
+    differences = [f"{where}: {value!r} -> {_new_value(after, *where)!r}" for where, value in before.items()
+                   if _new_value(after, *where) != value]
+    assert not differences, differences
+    command = json.loads((captures / step / "command.json").read_text())
+    assert command["exit_code"] == (0 if after["go"] else 1) and command["stdout"][-1] == ("GO" if after["go"] else "NO-GO")
+
+
+# --- The reproduction command (ticket 15) ------------------------------------------------------------------------
+
+
+def test_reproduce_names_an_altered_stored_number(captures, tmp_path, monkeypatch):
+    """The workspace's reports reproduce (the `reproduce` step); one altered stored number is named and refused."""
+    from kvsel import cli
+
+    workspace = tmp_path / "workspace"
+    shutil.copytree(captures.parent / "workspace", workspace)
+    stored = workspace / "confirm_report" / "results.json"
+    results = json.loads(stored.read_text())
+    estimate = results["datasets"]["gqa"]["tests"]["S_H^(mis)"]["estimate"]
+    results["datasets"]["gqa"]["tests"]["S_H^(mis)"]["estimate"] = estimate + 0.001
+    stored.write_text(json.dumps(results, indent=2))
+    monkeypatch.chdir(workspace)
+    with pytest.raises(SystemExit, match=r"confirm_report/results.json .*\$\.datasets\.gqa\.tests\.S_H\^\(mis\)\.estimate") as stop:
+        cli.main(["reproduce", "--list", "stored_reports.json", "--out", "again"])
+    assert stop.value.code == 2

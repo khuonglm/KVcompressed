@@ -66,7 +66,3 @@ def entries_hash(entries: Entries) -> str:
         for tensor in (key, value):
             digest.update(tensor.detach().cpu().float().numpy().tobytes())
     return digest.hexdigest()
-
-
-def entries_bytes(entries: Entries) -> int:
-    return sum(k.numel() * k.element_size() + v.numel() * v.element_size() for k, v in entries)

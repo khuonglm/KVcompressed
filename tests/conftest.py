@@ -1,9 +1,9 @@
 import pytest
 import torch
-from transformers import CLIPVisionConfig, LlamaConfig, LlavaConfig, LlavaForConditionalGeneration, LlamaForCausalLM
+from transformers import CLIPVisionConfig, LlamaConfig, LlamaForCausalLM, LlavaConfig, LlavaForConditionalGeneration
 
+from kvsel.cache import entries_from_cache
 from kvsel.engine import Decoder, Prefix
-from kvsel.cache import cache_from_entries, entries_from_cache
 
 
 @pytest.fixture(scope="session")

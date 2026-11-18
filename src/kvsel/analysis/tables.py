@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from ..protocol import Refusal
 from ..runner import eligible
 from ..selectors import jaccard
 from .statistics import SURFACE, margin, margin_variant
@@ -28,7 +29,7 @@ def load_run(run_dir: Path) -> tuple[list[dict], dict[str, dict]]:
     rows, items = [], {}
     paths = sorted((Path(run_dir) / "items").glob("*.json"))
     if not paths:
-        raise SystemExit(f"no item files under {run_dir}")
+        raise Refusal(f"no item files under {run_dir}")
     for path in paths:
         item = json.loads(path.read_text())
         items[item["item_id"]] = {"image_id": item["image_id"], "subset": item.get("subset")}

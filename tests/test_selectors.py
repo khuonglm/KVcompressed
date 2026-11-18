@@ -7,21 +7,34 @@ import json
 import numpy as np
 import pytest
 
-from kvsel import validate
-from kvsel.followup import run as followup
 from kvsel.models.family import Tokens
 from kvsel.models.llava15 import LAYOUT
 from kvsel.models.llava_next import anyres_layout
 from kvsel.runner import Unit, kept_for
 from kvsel.selectors import (
-    Budget, coverage_order, jaccard, kept_set, pooled_scores, pw_attn, question_span_attn, reserve_size, top_k,
-    uniform_grid, with_reserve,
+    Budget,
+    coverage_order,
+    jaccard,
+    kept_set,
+    pooled_scores,
+    pw_attn,
+    question_span_attn,
+    reserve_size,
+    top_k,
+    uniform_grid,
+    with_reserve,
 )
-from kvsel_next.selection import SHARES, kept_sets_per_share
-from kvsel_next.validate import sparse_set
+from kvsel.studies.followups import run as followup
+from kvsel.studies.next.comparative import SHARES
+from kvsel.validation import KINDS, concentrated_set, validation_set
 
 WIDE, TALL = anyres_layout(24, 24, 44), anyres_layout(24, 44, 24)
 KS = (288, 144, 72)
+
+
+def pw_per_share(layout, attention):
+    """Every share's PW-attn kept set from one probe."""
+    return {share: kept_set(layout, "pw", Budget(share=share), attention=attention) for share in SHARES}
 
 
 def pool_one_map(values):
@@ -31,7 +44,8 @@ def pool_one_map(values):
 # --- Kept sets are the ones the code gave before selection moved onto layouts ---------------------------------
 
 # Digests captured from the dispatchers before ticket 05 (runner.kept_for, followup.kept_for and random_set,
-# validate.kept_sets, kvsel_next.selection.kept_sets, kvsel_next.validate.sparse_set), on the inputs below.
+# validate.kept_sets, the NeXT package's selection.kept_sets and validate.sparse_set), on the inputs below; the
+# validation sets are now `kvsel.validation.validation_set`.
 KNOWN = {
     "llava15 pw reserve=False": "812e06081421f64d",
     "llava15 pw reserve=True": "55b088d8bbe0a1ed",
@@ -71,19 +85,20 @@ def llava15_sets(selector, reserve):
 def computed() -> dict[str, str]:
     out = {f"llava15 {s} reserve={r}": digest(llava15_sets(s, r)) for s in ("pw", "qspan") for r in (False, True)}
     out["llava15 uniform"] = digest(kept_set(LAYOUT, "uniform", Budget(k=k)) for k in KS)
-    out["followup lt"] = digest(followup.kept_for(followup.FUnit("lt", k, False, "Q", "Q"), "i1", LAYOUT, {}, {"Q": LAYER2})
+    out["followup lt"] = digest(followup.kept_for(Unit("lt", k, False, "Q", "Q", followup=True), "i1", LAYOUT, {}, {"Q": LAYER2})
                                 for k in KS)
-    out["followup pw"] = digest(followup.kept_for(followup.FUnit("pw", k, False, "Q", "Q"), "i1", LAYOUT, {"Q": ATTENTION}, {})
+    out["followup pw"] = digest(followup.kept_for(Unit("pw", k, False, "Q", "Q", followup=True), "i1", LAYOUT, {"Q": ATTENTION}, {})
                                 for k in KS)
     out["followup random"] = digest(
-        followup.kept_for(followup.FUnit("random", k, False, "none", "Q", seed=s), item, LAYOUT, {}, {})
+        followup.kept_for(Unit("random", k, False, "none", "Q", seed=s, followup=True), item, LAYOUT, {}, {})
         for item in ("i1", "18182570") for s in range(5) for k in KS)
-    out["validate"] = digest(v for k in KS for s in range(4) for v in validate.validation_sets(LAYOUT, k, s, ATTENTION).values())
+    out["validate"] = digest(validation_set(LAYOUT, Budget(k=k), kind, s, ATTENTION) for k in KS for s in range(4)
+                             for kind in KINDS)
     for name, (rows, cols) in NEXT_GRIDS.items():
         layout = anyres_layout(24, rows, cols)
         attention = np.random.default_rng(rows * 100 + cols).random((30, layout.total)).astype(np.float32)
-        out[f"next pw {name}"] = digest(kept_sets_per_share(layout, attention).values())
-        out[f"next sparse {name}"] = digest(sparse_set(layout, share, kind, seed) for share in SHARES
+        out[f"next pw {name}"] = digest(pw_per_share(layout, attention).values())
+        out[f"next sparse {name}"] = digest(validation_set(layout, Budget(share=share), kind, seed) for share in SHARES
                                             for kind in ("random", "concentrated") for seed in range(3))
     return out
 
@@ -217,7 +232,7 @@ def test_a_selector_without_its_input_is_refused(selector, missing):
 def test_concentrated_is_a_validation_kind_not_a_selector():
     with pytest.raises(ValueError, match="unknown selector"):
         kept_set(WIDE, "concentrated", Budget(k=72))
-    kept = validate.concentrated_set(WIDE, 72)
+    kept = concentrated_set(WIDE, 72)
     assert kept.tolist() == sorted(set(WIDE.features[:72].tolist()) | set(WIDE.newlines))
 
 
@@ -311,7 +326,7 @@ BUDGETS = [
 def test_budget_newlines_and_nesting(layout, expected):
     scores = np.random.default_rng(2).random(layout.total)
     scores[list(layout.newlines)] = -1.0  # newlines kept even when they score lowest...
-    sets = kept_sets_per_share(layout, np.tile(scores, (16, 1)))
+    sets = pw_per_share(layout, np.tile(scores, (16, 1)))
     newlines = set(layout.newlines)
     for share, k in zip(SHARES, expected, strict=True):
         assert newlines <= set(sets[share].tolist())

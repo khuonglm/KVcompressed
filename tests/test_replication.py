@@ -5,9 +5,12 @@ import json
 import numpy as np
 import pytest
 
-from kvsel import confirm
-from kvsel.replication import select
-from kvsel.replication.__main__ import main
+from kvsel import protocol
+from kvsel.cli import main
+from kvsel.protocol import Refusal, code_identity, sha256_file
+from kvsel.studies.confirmatory import comparative
+from kvsel.studies.replication import run as replication
+from kvsel.studies.replication import select
 from kvsel.verification import PASS, VALID_DECISIONS, append_decision, load_decisions
 
 FAIL = min(VALID_DECISIONS - {PASS})
@@ -75,8 +78,8 @@ def test_a_stale_decision_counts_as_unverified(sizes, tmp_path):
 
 
 def test_count_prints_the_pool(sizes, tmp_path, monkeypatch, capsys):
-    monkeypatch.setattr(confirm, "MAIN_SIZE", 2)
-    monkeypatch.setattr(confirm, "CONTROL_SIZE", 1)
+    monkeypatch.setattr(comparative, "MAIN_SIZE", 2)
+    monkeypatch.setattr(comparative, "CONTROL_SIZE", 1)
     items = [item(i) for i in range(8)]
     manifest = tmp_path / "m.jsonl"
     manifest.write_text("".join(json.dumps(i) + "\n" for i in items))
@@ -90,7 +93,7 @@ def test_count_prints_the_pool(sizes, tmp_path, monkeypatch, capsys):
     run = tmp_path / "old_run" / "items"
     run.mkdir(parents=True)
     (run / "i3.json").write_text("{}")
-    main(["count", "--items", str(manifest), "--screen", str(screen), "--decisions", str(decisions),
+    main(["replication", "count", "--items", str(manifest), "--screen", str(screen), "--decisions", str(decisions),
           "--exclude-runs", str(tmp_path / "old_run")])
     out = json.loads(capsys.readouterr().out)
     assert out["main_set"] == 2
@@ -110,10 +113,10 @@ PREREG = ("# Pre-registration\n\n## 1. Screening rules\nrule\n\n## 2. Comparativ
 @pytest.fixture
 def world(tmp_path, monkeypatch, sizes):
     """Main set i0, i1 (GQA record frozen); replication i2, i3, i4 with control i2; i5 is spare."""
-    from kvsel.freeze import freeze_screening
+    from kvsel.studies.confirmatory.screening import freeze_screening
 
-    monkeypatch.setattr(confirm, "MAIN_SIZE", 2)
-    monkeypatch.setattr(confirm, "CONTROL_SIZE", 1)
+    monkeypatch.setattr(comparative, "MAIN_SIZE", 2)
+    monkeypatch.setattr(comparative, "CONTROL_SIZE", 1)
     items = [item(i) for i in range(6)]
     manifest = tmp_path / "gqa_confirm.jsonl"
     manifest.write_text("".join(json.dumps(i) + "\n" for i in items))
@@ -129,7 +132,7 @@ def world(tmp_path, monkeypatch, sizes):
     stage1 = tmp_path / "freeze" / "screening.json"
     freeze_screening(prereg, [manifest], stage1)
     gqa_record = tmp_path / "freeze" / "comparative_gqa.json"
-    confirm.freeze_comparative(prereg, manifest, screen, decisions, gqa_record, stage1)
+    comparative.freeze_comparative(prereg, manifest, screen, decisions, gqa_record, stage1)
     args = {"prereg": prereg, "manifest": manifest, "screen": screen, "decisions": decisions, "stage1": stage1,
                 "gqa_record": gqa_record, "exclude_runs": []}
     return items, args, tmp_path / "freeze" / "replication_gqa.json"
@@ -140,75 +143,68 @@ def undraft(prereg):
 
 
 def test_freeze_refuses_a_draft_section(world):
-    from kvsel.replication import protocol
-
     _, args, record = world
-    with pytest.raises(SystemExit, match="DRAFT"):
-        protocol.freeze(record=record, **args)
+    with pytest.raises(Refusal, match="DRAFT"):
+        replication.freeze_replication(record=record, **args)
     assert not record.exists()
 
 
 def test_freeze_records_the_replication_set_and_its_check(world):
-    from kvsel.replication import protocol
-
     items, args, record = world
     undraft(args["prereg"])
-    frozen = protocol.freeze(record=record, **args)
+    frozen = replication.freeze_replication(record=record, **args)
     assert frozen["replication_ids"] == ["i2", "i3", "i4"]
     assert frozen["control_ids"] == ["i2"]
-    assert frozen["code_sha256"] == protocol.code_hash_tree()
-    assert protocol.freeze(record=record, **args) == frozen  # same state: no change, no error
-    assert protocol.check(record=record, **args)["replication_ids"] == ["i2", "i3", "i4"]
+    assert frozen["code_sha256"] == code_identity()
+    assert replication.freeze_replication(record=record, **args) == frozen  # same state: no change, no error
+    assert replication.check_replication(record=record, **args)["replication_ids"] == ["i2", "i3", "i4"]
     append_decision(args["decisions"], items[3], FAIL, "tester")  # a decision changed after the freeze
-    with pytest.raises(SystemExit, match="replication_set_sha256"):
-        protocol.check(record=record, **args)
-    with pytest.raises(SystemExit, match="already exists"):
-        protocol.freeze(record=record, **args)
+    with pytest.raises(Refusal, match="replication_set_sha256"):
+        replication.check_replication(record=record, **args)
+    with pytest.raises(Refusal, match="already exists"):
+        replication.freeze_replication(record=record, **args)
 
 
 def test_freeze_refuses_a_short_set_and_a_changed_main_set(world, tmp_path):
-    from kvsel.replication import protocol
-
     items, args, record = world
     undraft(args["prereg"])
     old = tmp_path / "old_run" / "items"
     old.mkdir(parents=True)
     for item_id in ("i4", "i5"):
         (old / f"{item_id}.json").write_text("{}")
-    with pytest.raises(SystemExit, match="replication set has 2 of 3"):
-        protocol.freeze(record=record, **{**args, "exclude_runs": [tmp_path / "old_run"]})
+    with pytest.raises(Refusal, match="replication set has 2 of 3"):
+        replication.freeze_replication(record=record, **{**args, "exclude_runs": [tmp_path / "old_run"]})
     append_decision(args["decisions"], items[1], FAIL, "tester")  # main set changes: i1 now failed
-    with pytest.raises(SystemExit, match="main set"):
-        protocol.freeze(record=record, **args)
+    with pytest.raises(Refusal, match="main set"):
+        replication.freeze_replication(record=record, **args)
     assert not record.exists()
 
 
 def test_check_refuses_changes_and_accepts_only_amended_code(world, tmp_path, monkeypatch):
     from kvsel.protocol import CODE_AMENDMENTS
-    from kvsel.replication import protocol
 
     _, args, record = world
     undraft(args["prereg"])
-    frozen = protocol.freeze(record=record, **args)
+    frozen = replication.freeze_replication(record=record, **args)
     old_run = tmp_path / "old_run"
     old_run.mkdir()
-    with pytest.raises(SystemExit, match="exclude_runs"):  # a different exclusion list, even an empty folder
-        protocol.check(record=record, **{**args, "exclude_runs": [old_run]})
-    monkeypatch.setattr(protocol, "code_hash_tree", lambda: "new code")
-    with pytest.raises(SystemExit, match="code_sha256"):
-        protocol.check(record=record, **args)
+    with pytest.raises(Refusal, match="exclude_runs"):  # a different exclusion list, even an empty folder
+        replication.check_replication(record=record, **{**args, "exclude_runs": [old_run]})
+    monkeypatch.setattr(protocol, "code_identity", lambda: "new code")
+    with pytest.raises(Refusal, match="code_sha256"):
+        replication.check_replication(record=record, **args)
     (record.parent / CODE_AMENDMENTS).write_text(json.dumps([{"from": frozen["code_sha256"], "to": "new code",
                                                                "date": "2026-11-20", "reason": "r", "evidence": "e"}]))
-    assert protocol.check(record=record, **args)["replication_ids"] == ["i2", "i3", "i4"]
+    assert replication.check_replication(record=record, **args)["replication_ids"] == ["i2", "i3", "i4"]
     args["prereg"].write_text(args["prereg"].read_text() + "\nAn edit after the freeze.\n")
-    with pytest.raises(SystemExit, match="prereg_sha256"):
-        protocol.check(record=record, **args)
+    with pytest.raises(Refusal, match="prereg_sha256"):
+        replication.check_replication(record=record, **args)
 
 
 def test_selection_matches_the_frozen_main_set_rule(sizes, tmp_path, monkeypatch):
-    """With no shared images or earlier runs, the replication rule picks what `confirm.main_set` would."""
-    monkeypatch.setattr(confirm, "MAIN_SIZE", 3)
-    monkeypatch.setattr(confirm, "CONTROL_SIZE", 1)
+    """With no shared images or earlier runs, the replication rule picks what `comparative.main_set` would."""
+    monkeypatch.setattr(comparative, "MAIN_SIZE", 3)
+    monkeypatch.setattr(comparative, "CONTROL_SIZE", 1)
     items = [item(i) for i in range(10)]
     eligible = {i: i not in (3, 6) for i in range(10)}
     screen = tmp_path / "screen"
@@ -222,15 +218,9 @@ def test_selection_matches_the_frozen_main_set_rule(sizes, tmp_path, monkeypatch
     decisions, _ = load_decisions(path, items)
     flags = {f"i{i}": e for i, e in eligible.items()}
     chosen = select.replication_set(items, flags, decisions, ["i0"], set())
-    frozen = confirm.main_set(items[1:], screen, path)
+    frozen = comparative.main_set(items[1:], screen, path)
     assert chosen["replication"] == frozen["main"] == ["i1", "i4", "i7"]
     assert chosen["failed"] == frozen["failed_before_cutoff"] == 2
-
-
-def test_the_tree_hash_covers_subpackages():
-    from kvsel.replication import protocol
-
-    assert protocol.code_hash_tree() != confirm.code_hash_all()
 
 
 def synthetic_run(tmp_path, ids, control, mis=None, irr=None, noise=0.05, seed=0):
@@ -238,8 +228,8 @@ def synthetic_run(tmp_path, ids, control, mis=None, irr=None, noise=0.05, seed=0
     every other estimand is 0 by construction. Defaults: S_H^(mis) = 0.3 at every K, S_H^(irr) = 0."""
     from dataclasses import asdict
 
-    from kvsel.replication.protocol import units
     from kvsel.runner import cell_name
+    from kvsel.studies.replication.run import units
 
     mis = mis or {72: 0.3, 144: 0.3, 288: 0.3}
     irr = irr or {72: 0.0, 144: 0.0, 288: 0.0}
@@ -271,13 +261,13 @@ def synthetic_run(tmp_path, ids, control, mis=None, irr=None, noise=0.05, seed=0
 
 
 def report_on(tmp_path, n=80, **planted):
-    from kvsel.replication import protocol, report
+    from kvsel.studies.replication import report
 
     ids = [f"r{i}" for i in range(n)]
     tmp_path.mkdir(exist_ok=True)
     record = tmp_path / "replication_gqa.json"
     record.write_text(json.dumps({"replication_ids": ids, "control_ids": ids[:20],
-                                  "code_sha256": protocol.code_hash_tree()}))
+                                  "code_sha256": code_identity()}))
     run = synthetic_run(tmp_path, ids, set(ids[:20]), **planted)
     return report.replication_report(run, record, tmp_path / "out", resamples=1000)
 
@@ -310,7 +300,7 @@ def test_holm_family_of_six_and_equivalence(tmp_path):
 
 
 def test_report_prints_the_original_estimates_beside(tmp_path):
-    from kvsel.replication import report
+    from kvsel.studies.replication import report
 
     original = {"S_H^(mis)": {"estimate": 0.111, "ci95": [0.08, 0.144], "p_two_sided": 0.0002, "items": 1000,
                               "images": 708}}
@@ -337,18 +327,18 @@ def test_report_prints_the_original_estimates_beside(tmp_path):
 
 
 def test_report_refuses_missing_or_extra_items(tmp_path):
-    from kvsel.replication import protocol, report
+    from kvsel.studies.replication import report
 
     ids = [f"r{i}" for i in range(6)]
     record = tmp_path / "replication_gqa.json"
     record.write_text(json.dumps({"replication_ids": ids + ["r6"], "control_ids": ids[:2],
-                                  "code_sha256": protocol.code_hash_tree()}))
+                                  "code_sha256": code_identity()}))
     run = synthetic_run(tmp_path, ids, set(ids[:2]))
-    with pytest.raises(SystemExit, match="missing 1"):
+    with pytest.raises(Refusal, match="missing 1"):
         report.replication_report(run, record, tmp_path / "out", resamples=50)
     record.write_text(json.dumps({"replication_ids": ids[:5], "control_ids": ids[:2],
-                                  "code_sha256": protocol.code_hash_tree()}))
-    with pytest.raises(SystemExit, match="1 extra"):
+                                  "code_sha256": code_identity()}))
+    with pytest.raises(Refusal, match="1 extra"):
         report.replication_report(run, record, tmp_path / "out", resamples=50)
 
 
@@ -358,14 +348,13 @@ def test_run_on_the_tiny_model(tiny_llava, tmp_path, capsys):
 
     from kvsel.model import bundle_from_model
     from kvsel.models.llava15 import LLAVA
-    from kvsel.replication.protocol import units
-    from kvsel.replication.run import run_replication
+    from kvsel.studies.replication.run import run_replication, units
 
     bundle = bundle_from_model(tiny_llava, LLAVA.load_tokenizer(), LLAVA.load_processor())
     Image.fromarray(np.random.default_rng(0).integers(0, 255, (60, 80, 3), dtype=np.uint8)).save(tmp_path / "img.jpg")
     items = [item(0), item(1)]
     selection = {"replication_ids": ["i0", "i1"], "control_ids": ["i0"]}
-    summary = run_replication(bundle, items, tmp_path, tmp_path / "run", selection)
+    summary = run_replication(bundle, items, tmp_path, tmp_path / "run", selection, "rec")
     assert capsys.readouterr().out == "2/2 items\n"  # progress only, no per-item outcome
     assert summary["items"] == 2 and summary["control"] == 1 and summary["blind_now_eligible"] in (0, 1, 2)
     control = json.loads((tmp_path / "run" / "items" / "i0.json").read_text())
@@ -381,33 +370,34 @@ def test_run_on_the_tiny_model(tiny_llava, tmp_path, capsys):
         assert kept[(72, context)] <= kept[(144, context)] <= kept[(288, context)]
         assert [len(kept[(k, context)]) for k in (72, 144, 288)] == [72, 144, 288]
     mtime = (tmp_path / "run" / "items" / "i0.json").stat().st_mtime
-    run_replication(bundle, items, tmp_path, tmp_path / "run", selection)
+    run_replication(bundle, items, tmp_path, tmp_path / "run", selection, "rec")
     assert (tmp_path / "run" / "items" / "i0.json").stat().st_mtime == mtime  # finished items are skipped
 
 
 def test_commands_freeze_run_and_report(world, tmp_path, monkeypatch, capsys):
     from kvsel import cli
-    from kvsel.replication import run as run_module
+    from kvsel.studies.replication import run as run_module
 
     items, args, record = world
     undraft(args["prereg"])
     common = ["--prereg", str(args["prereg"]), "--items", str(args["manifest"]), "--screen", str(args["screen"]),
               "--decisions", str(args["decisions"]), "--stage1", str(args["stage1"]),
               "--gqa-record", str(args["gqa_record"]), "--record", str(record)]
-    main(["freeze", *common])
+    main(["replication", "freeze", *common])
     assert json.loads(capsys.readouterr().out)["replication"] == 3
     seen = {}
-    monkeypatch.setattr(cli, "_bundle", lambda a: "bundle")
+    monkeypatch.setattr(cli, "bundle", lambda args, family: "bundle")
+    (tmp_path / "img.jpg").touch()  # the run checks its images before loading the model
     monkeypatch.setattr(run_module, "run_replication",
-                        lambda bundle, items, images, out, selection: seen.update(ids=selection["replication_ids"],
-                                                                                  out=out) or {"items": 3})
-    main(["run", *common, "--images", str(tmp_path), "--out", str(tmp_path / "run")])
-    assert seen == {"ids": ["i2", "i3", "i4"], "out": tmp_path / "run"}
+                        lambda bundle, items, images, out, selection, record_sha256: seen.update(
+                            ids=selection["replication_ids"], out=out, record=record_sha256) or {"items": 3})
+    main(["replication", "run", *common, "--images", str(tmp_path), "--out", str(tmp_path / "run")])
+    assert seen == {"ids": ["i2", "i3", "i4"], "out": tmp_path / "run", "record": sha256_file(record)}
     run = synthetic_run(tmp_path / "synthetic", ["i2", "i3", "i4"], {"i2"})
-    main(["report", *common, "--run", str(run), "--resamples", "50", "--out", str(tmp_path / "rep")])
+    main(["replication", "report", *common, "--run", str(run), "--resamples", "50", "--out", str(tmp_path / "rep")])
     assert "K = 144" in (tmp_path / "rep" / "report.md").read_text()
     args["prereg"].write_text(args["prereg"].read_text() + "\nA dated amendment after the run.\n")
-    main(["report", *common, "--run", str(run), "--resamples", "50", "--out", str(tmp_path / "rep")])  # PREREG may grow
+    main(["replication", "report", *common, "--run", str(run), "--resamples", "50", "--out", str(tmp_path / "rep")])  # PREREG may grow
     append_decision(args["decisions"], items[3], FAIL, "tester")
     with pytest.raises(SystemExit, match="replication_set_sha256"):  # everything else is still checked
-        main(["report", *common, "--run", str(run), "--resamples", "50", "--out", str(tmp_path / "rep")])
+        main(["replication", "report", *common, "--run", str(run), "--resamples", "50", "--out", str(tmp_path / "rep")])

@@ -10,7 +10,7 @@ from collections import Counter
 from pathlib import Path
 
 from ..normalize import normalize
-from .shared import descriptions_within_spread, split_by_image, split_development, write_jsonl
+from .shared import descriptions_within_spread, split_development, write_jsonl
 
 BUILDER_VERSION = "gqa-3"  # gqa-3: val_all source, one item per object and attribute, frozen dev manifest
 # Closed vocabulary for a_true, a_alt and irrelevant values, so a wrong value is clearly wrong. Raw

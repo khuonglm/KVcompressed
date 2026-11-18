@@ -1,0 +1,22 @@
+{
+  "reports": [
+    {"name": "confirmatory", "compare": "bytes", "results": "confirm_report/results.json",
+     "argv": ["confirmatory", "report", "--gqa-run", "confirm_run", "--gqa-items", "gqa_confirm.jsonl",
+              "--gqa-record", "freeze/comparative_gqa.json", "--resamples", "50"]},
+    {"name": "followups", "compare": "bytes", "results": "followup_report/results.json",
+     "argv": ["followups", "report", "--run", "followup", "--confirm-run", "confirm_run", "--items", "gqa_confirm.jsonl",
+              "--resamples", "50"]},
+    {"name": "replication", "compare": "keys", "results": "replication_report/results.json",
+     "argv": ["replication", "report", "--prereg", "PREREG.md", "--items", "gqa_confirm.jsonl", "--screen", "screen_confirm",
+              "--decisions", "decisions.jsonl", "--stage1", "freeze/screening.json", "--gqa-record",
+              "freeze/comparative_gqa.json", "--exclude-runs", "earlier_run", "--record", "freeze/replication_gqa.json",
+              "--run", "replication_run", "--resamples", "50", "--original-confirm", "confirm_report/results.json",
+              "--original-followup", "followup_report/results.json"]}
+  ],
+  "runs": [
+    {"study": "confirmatory", "run": "confirm_run", "items": "gqa_confirm.jsonl", "record": "freeze/comparative_gqa.json"},
+    {"study": "followups", "run": "followup", "items": "gqa_confirm.jsonl", "record": "freeze/comparative_gqa.json",
+     "confirm_run": "confirm_run"},
+    {"study": "replication", "run": "replication_run", "items": "gqa_confirm.jsonl", "record": "freeze/replication_gqa.json"}
+  ]
+}

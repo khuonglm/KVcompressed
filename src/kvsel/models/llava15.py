@@ -211,7 +211,7 @@ LLAVA = Llava15(
     model_id=MODEL_ID,
     revision=None,  # unpinned: the records name no revision, and the local copy has no revision file
     default_dir=Path("models/llava-1.5-7b-hf"),
-    fetch_command="kvsel fetch-model",
+    fetch_command="kvsel model fetch",
     required_files=(
         "tokenizer.json", "tokenizer_config.json", "special_tokens_map.json", "added_tokens.json",
         "config.json", "generation_config.json", "preprocessor_config.json", "processor_config.json",

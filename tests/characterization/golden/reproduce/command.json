@@ -1,0 +1,16 @@
+{
+ "exit_code": 0,
+ "stdout": [
+  "confirmatory: reproduced (confirm_report/results.json)",
+  "followups: reproduced (followup_report/results.json)",
+  "replication: reproduced (replication_report/results.json)",
+  "2/2 items",
+  "confirmatory: 2 items rerun (confirm_run)",
+  "2/2 items",
+  "followups: 2 items rerun (followup)",
+  "2/2 items",
+  "replication: 2 items rerun (replication_run)",
+  "everything reproduced; no pending amendment entries"
+ ],
+ "stderr": []
+}
