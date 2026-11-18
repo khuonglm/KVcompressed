@@ -40,3 +40,29 @@ _Avoid_: ratio, percentage budget
 **Kept set**:
 The visual-span positions a unit keeps: its chosen feature tokens plus every newline token.
 _Avoid_: selection (for the set itself), mask
+
+## Protocol
+
+**Stage**:
+One freeze point of a study, which declares its inputs, settings and the PREREG section that must not be draft.
+_Avoid_: step, phase
+
+**Record**:
+The file a stage writes once at its freeze, holding the hashes of its inputs, its settings and its code identity.
+_Avoid_: freeze file, snapshot
+
+**Amendment**:
+A dated PREREG subsection that states a change after a freeze and why; it changes no frozen rule silently.
+_Avoid_: revision, edit
+
+**Amendment log**:
+The list of accepted moves from a frozen hash to a new one, each dated, with its reason and evidence.
+_Avoid_: changelog
+
+**Code identity**:
+The hash of the package's source files, by relative path, that a record freezes.
+_Avoid_: code hash (for the concept), version
+
+**Refusal**:
+A stop that needs the researcher's action, such as a changed input or a draft section; not a crash.
+_Avoid_: error (for this case), failure

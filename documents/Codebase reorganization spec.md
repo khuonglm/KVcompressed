@@ -223,11 +223,11 @@ NeXT corrections from the two reviews come after the reorganization, as separate
     - its inputs: whole PREREG file or a named section, manifests, other records, the screen flags, the selected set with verification digests;
     - its settings;
     - the PREREG section whose DRAFT line or "[to fill" blank it refuses. One rule: a line starting with DRAFT.
-  - **Freeze:** write-once and atomic. It returns the existing record when the state is equal, and refuses when it differs.
-  - **Check:** recomputes the state and returns the record it verified. It refuses with every changed input named. A report-time check accepts PREREG changes only as added dated amendment subsections.
+  - **Freeze:** write-once and atomic (fsynced before the rename). It returns the existing record when the state is equal, code included through the amendment log, and refuses when it differs.
+  - **Check:** recomputes the state and returns the record it verified. It refuses with every changed input named. A report-time check doesn't compare PREREG, which may grow after the run; the run-time check refuses any PREREG change (decided 18 November 2026).
   - **Refusals** raise one error type. Only the command line turns it into an exit.
   - **The main-set rules stay study logic,** since each is a distinct pre-registered rule: the confirmatory first 1,000 in manifest order; the replication's fresh items after the main set; NeXT's first 1,000 eligible among passed items.
-- **Code identity:** one function, the hash of every source file in the package by relative path.
+- **Code identity:** one function, the hash of every source file in the package (`.py`, and `.html` resources) by relative path.
   - Every stage's code check accepts the frozen hash, or any hash reached from it through the amendment log.
   - This includes stage 1, which today compares exactly. The change is required, not optional: the replication's report check calls the stage-1 check, so without it no reorganization could keep the replication report running.
   - Old records keep their old hashes. Amendment 4 adds, for each record's latest accepted hash, one log entry to the new hash, with evidence.

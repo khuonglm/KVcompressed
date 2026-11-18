@@ -8,6 +8,7 @@ import pytest
 from kvsel import screening
 from kvsel.models.llava15 import LLAVA
 from kvsel.freeze import check_screening, freeze_screening, screening_section
+from kvsel.protocol import CODE_AMENDMENTS
 
 PREREG = """# Pre-registration
 
@@ -171,3 +172,16 @@ def test_screen_runs_on_the_tiny_model(tiny_llava, tmp_path, frozen):
                 "irr": "The road in this image is gray."}}
     funnel = screening.run_confirm_screen(bundle, [item], tmp_path, tmp_path / "screen", json.loads(frozen[2].read_text()))
     assert funnel["screened"] == 1 and set(json.loads((tmp_path / "screen" / "items" / "c1.json").read_text())) == {"item_id", "full_q_eligible", "blind_eligible", "eligible"}
+
+
+def test_changed_screening_code_passes_only_through_the_amendment_log(frozen, monkeypatch):
+    from kvsel import freeze
+
+    prereg, items, record = frozen
+    old = json.loads(record.read_text())["code_sha256"]
+    monkeypatch.setattr(freeze, "code_hash", lambda: "new")
+    with pytest.raises(SystemExit, match="screening code"):
+        check_screening(prereg, items, record)
+    entry = {"from": old, "to": "new", "date": "2026-11-18", "reason": "r", "evidence": "e"}
+    (record.parent / CODE_AMENDMENTS).write_text(json.dumps([entry]))
+    assert check_screening(prereg, items, record)["code_sha256"] == old

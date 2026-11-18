@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from .models.llava15 import LLAVA
+from .protocol import CODE_AMENDMENTS, code_accepted, sha256_file
 
 # Fixed screening settings. Eligibility: Full_Q's greedy answer is correct and its margin is positive
 # under this surface rule (decision 2; greedy answers are mostly capitalized on both datasets).
@@ -40,10 +41,6 @@ SCREENING_MODULES = (
 )
 PREREG_SECTION = "## 1. Screening rules"
 DEFAULT_RECORD = Path("freeze/screening_amend2.json")  # supersedes amendment 1, which superseded screening.json
-
-
-def sha256_file(path: Path) -> str:
-    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
 def code_hash() -> str:
@@ -101,7 +98,9 @@ def freeze_screening(prereg: Path, manifests: list[Path], record: Path = DEFAULT
 
 
 def check_screening(prereg: Path, manifest: Path, record: Path = DEFAULT_RECORD) -> dict:
-    """Returns the frozen record if the screen may run on this manifest; otherwise exits saying what changed."""
+    """Returns the frozen record if the screen may run on this manifest; otherwise exits saying what changed.
+
+    Code may differ only through `freeze/code_amendments.json` (PREREG 1.9), as at every other stage."""
     if not record.exists():
         raise SystemExit(f"no screening freeze at {record}: run `kvsel freeze-screening` first")
     frozen = json.loads(record.read_text())
@@ -114,7 +113,7 @@ def check_screening(prereg: Path, manifest: Path, record: Path = DEFAULT_RECORD)
         changed.append(f"the '{PREREG_SECTION}' section of {prereg}")
     if now["manifests"][name] != frozen["manifests"][name]:
         changed.append(f"manifest {manifest}")
-    if now["code_sha256"] != frozen["code_sha256"]:
+    if not code_accepted(frozen["code_sha256"], now["code_sha256"], Path(record).parent / CODE_AMENDMENTS):
         changed.append(f"screening code ({', '.join(SCREENING_MODULES)})")
     if now["settings"] != frozen["settings"]:
         changed.append("screening settings in kvsel/freeze.py")

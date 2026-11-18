@@ -26,6 +26,7 @@ from .analysis import (
     read_interval,
 )
 from .models.llava15 import MAPPING_RULES, box_to_square, evidence_patches
+from .protocol import CODE_AMENDMENTS, code_accepted
 from .runner import eligible
 from .selectors import jaccard
 
@@ -329,22 +330,6 @@ def _plain(value):
     if isinstance(value, tuple | set):
         return list(value)
     raise TypeError(f"not serialisable: {type(value)}")
-
-
-CODE_AMENDMENTS = "code_amendments.json"
-
-
-def code_accepted(frozen: str, current: str, amendments: Path) -> bool:
-    """The frozen code, or code reached from it through dated, outcome-blind amendments.
-
-    Each entry of the amendments file, in order, is {"from", "to", "date", "reason", "evidence"}: code
-    `to` replaced code `from` and reproduced the frozen results exactly (PREREG, section 1.9).
-    """
-    reached = {frozen}
-    for entry in json.loads(amendments.read_text()) if amendments.exists() else []:
-        if entry["from"] in reached:
-            reached.add(entry["to"])
-    return current in reached
 
 
 def confirm_report(runs: dict[str, tuple[Path, Path]], out_dir: Path, resamples: int = RESAMPLES,
