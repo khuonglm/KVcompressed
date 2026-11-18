@@ -196,7 +196,7 @@ def main(argv: list[str] | None = None) -> None:
     sub = commands.add_parser("report", help="the pre-registered NeXT analysis (PREREG 4.3); rechecks the freeze. No GPU")
     _add_protocol(sub)
     sub.add_argument("--run", type=Path, required=True)
-    sub.add_argument("--resamples", type=int, default=10_000)  # kvsel.analysis.RESAMPLES; pandas would slow `--help`
+    sub.add_argument("--resamples", type=int, default=10_000)  # kvsel.analysis.statistics.RESAMPLES; pandas would slow `--help`
     sub.add_argument("--llava15", type=Path, required=True,
                      help="the replication report's results.json, printed beside NeXT's estimates (PREREG 4.3)")
     sub.add_argument("--out", type=Path, required=True)

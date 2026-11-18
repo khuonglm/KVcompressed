@@ -16,7 +16,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .confirm_analysis import checks, load_run
+from .analysis.tables import checks, load_run
 from .freeze import SCREENING, check_screening, sha256_file
 from .model import Bundle
 from .models.llava15 import NUM_VISUAL

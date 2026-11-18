@@ -7,7 +7,7 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from ..analysis import RESAMPLES
+from ..analysis.statistics import RESAMPLES
 
 RECORD = Path("freeze/replication_gqa.json")
 

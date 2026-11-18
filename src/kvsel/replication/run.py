@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ..confirm_analysis import checks, load_run
+from ..analysis.tables import checks, load_run
 from ..model import Bundle
 from ..runner import open_image, run_item, write_json_atomic
 from .protocol import BLIND, units

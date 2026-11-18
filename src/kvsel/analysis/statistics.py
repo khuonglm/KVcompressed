@@ -1,10 +1,13 @@
-"""Margin, estimands, image-clustered bootstrap, Holm and interval readings."""
+"""Margin and its variants, estimands, image-clustered bootstrap, Holm, interval readings and clustered OLS."""
 
 from __future__ import annotations
+
+import math
 
 import numpy as np
 import pandas as pd
 
+SURFACE = "capitalized"  # the primary margin's surface rule (PREREG.md 2.3)
 DELTA = 0.10
 RESAMPLES = 10_000
 _BATCH = 500
@@ -21,11 +24,18 @@ def margin(scores: dict, surface: str = "lower") -> float:
     return sum(scores["true"][surface]) - sum(scores["alt"][surface])
 
 
-def column_name(row: dict) -> str:
-    if row["selector"] in ("full", "uniform"):
-        return f"{row['selector']}|{row['cell']}"
-    reserve = "+r" if row["reserve"] else ""
-    return f"{row['selector']}{reserve}|{row['cell']}"
+def margin_variant(scores: dict, variant: str) -> float:
+    """The primary margin and its pre-registered sensitivity forms. Each score list ends with </s>."""
+    if variant == "primary":
+        return margin(scores, SURFACE)
+    if variant == "logsum":
+        return margin(scores, "logsum")
+    true, alt = scores["true"][SURFACE], scores["alt"][SURFACE]
+    if variant == "content_only":
+        return sum(true[:-1]) - sum(alt[:-1])
+    if variant == "length_normalised":
+        return float(np.mean(true) - np.mean(alt))
+    raise ValueError(f"unknown margin variant {variant!r}")
 
 
 def estimands(wide: pd.DataFrame, selector: str, condition: str) -> dict[str, pd.Series]:
@@ -70,6 +80,16 @@ def cluster_bootstrap(values: pd.Series, clusters: pd.Series, resamples: int = R
     }
 
 
+def bootstrap(values: pd.Series, images: pd.Series, resamples: int = RESAMPLES) -> dict:
+    """The image-clustered bootstrap of one per-item series, with its interval reading; empty gives no estimate."""
+    values = values.dropna()
+    if values.empty:
+        return {"estimate": None, "items": 0}
+    result = cluster_bootstrap(values, images.reindex(values.index), resamples)
+    result["reading"] = read_interval(*result["ci95"])
+    return result
+
+
 def holm(p_values: dict[str, float], alpha: float = 0.05) -> dict[str, bool]:
     """Step-down: reject in ascending p order until the first failure."""
     decisions = {name: False for name in p_values}
@@ -90,3 +110,23 @@ def read_interval(low: float, high: float, delta: float = DELTA) -> str:
         return "opposite direction, practically small" if small else "opposite direction"
     return "practically small" if small else "inconclusive"
 
+
+
+def clustered_ols(y: np.ndarray, x: np.ndarray, clusters: np.ndarray) -> dict:
+    """Slope of y on x with an intercept; CR1 cluster-robust SE; normal-approximation interval and p."""
+    design = np.column_stack([np.ones_like(x), x])
+    bread = np.linalg.inv(design.T @ design)
+    beta = bread @ design.T @ y
+    residuals = y - design @ beta
+    meat = np.zeros((2, 2))
+    groups = pd.Series(range(len(y))).groupby(clusters).indices
+    for index in groups.values():
+        score = design[index].T @ residuals[index]
+        meat += np.outer(score, score)
+    n, g = len(y), len(groups)
+    covariance = bread @ meat @ bread * (g / (g - 1)) * ((n - 1) / (n - 2))
+    se = float(math.sqrt(covariance[1, 1]))
+    z = beta[1] / se if se > 0 else float("inf")
+    return {"slope": float(beta[1]), "intercept": float(beta[0]), "se": se,
+            "ci95": (float(beta[1] - 1.96 * se), float(beta[1] + 1.96 * se)),
+            "p_two_sided": float(math.erfc(abs(z) / math.sqrt(2))), "items": n, "images": g}

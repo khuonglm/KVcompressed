@@ -6,7 +6,7 @@ import argparse
 import json
 from pathlib import Path
 
-from ..analysis import RESAMPLES
+from ..analysis.statistics import RESAMPLES
 from .run import PARTS
 
 

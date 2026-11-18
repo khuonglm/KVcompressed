@@ -12,15 +12,10 @@ from pathlib import Path
 
 import pandas as pd
 
-from ..analysis import RESAMPLES
-from ..confirm_analysis import (
-    _boot,
-    _table,
-    evidence_sets,
-    load_run,
-    margin_variant,
-    wide_margins,
-)
+from ..analysis.blocks import rates_table, table, write_report
+from ..analysis.statistics import RESAMPLES, bootstrap, margin_variant
+from ..analysis.tables import behaviour_rates, load_run, wide_margins
+from ..confirm_analysis import evidence_sets
 from .run import BUDGETS, EVIDENCE_RULE, PARTS, RESTORE_M, SEEDS, K
 
 
@@ -61,15 +56,6 @@ def quartet(wide: pd.DataFrame, prefix: str) -> dict[str, pd.Series]:
             "E_harm^(mis)": (wide["full|mis"] - b) - (wide["full|Q"] - a)}
 
 
-def behaviour(rows: list[dict]) -> dict[str, dict]:
-    frame = pd.DataFrame([{"column": column(r), "outcome": r["outcome"]} for r in rows])
-    if frame.empty:
-        return {}
-    rates = frame.groupby("column")["outcome"].value_counts(normalize=True).unstack(fill_value=0.0)
-    return {name: {key: float(rates.loc[name].get(key, 0.0)) for key in ("correct", "alt", "other")}
-            for name in rates.index}
-
-
 def followup_results(followup_dir: Path, confirm_run: Path, manifest: Path, resamples: int = RESAMPLES) -> dict:
     confirm_rows, confirm_items = load_run(confirm_run)
     base, images = wide_margins(confirm_rows, "primary")
@@ -80,7 +66,7 @@ def followup_results(followup_dir: Path, confirm_run: Path, manifest: Path, resa
     expected = {"budgets": len(base), "lt": len(base), "random": len(base), "restore": len(grounding)}
 
     def boot(series: pd.Series) -> dict:
-        return _boot(series, images, resamples)
+        return bootstrap(series, images, resamples)
 
     results: dict = {"confirm_run": str(confirm_run), "parts": {}}
     kept_match = {"Q": [], "mis": []}
@@ -94,7 +80,7 @@ def followup_results(followup_dir: Path, confirm_run: Path, manifest: Path, resa
             kept_match["mis"].append(data["kept_144"]["mis"] == confirm_kept.get((item_id, "B_mis")))
         joined = base.join(wide, how="inner")
         entry = {"items": len(files), "expected": expected[part], "complete": len(files) == expected[part],
-                 "behaviour": behaviour(rows)}
+                 "behaviour": behaviour_rates(rows, column)}
         if part == "budgets":
             entry["by_k"] = {}
             for k in (BUDGETS[0], K, BUDGETS[1]):
@@ -155,19 +141,17 @@ def render(results: dict) -> str:
         lines += [f"## {titles[part]}", "", f"{entry['items']} items ({status}).", ""]
         if part == "budgets":
             for k, block in entry["by_k"].items():
-                lines += _table(f"K = {k}", block, "nats", True)
+                lines += table(f"K = {k}", block, "nats", True)
         elif part == "restore":
             q = entry["qualifying"]
             ref = entry["reference_vs_confirm"]
             lines += [(f"Qualifying items: m = 4: {q['4']}, m = 8: {q['8']}. Reference (B_mis rerun) vs the "
                       f"confirmatory B_mis: largest difference {_num(ref['max_abs_diff'])} nats over {ref['items']} items."), ""]
             for m, block in entry["by_m"].items():
-                lines += _table(f"m = {m}", block, "nats", True) if block else [f"### m = {m}", "", "No qualifying items.", ""]
+                lines += table(f"m = {m}", block, "nats", True) if block else [f"### m = {m}", "", "No qualifying items.", ""]
         else:
-            lines += _table("Estimates", entry["estimates"], "nats", True)
-        lines += ["### Behaviour rates", "", "| Run | Correct | Alternative | Other |", "| --- | ---: | ---: | ---: |"]
-        lines += [f"| {name} | {r['correct']:.3f} | {r['alt']:.3f} | {r['other']:.3f} |" for name, r in entry["behaviour"].items()]
-        lines.append("")
+            lines += table("Estimates", entry["estimates"], "nats", True)
+        lines += ["### Behaviour rates", "", *rates_table(entry["behaviour"]), ""]
     return "\n".join(lines)
 
 
@@ -184,7 +168,5 @@ def followup_report(followup_dir: Path, confirm_run: Path, manifest: Path, out_d
     results = followup_results(followup_dir, confirm_run, manifest, resamples)
     if not results["parts"]:
         raise SystemExit(f"no follow-up parts under {followup_dir}")
-    out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "results.json").write_text(json.dumps(results, indent=2) + "\n")
-    (out_dir / "report.md").write_text(render(results))
+    write_report(out_dir, results, render(results), trailing_newline=True)
     return {part: {"items": e["items"], "complete": e["complete"]} for part, e in results["parts"].items()}

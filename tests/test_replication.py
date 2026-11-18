@@ -184,7 +184,7 @@ def test_freeze_refuses_a_short_set_and_a_changed_main_set(world, tmp_path):
 
 
 def test_check_refuses_changes_and_accepts_only_amended_code(world, tmp_path, monkeypatch):
-    from kvsel.confirm_analysis import CODE_AMENDMENTS
+    from kvsel.protocol import CODE_AMENDMENTS
     from kvsel.replication import protocol
 
     _, args, record = world

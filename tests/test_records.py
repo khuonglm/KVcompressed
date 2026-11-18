@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from kvsel.confirm_analysis import CODE_AMENDMENTS, code_accepted
+from kvsel.protocol import CODE_AMENDMENTS, code_accepted
 
 ROOT = Path(__file__).parents[1]
 FREEZE = ROOT / "freeze"

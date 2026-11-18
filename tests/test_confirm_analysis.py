@@ -6,13 +6,8 @@ from dataclasses import asdict
 import numpy as np
 import pytest
 
-from kvsel.confirm_analysis import (
-    apply_families,
-    clustered_ols,
-    confirm_report,
-    dataset_results,
-    margin_variant,
-)
+from kvsel.analysis.statistics import clustered_ols, margin_variant
+from kvsel.confirm_analysis import apply_families, confirm_report, dataset_results
 from kvsel.runner import cell_name, pilot_units
 from kvsel.selectors import jaccard
 

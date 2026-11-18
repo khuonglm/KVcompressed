@@ -1,10 +1,20 @@
 """Analysis on simulated data with known answers."""
 
+import hashlib
+
 import numpy as np
 import pandas as pd
 import pytest
 
-from kvsel.analysis import cluster_bootstrap, estimands, holm, margin, read_interval
+from kvsel.analysis.blocks import check_complete, source_file, write_report
+from kvsel.analysis.statistics import (
+    cluster_bootstrap,
+    estimands,
+    holm,
+    margin,
+    read_interval,
+)
+from kvsel.analysis.tables import behaviour_rates, overlap, paired_behaviour
 
 
 def scores(true_lower, alt_lower, true_cap=None, alt_cap=None):
@@ -115,3 +125,56 @@ def test_holm_hand_worked():
 ])
 def test_interval_reading(low, high, expected):
     assert read_interval(low, high) == expected
+
+
+# --- Run tables and report blocks ----------------------------------------------------------------------------
+
+def row(item, cell, outcome="correct", selection="none", kept=None, reserve=False, selector="pw"):
+    return {"item_id": item, "selector": selector, "reserve": reserve, "cell": cell, "selection": selection,
+            "kept": kept, "outcome": outcome}
+
+
+def test_behaviour_rates_per_column():
+    rows = [row("a", "B_mis", "alt"), row("b", "B_mis", "correct"), row("a", "C_mis", "correct")]
+    assert behaviour_rates(rows) == {"pw|B_mis": {"correct": 0.5, "alt": 0.5, "other": 0.0},
+                                     "pw|C_mis": {"correct": 1.0, "alt": 0.0, "other": 0.0}}
+    assert behaviour_rates([]) == {}
+
+
+def test_overlap_with_s_q_in_the_order_of_the_conditions():
+    rows = [row("a", "A", selection="Q", kept=[0, 1, 2, 3]), row("a", "B_mis", selection="mis", kept=[0, 1, 2, 4]),
+            row("a", "B_irr", selection="irr", kept=[0, 1, 2, 3]),
+            row("a", "B_irr", selection="irr", kept=[9], reserve=True)]  # reserved sets don't count
+    assert overlap(rows, ("irr", "mis", "match")) == {"irr": {"mean_jaccard": 1.0, "share_changed": 0.0},
+                                                      "mis": {"mean_jaccard": 0.6, "share_changed": 1.0}}
+
+
+def test_paired_behaviour_drops_items_without_the_b_cell():
+    rows = [row("a", "B_mis", "alt"), row("a", "C_mis", "correct"), row("b", "C_mis", "correct")]
+    paired = paired_behaviour(rows, "mis")
+    assert paired["correct"].dropna().to_dict() == {"a": 1.0}
+    assert paired["alt"].dropna().to_dict() == {"a": -1.0} and paired["alt"].isna().sum() == 1
+
+
+def test_completeness_names_missing_and_extra_items(tmp_path):
+    check_complete(tmp_path, {"a", "b"}, {"a", "b"}, "main-set items", "the run")
+    with pytest.raises(SystemExit, match="missing 1 main-set items; rerun the run to finish it"):
+        check_complete(tmp_path, {"a"}, {"a", "b"}, "main-set items", "the run")
+    with pytest.raises(SystemExit, match="1 extra item files"):
+        check_complete(tmp_path, {"a", "b", "c"}, {"a", "b"}, "main-set items", "the run")
+
+
+def test_source_file_is_named_and_hashed(tmp_path):
+    path = tmp_path / "results.json"
+    path.write_text('{"k": 1}')
+    found = source_file(path)
+    assert found["data"] == {"k": 1} and found["path"] == str(path)
+    assert found["sha256"] == hashlib.sha256(b'{"k": 1}').hexdigest()
+
+
+@pytest.mark.parametrize("trailing_newline", [False, True])
+def test_writer_formatting(tmp_path, trailing_newline):
+    write_report(tmp_path / "out", {"x": np.float64(0.5), "n": np.int64(2), "t": (1, 2)}, "# R\n", trailing_newline)
+    expected = '{\n  "x": 0.5,\n  "n": 2,\n  "t": [\n    1,\n    2\n  ]\n}' + ("\n" if trailing_newline else "")
+    assert (tmp_path / "out" / "results.json").read_text() == expected
+    assert (tmp_path / "out" / "report.md").read_text() == "# R\n"

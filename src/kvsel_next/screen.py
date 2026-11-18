@@ -18,10 +18,10 @@ from PIL import Image
 
 import kvsel
 import kvsel_next
-from kvsel.confirm_analysis import CODE_AMENDMENTS, code_accepted
 from kvsel.freeze import sha256_file
 from kvsel.model import Bundle
 from kvsel.models.llava_next import NEXT
+from kvsel.protocol import CODE_AMENDMENTS, code_accepted
 from kvsel.runner import NO_CONTEXT, Q, Unit, eligible, open_image, write_json_atomic
 from kvsel.verification import PASS, load_decisions
 

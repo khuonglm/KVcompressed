@@ -21,9 +21,10 @@ import numpy as np
 import torch
 
 from ..confirm import code_hash_all
-from ..confirm_analysis import CODE_AMENDMENTS, code_accepted, evidence_sets
+from ..confirm_analysis import evidence_sets
 from ..engine import probe
 from ..model import Bundle
+from ..protocol import CODE_AMENDMENTS, code_accepted
 from ..runner import (
     NO_CONTEXT,
     Q,

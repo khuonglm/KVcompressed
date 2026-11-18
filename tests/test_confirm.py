@@ -98,7 +98,7 @@ def test_comparative_freeze_and_its_check(setup, tmp_path):
 
 @pytest.mark.network
 def test_confirm_runs_on_the_tiny_model(tiny_llava, tmp_path, monkeypatch):
-    from kvsel.confirm_analysis import load_run, wide_margins
+    from kvsel.analysis.tables import load_run, wide_margins
     from kvsel.model import bundle_from_model
     from kvsel.models.llava15 import LLAVA
 

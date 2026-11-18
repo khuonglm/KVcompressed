@@ -15,8 +15,9 @@ import numpy as np
 import torch
 from PIL import Image
 
+from kvsel.analysis.statistics import SURFACE
+from kvsel.analysis.tables import checks, load_run
 from kvsel.confirm import load_flags
-from kvsel.confirm_analysis import SURFACE, checks, load_run
 from kvsel.engine import probe
 from kvsel.freeze import sha256_file
 from kvsel.model import Bundle

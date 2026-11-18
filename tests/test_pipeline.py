@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from kvsel.confirm_analysis import load_run, wide_margins
+from kvsel.analysis.tables import load_run, wide_margins
 from kvsel.model import bundle_from_model
 from kvsel.models.llava15 import LAYOUT, LLAVA, PAD_COLOR, pad_to_square
 from kvsel.runner import Unit, cell_name, pilot_units, require_development, run_item, run_items, run_screen

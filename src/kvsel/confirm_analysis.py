@@ -9,29 +9,36 @@ control item, and the report says it supports no claim.
 from __future__ import annotations
 
 import json
-import math
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
-from .analysis import (
+from .analysis.blocks import rates_table, table, write_report
+from .analysis.statistics import (
     DELTA,
     RESAMPLES,
-    cluster_bootstrap,
-    column_name,
+    SURFACE,
+    bootstrap,
+    clustered_ols,
     estimands,
     holm,
-    margin,
-    read_interval,
 )
+from .analysis.tables import (
+    PRIMARY,
+    behaviour_rates,
+    checks,
+    has_cells,
+    kept_sets,
+    load_run,
+    overlap,
+    paired_behaviour,
+    wide_margins,
+)
+from .confirm import code_hash_all
 from .models.llava15 import MAPPING_RULES, box_to_square, evidence_patches
 from .protocol import CODE_AMENDMENTS, code_accepted
-from .runner import eligible
 from .selectors import jaccard
 
-SURFACE = "capitalized"
-PRIMARY = "pw"
 SECONDARY = "qspan"
 DATASETS = ("gqa", "textvqa")
 MARGIN_VARIANTS = ("primary", "logsum", "content_only", "length_normalised")
@@ -40,72 +47,6 @@ FAMILIES = {
     "H2": ["T_match", "T_irr"],
     "H3_H4": ["E_harm^(mis)", "S_Q^(mis)"],
 }
-
-
-def margin_variant(scores: dict, variant: str) -> float:
-    """The primary margin and its pre-registered sensitivity forms. Each score list ends with </s>."""
-    if variant == "primary":
-        return margin(scores, SURFACE)
-    if variant == "logsum":
-        return margin(scores, "logsum")
-    true, alt = scores["true"][SURFACE], scores["alt"][SURFACE]
-    if variant == "content_only":
-        return sum(true[:-1]) - sum(alt[:-1])
-    if variant == "length_normalised":
-        return float(np.mean(true) - np.mean(alt))
-    raise ValueError(f"unknown margin variant {variant!r}")
-
-
-def load_run(run_dir: Path) -> tuple[list[dict], dict[str, dict]]:
-    rows, items = [], {}
-    paths = sorted((Path(run_dir) / "items").glob("*.json"))
-    if not paths:
-        raise SystemExit(f"no item files under {run_dir}")
-    for path in paths:
-        item = json.loads(path.read_text())
-        items[item["item_id"]] = {"image_id": item["image_id"], "subset": item.get("subset")}
-        rows.extend({"item_id": item["item_id"], "image_id": item["image_id"], **row} for row in item["rows"])
-    return rows, items
-
-
-def wide_margins(rows: list[dict], variant: str) -> tuple[pd.DataFrame, pd.Series]:
-    frame = pd.DataFrame([{"item_id": r["item_id"], "column": column_name(r),
-                           "value": margin_variant(r["scores"], variant)} for r in rows])
-    wide = frame.pivot(index="item_id", columns="column", values="value")
-    images = pd.Series({r["item_id"]: r["image_id"] for r in rows}).reindex(wide.index)
-    return wide, images
-
-
-def has_cells(wide: pd.DataFrame, selector: str, condition: str) -> bool:
-    needed = [f"{selector}|A", f"{selector}|B_{condition}", f"{selector}|C_{condition}", f"{selector}|D_{condition}",
-              f"full|{condition}", "full|Q"]
-    return all(column in wide for column in needed)
-
-
-def kept_sets(rows: list[dict], selector: str = PRIMARY) -> dict[tuple[str, str], set[int]]:
-    """Kept visual indices per (item, selection context), for the unreserved selector at its budget."""
-    return {(r["item_id"], r["selection"]): set(r["kept"]) for r in rows
-            if r["selector"] == selector and not r["reserve"] and r["kept"] is not None}
-
-
-def clustered_ols(y: np.ndarray, x: np.ndarray, clusters: np.ndarray) -> dict:
-    """Slope of y on x with an intercept; CR1 cluster-robust SE; normal-approximation interval and p."""
-    design = np.column_stack([np.ones_like(x), x])
-    bread = np.linalg.inv(design.T @ design)
-    beta = bread @ design.T @ y
-    residuals = y - design @ beta
-    meat = np.zeros((2, 2))
-    groups = pd.Series(range(len(y))).groupby(clusters).indices
-    for index in groups.values():
-        score = design[index].T @ residuals[index]
-        meat += np.outer(score, score)
-    n, g = len(y), len(groups)
-    covariance = bread @ meat @ bread * (g / (g - 1)) * ((n - 1) / (n - 2))
-    se = float(math.sqrt(covariance[1, 1]))
-    z = beta[1] / se if se > 0 else float("inf")
-    return {"slope": float(beta[1]), "intercept": float(beta[0]), "se": se,
-            "ci95": (float(beta[1] - 1.96 * se), float(beta[1] + 1.96 * se)),
-            "p_two_sided": float(math.erfc(abs(z) / math.sqrt(2))), "items": n, "images": g}
 
 
 def evidence_sets(manifest: Path, item_ids: set[str]) -> dict[str, dict[str, set[int]]]:
@@ -122,28 +63,6 @@ def evidence_sets(manifest: Path, item_ids: set[str]) -> dict[str, dict[str, set
         squares = [box_to_square(box, size["width"], size["height"]) for box in boxes]
         sets[item["item_id"]] = {rule: {p for s in squares for p in evidence_patches(s, rule)} for rule in MAPPING_RULES}
     return sets
-
-
-def checks(rows: list[dict]) -> dict:
-    """Consistency with the screen: Full_Q still eligible, Blind_Q never eligible, truncation."""
-    full_q = [r for r in rows if r["selector"] == "full" and r["cell"] == "Q"]
-    blind = [r for r in rows if r["selector"] == "blind"]
-    return {
-        "full_q_no_longer_eligible": sum(not eligible(r, SURFACE) for r in full_q),
-        "blind_rows": len(blind),
-        "blind_now_eligible": sum(eligible(r, SURFACE) for r in blind),
-        "blind_mean_margin": float(np.mean([margin(r["scores"], SURFACE) for r in blind])) if blind else None,
-        "truncated_share": float(np.mean([r["truncated"] for r in rows])),
-    }
-
-
-def _boot(values: pd.Series, images: pd.Series, resamples: int) -> dict:
-    values = values.dropna()
-    if values.empty:
-        return {"estimate": None, "items": 0}
-    result = cluster_bootstrap(values, images.reindex(values.index), resamples)
-    result["reading"] = read_interval(*result["ci95"])
-    return result
 
 
 def dataset_results(run_dir: Path, manifest: Path, resamples: int = RESAMPLES, expected_items: int | None = None) -> dict:
@@ -169,18 +88,18 @@ def dataset_results(run_dir: Path, manifest: Path, resamples: int = RESAMPLES, e
     if "mis" not in per_condition:
         raise SystemExit(f"{run_dir} lacks the misleading-condition cells for {PRIMARY}; is it a confirmatory run?")
     mis = per_condition["mis"]
-    tests["S_H^(mis)"] = _boot(mis["S_H"], images, resamples)
-    tests["E_harm^(mis)"] = _boot(mis["E_harm"], images, resamples)
-    tests["S_Q^(mis)"] = _boot(mis["S_Q"], images, resamples)
+    tests["S_H^(mis)"] = bootstrap(mis["S_H"], images, resamples)
+    tests["E_harm^(mis)"] = bootstrap(mis["E_harm"], images, resamples)
+    tests["S_Q^(mis)"] = bootstrap(mis["S_Q"], images, resamples)
     for other in ("match", "irr"):
         if other in per_condition:
             control_index = mis["S_H"].index.isin(control)
             difference = (mis["S_H"] - per_condition[other]["S_H"]).where(control_index)
-            tests[f"T_{other}"] = _boot(difference, images, resamples)
-            exploratory[f"S_H^({other})"] = _boot(per_condition[other]["S_H"].where(control_index), images, resamples)
-    exploratory["I^(mis)"] = _boot(mis["I"], images, resamples)
+            tests[f"T_{other}"] = bootstrap(difference, images, resamples)
+            exploratory[f"S_H^({other})"] = bootstrap(per_condition[other]["S_H"].where(control_index), images, resamples)
+    exploratory["I^(mis)"] = bootstrap(mis["I"], images, resamples)
     if has_cells(wide, SECONDARY, "mis"):
-        exploratory["S_H^(mis), question-span"] = _boot(estimands(wide, SECONDARY, "mis")["S_H"], images, resamples)
+        exploratory["S_H^(mis), question-span"] = bootstrap(estimands(wide, SECONDARY, "mis")["S_H"], images, resamples)
     out["tests"], out["exploratory"] = tests, exploratory
 
     primary = tests["S_H^(mis)"]
@@ -190,28 +109,16 @@ def dataset_results(run_dir: Path, manifest: Path, resamples: int = RESAMPLES, e
     out["sensitivity"] = {}
     for variant in MARGIN_VARIANTS[1:]:
         other_wide, other_images = wide_margins(rows, variant)
-        out["sensitivity"][variant] = _boot(estimands(other_wide, PRIMARY, "mis")["S_H"], other_images, resamples)
+        out["sensitivity"][variant] = bootstrap(estimands(other_wide, PRIMARY, "mis")["S_H"], other_images, resamples)
 
     # Behaviour: outcome rates per run, and paired B_mis vs C_mis differences.
-    outcomes = pd.DataFrame([{"item_id": r["item_id"], "column": column_name(r), "outcome": r["outcome"]} for r in rows])
-    rates = outcomes.groupby("column")["outcome"].value_counts(normalize=True).unstack(fill_value=0.0)
-    out["behaviour_rates"] = {column: {k: float(rates.loc[column].get(k, 0.0)) for k in ("correct", "alt", "other")}
-                              for column in rates.index}
-    pivot = outcomes.pivot(index="item_id", columns="column", values="outcome")
-    out["behaviour_paired"] = {}
-    for result in ("correct", "alt"):
-        difference = (pivot[f"{PRIMARY}|C_mis"] == result).astype(float) - (pivot[f"{PRIMARY}|B_mis"] == result).astype(float)
-        out["behaviour_paired"][f"{result}: C_mis - B_mis"] = _boot(difference, images, resamples)
+    out["behaviour_rates"] = behaviour_rates(rows)
+    out["behaviour_paired"] = {f"{result}: C_mis - B_mis": bootstrap(difference, images, resamples)
+                               for result, difference in paired_behaviour(rows, "mis").items()}
 
     # Overlap and H5.
     kept = kept_sets(rows)
-    overlap = {}
-    for condition in ("mis", "match", "irr"):
-        values = [jaccard(s, kept[(item, "Q")]) for (item, context), s in kept.items()
-                  if context == condition and (item, "Q") in kept]
-        if values:
-            overlap[condition] = {"mean_jaccard": float(np.mean(values)), "share_changed": float(np.mean(np.array(values) < 1))}
-    out["overlap"] = overlap
+    out["overlap"] = overlap(rows, ("mis", "match", "irr"))
     distance = pd.Series({item: 1 - jaccard(kept[(item, "mis")], kept[(item, "Q")])
                           for item in wide.index if (item, "mis") in kept and (item, "Q") in kept})
     frame = pd.DataFrame({"y": mis["S_H"], "x": distance, "image": images}).dropna()
@@ -227,7 +134,7 @@ def dataset_results(run_dir: Path, manifest: Path, resamples: int = RESAMPLES, e
             region = rule_sets[rule]
             if region and (item, "Q") in kept and (item, "mis") in kept:
                 values[item] = (len(kept[(item, "Q")] & region) - len(kept[(item, "mis")] & region)) / len(region)
-        out["H6"][rule] = _boot(pd.Series(values, dtype=float), images, resamples)
+        out["H6"][rule] = bootstrap(pd.Series(values, dtype=float), images, resamples)
     out["grounding_items"] = len(evidence)
 
     # Mitigation (EQ1): each variant's margin gain over B_mis, and costs on neutral and matching answering.
@@ -244,9 +151,9 @@ def dataset_results(run_dir: Path, manifest: Path, resamples: int = RESAMPLES, e
     for name, (treated, baseline, reserve) in pairs.items():
         treated_column, baseline_column = f"{PRIMARY}{reserve}|{treated}", f"{PRIMARY}|{baseline}"
         if treated_column in wide and baseline_column in wide:
-            out["mitigation"][name] = _boot(wide[treated_column] - wide[baseline_column], images, resamples)
+            out["mitigation"][name] = bootstrap(wide[treated_column] - wide[baseline_column], images, resamples)
     if "uniform|mis" in wide:
-        out["mitigation"]["uniform (mis)"] = _boot(wide["uniform|mis"] - base, images, resamples)
+        out["mitigation"]["uniform (mis)"] = bootstrap(wide["uniform|mis"] - base, images, resamples)
     out["mean_margins"] = {column: float(wide[column].mean()) for column in sorted(wide.columns)}
     return out
 
@@ -261,22 +168,6 @@ def apply_families(results: dict[str, dict]) -> dict:
         decisions[family] = {"complete": complete, "p_values": p_values,
                              "reject": holm(p_values) if complete else None}
     return decisions
-
-
-def _fmt(result: dict, nats: bool = True, digits: int = 3) -> str:
-    """One table row. The δ-based reading applies to margins in nats only."""
-    if result.get("estimate") is None:
-        return "— | — | — | — | — |"
-    low, high = result["ci95"]
-    reading = result.get("reading", "") if nats else ""
-    return (f"{result['estimate']:+.{digits}f} | [{low:+.{digits}f}, {high:+.{digits}f}] | {result['p_two_sided']:.4f} | "
-            f"{reading} | {result['items']} / {result['images']} |")
-
-
-def _table(title: str, block: dict, unit: str, nats: bool) -> list[str]:
-    reading = "Reading" if nats else "—"
-    return [f"### {title}", "", f"| Estimand | Mean ({unit}) | 95% interval | Two-sided p | {reading} | Items / images |",
-            "| --- | ---: | --- | ---: | --- | ---: |"] + [f"| {name} | {_fmt(result, nats)}" for name, result in block.items()] + [""]
 
 
 def render(results: dict[str, dict], families: dict) -> str:
@@ -302,15 +193,15 @@ def render(results: dict[str, dict], families: dict) -> str:
                   f"{c['blind_now_eligible']} of {c['blind_rows']} (should be 0); mean Blind_Q margin "
                   + (f"{c['blind_mean_margin']:+.3f}" if c["blind_mean_margin"] is not None else "n/a")
                   + f"; truncated answers {c['truncated_share']:.2%}.", ""]
-        lines += _table("Pre-registered tests", r["tests"], "nats", True)
+        lines += table("Pre-registered tests", r["tests"], "nats", True)
         e = r["equivalence"]
         lines += [f"Equivalence (δ = {e['delta']}): 90% interval [{e['ci90'][0]:+.3f}, {e['ci90'][1]:+.3f}], "
                   + ("inside ±δ: practically small." if e["equivalent"] else "not inside ±δ."), ""]
-        lines += _table("Exploratory (intervals only)", r["exploratory"], "nats", True)
-        lines += _table("Sensitivity of S_H^(mis) to the margin form", r["sensitivity"], "nats", True)
-        lines += _table("Behaviour, paired difference in the share of answers", r["behaviour_paired"], "share", False)
-        lines += _table("H6: ERR(S_Q) − ERR(S_mis), by evidence mapping rule", r["H6"], "share of region", False)
-        lines += _table("Mitigation (EQ1): margin gain over B_mis unless noted", r["mitigation"], "nats", True)
+        lines += table("Exploratory (intervals only)", r["exploratory"], "nats", True)
+        lines += table("Sensitivity of S_H^(mis) to the margin form", r["sensitivity"], "nats", True)
+        lines += table("Behaviour, paired difference in the share of answers", r["behaviour_paired"], "share", False)
+        lines += table("H6: ERR(S_Q) − ERR(S_mis), by evidence mapping rule", r["H6"], "share of region", False)
+        lines += table("Mitigation (EQ1): margin gain over B_mis unless noted", r["mitigation"], "nats", True)
         h5 = r["H5"]
         if h5.get("slope") is not None:
             lines += ["### H5: S_H^(mis) on 1 − Jaccard(S_Q, S_mis)", "",
@@ -319,17 +210,8 @@ def render(results: dict[str, dict], families: dict) -> str:
                       f"{h5['items']} items, {h5['images']} images."), ""]
         lines += ["### Kept-set overlap with S_Q (PW-attn)", "", "| Condition | Mean Jaccard | Share changed |", "| --- | ---: | ---: |"]
         lines += [f"| {k} | {v['mean_jaccard']:.3f} | {v['share_changed']:.3f} |" for k, v in r["overlap"].items()] + [""]
-        lines += ["### Behaviour rates", "", "| Run | Correct | Alternative | Other |", "| --- | ---: | ---: | ---: |"]
-        lines += [f"| {k} | {v['correct']:.3f} | {v['alt']:.3f} | {v['other']:.3f} |" for k, v in r["behaviour_rates"].items()] + [""]
+        lines += ["### Behaviour rates", "", *rates_table(r["behaviour_rates"]), ""]
     return "\n".join(lines)
-
-
-def _plain(value):
-    if isinstance(value, np.generic):
-        return value.item()
-    if isinstance(value, tuple | set):
-        return list(value)
-    raise TypeError(f"not serialisable: {type(value)}")
 
 
 def confirm_report(runs: dict[str, tuple[Path, Path]], out_dir: Path, resamples: int = RESAMPLES,
@@ -342,8 +224,6 @@ def confirm_report(runs: dict[str, tuple[Path, Path]], out_dir: Path, resamples:
     for dataset, (run_dir, manifest) in runs.items():
         expected = None
         if records and dataset in records:
-            from .confirm import code_hash_all
-
             record = json.loads(Path(records[dataset]).read_text())
             if not code_accepted(record["code_sha256"], code_hash_all(), Path(records[dataset]).parent / CODE_AMENDMENTS):
                 raise SystemExit(f"the code changed since {records[dataset]} was frozen; analyse with the frozen code, "
@@ -351,7 +231,5 @@ def confirm_report(runs: dict[str, tuple[Path, Path]], out_dir: Path, resamples:
             expected = record["main_items"]
         results[dataset] = dataset_results(run_dir, manifest, resamples, expected)
     families = apply_families(results)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "results.json").write_text(json.dumps({"datasets": results, "families": families}, indent=2, default=_plain))
-    (out_dir / "report.md").write_text(render(results, families))
+    write_report(out_dir, {"datasets": results, "families": families}, render(results, families))
     return {"datasets": results, "families": families}
