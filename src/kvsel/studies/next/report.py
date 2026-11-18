@@ -25,7 +25,7 @@ from ...analysis.blocks import (
     write_report,
 )
 from ...analysis.statistics import RESAMPLES, SURFACE
-from ...analysis.tables import behaviour_rates, checks, load_run, overlap
+from ...analysis.tables import behaviour_rates, consistency_counts, load_run, overlap
 from ...models.llava15 import NUM_VISUAL
 from .comparative import CONDITIONS, CONTROL_CONDITIONS, SHARES
 
@@ -61,7 +61,7 @@ def results(run_dir: Path, record_path: Path, llava15: Path, resamples: int = RE
         "run": str(run_dir), "surface": SURFACE, "items": len(items), "images": len({r["image_id"] for r in rows}),
         "control_items": len(record["control_ids"]),
         "main_size_frozen_at_stage1": record["main_size_frozen_at_stage1"],
-        "checks": {**checks(rows), "visual_tokens_min": min(x["total"] for x in layouts),
+        "checks": {**consistency_counts(rows), "visual_tokens_min": min(x["total"] for x in layouts),
                    "visual_tokens_max": max(x["total"] for x in layouts),
                    "grids": dict(Counter(f"{x['grid'][0]}x{x['grid'][1]}" for x in layouts).most_common())},
         "family": holm_family(tests, settings["alpha"]),

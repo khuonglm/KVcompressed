@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from ...analysis.blocks import rates_table, table, write_report
+from ...analysis.blocks import check_complete, rates_table, table, write_report
 from ...analysis.statistics import (
     DELTA,
     RESAMPLES,
@@ -26,7 +26,7 @@ from ...analysis.statistics import (
 from ...analysis.tables import (
     PRIMARY,
     behaviour_rates,
-    checks,
+    consistency_counts,
     has_cells,
     kept_sets,
     load_run,
@@ -41,7 +41,7 @@ from ...selectors import jaccard
 SECONDARY = "qspan"
 DATASETS = ("gqa", "textvqa")
 MARGIN_VARIANTS = ("primary", "logsum", "content_only", "length_normalised")
-FAMILIES = {  # PREREG 2.3, multiplicity
+HOLM_FAMILIES = {  # PREREG 2.3, multiplicity
     "H1": ["S_H^(mis)"],
     "H2": ["T_match", "T_irr"],
     "H3_H4": ["E_harm^(mis)", "S_Q^(mis)"],
@@ -74,12 +74,10 @@ def dataset_results(run_dir: Path, manifest: Path, resamples: int = RESAMPLES, e
         "run": str(run_dir), "rehearsal": rehearsal, "surface": SURFACE,
         "items": len(items), "images": int(images.nunique()), "control_items": len(control),
     }
-    if expected_items is not None and len(items) != expected_items:
-        fix = ("rerun `kvsel confirm` to finish it" if len(items) < expected_items
-               else "move item files outside the frozen main set out of the run folder")
-        raise Refusal(f"{run_dir} has {len(items)} items, but the frozen main set has {expected_items}; {fix}")
+    if expected_items is not None:
+        check_complete(run_dir, set(items), expected_items, "main-set items", "`kvsel confirmatory run`")
 
-    out["checks"] = checks(rows)
+    out["checks"] = consistency_counts(rows)
 
     # Pre-registered estimands. Control-only quantities are NaN on main-only items, so they drop out.
     tests: dict[str, dict] = {}
@@ -162,7 +160,7 @@ def apply_families(results: dict[str, dict]) -> dict:
     """PREREG 2.3: Holm within each family across datasets. Final only when every pre-registered dataset is present."""
     complete = all(dataset in results for dataset in DATASETS)
     decisions = {}
-    for family, names in FAMILIES.items():
+    for family, names in HOLM_FAMILIES.items():
         p_values = {f"{name} [{dataset}]": results[dataset]["tests"][name]["p_two_sided"]
                     for dataset in results for name in names if results[dataset]["tests"].get(name, {}).get("estimate") is not None}
         decisions[family] = {"complete": complete, "p_values": p_values,

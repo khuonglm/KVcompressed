@@ -84,3 +84,26 @@ def test_evidence_fills_only_entries_for_the_current_code(freeze_dir, monkeypatc
     entries = json.loads((freeze_dir / CODE_AMENDMENTS).read_text())
     assert [e["evidence"] for e in entries] == ["proven", "reproduced", "reproduced"]
     assert fill_evidence(freeze_dir, "again") == 0
+
+
+def test_a_pending_entry_counts_only_while_reproducing(tmp_path):
+    from kvsel.protocol import accepting_pending, code_accepted
+
+    log = tmp_path / CODE_AMENDMENTS
+    log.write_text(json.dumps([{"from": "a", "to": "b", "evidence": "pending: run `kvsel reproduce`"}]))
+    assert not code_accepted("a", "b", log)
+    with accepting_pending():
+        assert code_accepted("a", "b", log)
+    assert not code_accepted("a", "b", log)
+    log.write_text(json.dumps([{"from": "a", "to": "b", "evidence": "reproduced"}]))
+    assert code_accepted("a", "b", log)
+
+
+def test_reproduce_refuses_a_used_output_folder(tmp_path, capsys):
+    from kvsel.cli import main
+
+    (tmp_path / "out").mkdir()
+    (tmp_path / "out" / "old.json").write_text("{}")
+    with pytest.raises(SystemExit, match="not empty") as stop:
+        main(["reproduce", "--list", str(tmp_path / "none.json"), "--out", str(tmp_path / "out")])
+    assert stop.value.code == 2

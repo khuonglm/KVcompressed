@@ -8,15 +8,19 @@ Every refusal raises `Refusal`; only the command line turns it into an exit.
 
 from __future__ import annotations
 
+import contextlib
+import contextvars
 import hashlib
 import json
-import os
-import tempfile
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+from .files import write_json
+
 CODE_AMENDMENTS = "code_amendments.json"
+PENDING = "pending"  # the evidence of an entry not yet shown to reproduce
+_ACCEPTING_PENDING = contextvars.ContextVar("accepting_pending", default=False)
 SOURCE_SUFFIXES = (".py", ".html")
 
 
@@ -50,14 +54,26 @@ def code_identity() -> str:
 def code_accepted(frozen: str, current: str, amendments: Path) -> bool:
     """The frozen code, or code reached from it through dated, outcome-blind amendments.
 
-    Each entry of the amendments file, in order, is {"from", "to", "date", "reason", "evidence"}: code
-    `to` replaced code `from` and reproduced the frozen results exactly (PREREG, section 1.9).
+    Each entry of the amendments file, in order, is {"from", "to", "date", "reason", "evidence"} (and an optional
+    "scope"): code `to` replaced code `from` and reproduced the frozen results exactly (PREREG 1.9). An entry whose
+    evidence is still pending counts only inside `accepting_pending`, which `kvsel reproduce` uses to prove it.
     """
     reached = {frozen}
     for entry in json.loads(amendments.read_text()) if amendments.exists() else []:
-        if entry["from"] in reached:
+        proven = not entry["evidence"].startswith(PENDING) or _ACCEPTING_PENDING.get()
+        if entry["from"] in reached and proven:
             reached.add(entry["to"])
     return current in reached
+
+
+@contextlib.contextmanager
+def accepting_pending():
+    """Pending amendment entries count as accepted, only while reproduction reruns the stored reports."""
+    token = _ACCEPTING_PENDING.set(True)
+    try:
+        yield
+    finally:
+        _ACCEPTING_PENDING.reset(token)
 
 
 @dataclass(frozen=True)
@@ -85,6 +101,19 @@ class Prereg:
 
 
 @dataclass(frozen=True)
+class FrozenInputs:
+    """What a stage-3 freeze reads and records: PREREG, the manifest, the screen folder, the verification decisions,
+    the stage-1 record, and the stage's own record."""
+
+    prereg: Path
+    manifest: Path
+    screen_dir: Path
+    decisions: Path
+    stage1: Path
+    record: Path
+
+
+@dataclass(frozen=True)
 class Stage:
     """`inputs` maps each record key to its current value; a `Prereg` value is stored as its sha256."""
 
@@ -97,21 +126,6 @@ class Stage:
     def state(self) -> dict:
         values = {key: value.sha256() if isinstance(value, Prereg) else value for key, value in self.inputs.items()}
         return {**values, "code_sha256": code_identity(), "settings": self.settings}
-
-
-def _write_atomic(path: Path, payload: dict) -> None:
-    """A temporary file in the same folder, renamed into place: an interrupted write leaves no record."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    handle, temporary = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
-    try:
-        with os.fdopen(handle, "w") as out:
-            out.write(json.dumps(payload, indent=2) + "\n")
-            out.flush()
-            os.fsync(out.fileno())  # the bytes are on disk before the name points at them
-        os.replace(temporary, path)
-    except BaseException:
-        Path(temporary).unlink(missing_ok=True)
-        raise
 
 
 def _refuse_draft(section: Prereg) -> None:
@@ -153,7 +167,7 @@ def freeze(stage: Stage, extra: dict | None = None) -> dict:
         raise Refusal(f"{record} already exists with different contents; {stage.name} is frozen")
     payload = {"stage": stage.name, "frozen_at": datetime.now(UTC).isoformat(timespec="seconds"), **stage.state()}
     payload |= extra or {}
-    _write_atomic(record, payload)
+    write_json(record, payload, indent=2)
     return payload
 
 
@@ -185,9 +199,6 @@ def check_code(record: Path) -> dict:
 
 # --- The amendment log ----------------------------------------------------------------------------------------
 
-PENDING = "pending"  # the evidence of an entry not yet shown to reproduce
-
-
 def live_records(freeze_dir: Path) -> dict[str, dict]:
     """Every freeze record by file name, except those another record amends (superseded: no command checks them)."""
     records = {path.name: json.loads(path.read_text()) for path in sorted(Path(freeze_dir).glob("*.json"))
@@ -217,7 +228,7 @@ def write_pending(freeze_dir: Path, reason: str, date: str) -> list[dict]:
         if latest != current:
             entries.append({"from": latest, "to": current, "date": date, "scope": "package (code_identity)",
                             "reason": reason, "evidence": f"{PENDING}: run `kvsel reproduce`"})
-    _write_atomic(path, entries)
+    write_json(path, entries, indent=2)
     return [e for e in entries if e["evidence"].startswith(PENDING)]
 
 
@@ -234,5 +245,5 @@ def fill_evidence(freeze_dir: Path, evidence: str) -> int:
                       "they were written; rerun with --reason to rewrite them")
     for entry in pending:
         entry["evidence"] = evidence
-    _write_atomic(path, entries)
+    write_json(path, entries, indent=2)
     return len(pending)

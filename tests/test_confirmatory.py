@@ -9,7 +9,8 @@ from PIL import Image
 
 from kvsel import protocol, runner
 from kvsel.models.llava15 import LLAVA
-from kvsel.protocol import CODE_AMENDMENTS, Prereg, Refusal
+from kvsel.protocol import CODE_AMENDMENTS, FrozenInputs, Prereg, Refusal
+from kvsel.runs import MainSet
 from kvsel.studies.confirmatory import comparative, screening
 from kvsel.studies.confirmatory.screening import SECTION, check_screening, freeze_screening
 from kvsel.verification import append_decision
@@ -269,27 +270,27 @@ def test_comparative_freeze_and_its_check(stage3, tmp_path):
     items, manifest, screen, decisions, prereg, stage1 = stage3
     decide(decisions, items, {0: "pass", 2: "pass", 3: "pass"})
     record = tmp_path / "freeze" / "comparative_gqa.json"
-    args = (prereg, manifest, screen, decisions, record, stage1)
+    given = FrozenInputs(prereg, manifest, screen, decisions, stage1, record)
     prereg.write_text(STAGE3_PREREG.replace("PW-attn.", "DRAFT: still open.\nPW-attn."))
     with pytest.raises(Refusal, match="DRAFT"):
-        comparative.freeze_comparative(*args)
+        comparative.freeze_comparative(given)
     prereg.write_text(STAGE3_PREREG)
-    payload = comparative.freeze_comparative(*args)
+    payload = comparative.freeze_comparative(given)
     assert payload["main_items"] == 3 and payload["control_items"] == 1
-    assert comparative.check_comparative(*args)["main_set_sha256"] == payload["main_set_sha256"]
+    assert comparative.check_comparative(given)["main_set_sha256"] == payload["main_set_sha256"]
     decide(decisions, items, {2: "wording"})  # the set is now short and i4 is unverified
     with pytest.raises(Refusal, match="verify more"):
-        comparative.check_comparative(*args)
+        comparative.check_comparative(given)
     decide(decisions, items, {4: "pass"})  # full again, but a different main set
     with pytest.raises(Refusal, match="main_set_sha256"):
-        comparative.check_comparative(*args)
+        comparative.check_comparative(given)
     decide(decisions, items, {2: "pass"})  # back to the frozen set
-    comparative.check_comparative(*args)
+    comparative.check_comparative(given)
     prereg.write_text(STAGE3_PREREG.replace("PW-attn.", "PW-attn, K = 72."))
     with pytest.raises(Refusal, match="prereg_sha256"):
-        comparative.check_comparative(*args)
+        comparative.check_comparative(given)
     with pytest.raises(Refusal, match="already exists"):
-        comparative.freeze_comparative(*args)
+        comparative.freeze_comparative(given)
 
 
 @pytest.mark.network
@@ -301,7 +302,7 @@ def test_confirm_runs_on_the_tiny_model(tiny_llava, tmp_path, monkeypatch):
     bundle = bundle_from_model(tiny_llava, LLAVA.load_tokenizer(), LLAVA.load_processor())
     Image.fromarray(np.random.default_rng(0).integers(0, 255, (60, 80, 3), dtype=np.uint8)).save(tmp_path / "img.jpg")
     items = [make_confirm_item(0), make_confirm_item(1)]
-    summary = comparative.run_confirm(bundle, items, tmp_path, tmp_path / "run", {"main": ["i0", "i1"], "control": ["i0"]}, "rec")
+    summary = comparative.run_confirm(bundle, items, tmp_path, tmp_path / "run", MainSet.of(["i0", "i1"], ["i0"]), "rec")
     assert summary["items"] == 2 and summary["control"] == 1
     control = json.loads((tmp_path / "run" / "items" / "i0.json").read_text())
     main = json.loads((tmp_path / "run" / "items" / "i1.json").read_text())
@@ -314,11 +315,11 @@ def test_confirm_runs_on_the_tiny_model(tiny_llava, tmp_path, monkeypatch):
     wide, _ = wide_margins(load_run(tmp_path / "run")[0], "primary")
     assert {"blind|Q", "full|Q", "pw|C_mis"} <= set(wide.columns)
     mtime = (tmp_path / "run" / "items" / "i0.json").stat().st_mtime
-    comparative.run_confirm(bundle, items, tmp_path, tmp_path / "run", {"main": ["i0", "i1"], "control": ["i0"]}, "rec")
+    comparative.run_confirm(bundle, items, tmp_path, tmp_path / "run", MainSet.of(["i0", "i1"], ["i0"]), "rec")
     assert (tmp_path / "run" / "items" / "i0.json").stat().st_mtime == mtime  # finished items are skipped
 
 
 def test_confirm_refuses_missing_images_before_running(tmp_path):
     bundle = SimpleNamespace(family=LLAVA)
     with pytest.raises(Refusal, match="images are missing"):
-        comparative.run_confirm(bundle, [make_confirm_item(0)], tmp_path, tmp_path / "run", {"main": ["i0"], "control": []}, "rec")
+        comparative.run_confirm(bundle, [make_confirm_item(0)], tmp_path, tmp_path / "run", MainSet.of(["i0"], []), "rec")

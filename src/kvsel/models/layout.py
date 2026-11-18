@@ -39,6 +39,11 @@ class Layout:
         return sum(map_.size for map_ in self.maps) + len(self.newlines)
 
     @property
+    def grid(self) -> tuple[int, int]:
+        """(rows, columns) of the last map: NeXT's high-resolution map, LLaVA-1.5's only map."""
+        return self.maps[-1].rows, self.maps[-1].cols
+
+    @property
     def features(self) -> np.ndarray:
         """Span indices of every feature token: all but the newlines."""
         return np.setdiff1d(np.arange(self.total), np.array(self.newlines, dtype=np.int64))

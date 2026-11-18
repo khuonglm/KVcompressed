@@ -96,7 +96,7 @@ def test_an_interrupted_freeze_leaves_no_record(stage, monkeypatch):
     def interrupted(*_):
         raise KeyboardInterrupt
 
-    monkeypatch.setattr(protocol.os, "replace", interrupted)
+    monkeypatch.setattr("kvsel.files.os.replace", interrupted)
     with pytest.raises(KeyboardInterrupt):
         freeze(stage())
     assert list(stage().record.parent.iterdir()) == []

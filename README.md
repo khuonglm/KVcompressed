@@ -363,8 +363,9 @@ uv run kvsel data fetch-images manifests/textvqa_dev.jsonl --out data/textvqa/im
 | `src/kvsel/cache.py`, `engine.py` | Compaction and masks; probe, replay, candidate scoring, greedy decoding |
 | `src/kvsel/selectors.py` | Budgets and every selector's kept set, on any layout |
 | `src/kvsel/prompts.py`, `normalize.py` | Surface forms and the PW-attn window's composition; answer normalisation |
-| `src/kvsel/runner.py` | The unit, the per-unit and per-item runners, the resumable item loop, screens and eligibility |
-| `src/kvsel/protocol.py` | Every stage's freeze and check, the code hash and the amendment log; `Refusal` |
+| `src/kvsel/runner.py`, `runs.py` | The unit, the per-unit and per-item runners, the resumable item loop, screens and eligibility; running a frozen main set |
+| `src/kvsel/protocol.py`, `files.py` | Every stage's freeze and check, the code hash and the amendment log; `Refusal`; atomic writes |
+| `src/kvsel/reproduce.py`, `stored_reports.json` | `kvsel reproduce`: proving a code amendment against the stored reports and runs |
 | `src/kvsel/analysis/` | Statistics, run tables and report blocks every report uses |
 | `src/kvsel/validation.py` | Level 2 checks for both families, GO or NO-GO |
 | `src/kvsel/studies/` | One package per study: `pilot`, `confirmatory`, `followups`, `replication`, `next` |

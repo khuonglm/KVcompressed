@@ -26,11 +26,6 @@ def anyres_layout(side: int, rows: int, cols: int) -> Layout:
     return Layout((Map(0, side, side), Map(base, rows, cols)), newlines)
 
 
-def high_grid(layout: Layout) -> tuple[int, int]:
-    """(rows, columns) of the high-resolution map, newlines excluded."""
-    return layout.maps[1].rows, layout.maps[1].cols
-
-
 def derive_layout(config, image_size: list[int]) -> Layout:
     """From the model's own AnyRes grid and unpadding, for an image of (height, width) as the processor reports it."""
     from transformers.models.llava_next.modeling_llava_next import get_anyres_image_grid_shape, unpad_image

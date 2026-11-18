@@ -19,13 +19,13 @@ import numpy as np
 
 from .items.manifest import load_items
 from .model import Bundle
-from .protocol import Refusal, sha256_file
+from .protocol import Refusal, accepting_pending, sha256_file
+from .runs import MainSet
 from .studies.confirmatory.comparative import run_confirm
 from .studies.followups.run import PARTS, run_followup
 from .studies.replication.run import run_replication
 
 LIST = Path("stored_reports.json")
-STUDIES = ("confirmatory", "followups", "replication")  # whose runs can be rerun item by item
 
 
 @dataclass(frozen=True)
@@ -54,8 +54,8 @@ def load_list(path: Path = LIST) -> tuple[list[StoredReport], list[StoredRun]]:
         if report.compare not in ("bytes", "keys"):
             raise Refusal(f"{path}: {report.name} compares by {report.compare!r}, not bytes or keys")
     for run in runs:
-        if run.study not in STUDIES:
-            raise Refusal(f"{path}: {run.run} is a {run.study!r} run; runs of {', '.join(STUDIES)} can rerun")
+        if run.study not in RERUN:
+            raise Refusal(f"{path}: {run.run} is a {run.study!r} run; runs of {', '.join(RERUN)} can rerun")
     return reports, runs
 
 
@@ -88,7 +88,7 @@ def reproduce_reports(reports: list[StoredReport], out_dir: Path, run: Callable[
             raise Refusal(f"{report.name}: the stored {report.results} is missing")
         out = Path(out_dir) / report.name
         try:
-            with contextlib.redirect_stdout(io.StringIO()):  # the report's own printout
+            with accepting_pending(), contextlib.redirect_stdout(io.StringIO()):  # and the report's own printout
                 run([*report.argv, "--out", str(out)])
         except Refusal as refusal:
             print(f"{report.name}: REFUSED", flush=True)
@@ -111,16 +111,16 @@ def _stored(folder: Path) -> dict[str, Path]:
     return {path.stem: path for path in sorted((Path(folder) / "items").glob("*.json"))}
 
 
-def _spot_ids(files: dict[str, Path], items: list[dict], per_subset: int) -> tuple[list[str], list[str]]:
-    """The first ``per_subset`` main and control items in manifest order: (all chosen, the control ones)."""
+def _spot_set(files: dict[str, Path], items: list[dict], per_subset: int) -> MainSet:
+    """The first ``per_subset`` main and control items in manifest order."""
     subsets = {item_id: json.loads(path.read_text()).get("subset") for item_id, path in files.items()}
     order = [item["item_id"] for item in items if item["item_id"] in subsets]
     main = [i for i in order if subsets[i] == "main"][:per_subset]
     control = [i for i in order if subsets[i] == "control"][:per_subset]
-    return [i for i in order if i in main or i in control], control
+    return MainSet.of([i for i in order if i in main or i in control], control)
 
 
-def _compare_files(stored: dict[str, Path], new_folder: Path, ids: list[str]) -> list[str]:
+def _compare_files(stored: dict[str, Path], new_folder: Path, ids) -> list[str]:
     """Each rerun item file against the stored one, without the record hash newer files carry; attention too."""
     found = []
     for item_id in ids:
@@ -138,30 +138,40 @@ def _compare_files(stored: dict[str, Path], new_folder: Path, ids: list[str]) ->
     return found
 
 
+def _rerun_main_set(run: Callable) -> Callable:
+    """A rerun for a study whose run folder holds one item file per main-set item."""
+    def rerun(bundle, stored: StoredRun, items, images_dir, out, per_subset) -> tuple[list[str], int]:
+        files = _stored(stored.run)
+        spot = _spot_set(files, items, per_subset)
+        run(bundle, items, images_dir, out, spot, sha256_file(stored.record))
+        return _compare_files(files, out, spot.ids), len(spot.ids)
+    return rerun
+
+
+def _rerun_followups(bundle, stored: StoredRun, items, images_dir, out, per_subset) -> tuple[list[str], int]:
+    """The follow-ups' items are the confirmatory run's; each part has its own folder."""
+    folders = {part: stored.run / part for part in PARTS if (stored.run / part / "items").is_dir()}
+    spot = _spot_set(_stored(stored.confirm_run), items, per_subset)
+    run_followup(bundle, items, stored.items, images_dir, out, spot, sha256_file(stored.record), tuple(folders))
+    found = []
+    for part, folder in folders.items():
+        files = _stored(folder)
+        found += _compare_files(files, out / part, [i for i in spot.ids if i in files])
+    return found, len(spot.ids)
+
+
+RERUN = {"confirmatory": _rerun_main_set(run_confirm), "replication": _rerun_main_set(run_replication),
+         "followups": _rerun_followups}
+
+
 def reproduce_rows(bundle: Bundle, runs: list[StoredRun], images_dir: Path, out_dir: Path,
                    per_subset: int) -> tuple[list[str], int]:
     """Reruns the first ``per_subset`` main and control items of each stored run; (differences, items compared)."""
     found, compared = [], 0
     for stored in runs:
-        items = load_items(stored.items)
-        out = Path(out_dir) / f"{stored.study}_rows"
-        record = sha256_file(stored.record)
-        if stored.study == "followups":
-            folders = {part: stored.run / part for part in PARTS if (stored.run / part / "items").is_dir()}
-            ids, control = _spot_ids(_stored(stored.confirm_run), items, per_subset)
-            run_followup(bundle, items, stored.items, images_dir, out, {"main": ids, "control": control}, record,
-                         tuple(folders))
-            for part, folder in folders.items():
-                files = _stored(folder)
-                found += _compare_files(files, out / part, [i for i in ids if i in files])
-        else:
-            files = _stored(stored.run)
-            ids, control = _spot_ids(files, items, per_subset)
-            if stored.study == "confirmatory":
-                run_confirm(bundle, items, images_dir, out, {"main": ids, "control": control}, record)
-            else:
-                run_replication(bundle, items, images_dir, out, {"replication_ids": ids, "control_ids": control}, record)
-            found += _compare_files(files, out, ids)
-        compared += len(ids)
-        print(f"{stored.study}: {len(ids)} items rerun ({stored.run})", flush=True)
+        differences, count = RERUN[stored.study](bundle, stored, load_items(stored.items), images_dir,
+                                                  Path(out_dir) / f"{stored.study}_rows", per_subset)
+        found += differences
+        compared += count
+        print(f"{stored.study}: {count} items rerun ({stored.run})", flush=True)
     return found, compared

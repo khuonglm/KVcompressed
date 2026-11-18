@@ -10,42 +10,25 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ...analysis.tables import checks, load_run
 from ...items.manifest import load_items
 from ...model import Bundle
-from ...models.llava15 import LAYOUT
-from ...protocol import Prereg, Refusal, Stage, check, freeze, manifests, selected_set, sha256_file
-from ...runner import (
-    NO_CONTEXT,
-    ItemFile,
-    Q,
-    Unit,
-    item_loop,
-    open_image,
-    require_images,
-    row_units,
-    run_item,
-    screen_flags,
-)
+from ...protocol import FrozenInputs, Prereg, Refusal, Stage, check, freeze, manifests, selected_set, sha256_file
+from ...runner import Unit, screen_flags
+from ...runs import MainSet, run_main_set
 from ...verification import PASS, load_decisions
-from ..pilot import pilot_units
+from ..pilot import FULL_Q, pilot_units
 from .screening import SCREENING, check_screening
 
 SECTION = "## 2. Comparative experiment"
 MAIN_SIZE = 1000
 CONTROL_SIZE = 300
 K = 144
-BLIND = Unit("full", LAYOUT.total, False, NO_CONTEXT, Q)  # PREREG 2.2: on a blank image of the padding colour
+BLIND = FULL_Q  # PREREG 2.2: on a blank image of the padding colour
 
 
-def main_units() -> list[Unit]:
-    """PREREG 2.1, units on every main-set item (Blind_Q aside)."""
-    return pilot_units(("mis",), K)
-
-
-def control_units() -> list[Unit]:
-    """PREREG 2.1, the control subset's units: the main units plus match and irr."""
-    return pilot_units(k=K)
+def units(*, control: bool) -> list[Unit]:
+    """PREREG 2.1: the units on every main-set item, Blind_Q aside; the control subset adds match and irr."""
+    return pilot_units(k=K) if control else pilot_units(("mis",), K)
 
 
 def comparative_settings() -> dict:
@@ -54,8 +37,8 @@ def comparative_settings() -> dict:
         "selectors": ["pw", "qspan"],
         "primary_selector": "pw",
         "surface": SCREENING["surface"],
-        "main_units": [unit.record() for unit in main_units()],
-        "control_units": [unit.record() for unit in control_units()],
+        "main_units": [unit.record() for unit in units(control=False)],
+        "control_units": [unit.record() for unit in units(control=True)],
         "blind": "Full_Q on a blank image of the padding colour; consistency check, should never be eligible",
         "main_size": MAIN_SIZE,
         "control_size": CONTROL_SIZE,
@@ -91,65 +74,44 @@ def main_set(items: list[dict], screen_dir: Path, decisions_path: Path) -> dict:
     return {"main": chosen, "control": chosen[:CONTROL_SIZE], "failed_before_cutoff": failed, "stale_decisions": stale}
 
 
-def stage(prereg: Path, manifest: Path, screen_dir: Path, decisions_path: Path, record: Path, stage1: Path) -> Stage:
+def stage(given: FrozenInputs) -> Stage:
     """Stage 3's declaration (PREREG, stage 3 in the preamble): it freezes the whole file, and refuses while section 2
     has a DRAFT line or a "[to fill" blank."""
-    items = load_items(manifest)
-    selection = main_set(items, screen_dir, decisions_path)
-    decisions, _ = load_decisions(decisions_path, items)
+    items = load_items(given.manifest)
+    selection = main_set(items, given.screen_dir, given.decisions)
+    decisions, _ = load_decisions(given.decisions, items)
     inputs = {
-        "prereg_sha256": Prereg(prereg),
-        "stage1_record_sha256": sha256_file(stage1),
-        "manifest": manifests([manifest]),
-        "screen_flags_sha256": sha256_file(Path(screen_dir) / "eligible.jsonl"),
+        "prereg_sha256": Prereg(given.prereg),
+        "stage1_record_sha256": sha256_file(given.stage1),
+        "manifest": manifests([given.manifest]),
+        "screen_flags_sha256": sha256_file(Path(given.screen_dir) / "eligible.jsonl"),
         "main_set_sha256": selected_set(selection["main"], decisions),
         "main_items": len(selection["main"]),
         "control_items": len(selection["control"]),
         "failed_before_cutoff": selection["failed_before_cutoff"],
     }
-    return Stage("comparative", record, inputs, comparative_settings(), draft=Prereg(prereg, SECTION))
+    return Stage("comparative", given.record, inputs, comparative_settings(), draft=Prereg(given.prereg, SECTION))
 
 
-def freeze_comparative(prereg: Path, manifest: Path, screen_dir: Path, decisions: Path, record: Path,
-                       stage1: Path) -> dict:
-    check_screening(prereg, manifest, stage1)
-    return freeze(stage(prereg, manifest, screen_dir, decisions, record, stage1))
+def freeze_comparative(given: FrozenInputs) -> dict:
+    check_screening(given.prereg, given.manifest, given.stage1)
+    return freeze(stage(given))
 
 
-def check_comparative(prereg: Path, manifest: Path, screen_dir: Path, decisions: Path, record: Path,
-                      stage1: Path) -> dict:
-    if not Path(record).exists():  # before reading the inputs, which may not exist yet either
-        raise Refusal(f"no comparative freeze at {record}: run `kvsel freeze-comparative` first")
-    return check(stage(prereg, manifest, screen_dir, decisions, record, stage1))
+def check_comparative(given: FrozenInputs) -> dict:
+    if not Path(given.record).exists():  # before reading the inputs, which may not exist yet either
+        raise Refusal(f"no comparative freeze at {given.record}: run `kvsel confirmatory freeze` first")
+    return check(stage(given))
 
 
-def run_confirm(bundle: Bundle, items: list[dict], images_dir: Path, out_dir: Path, selection: dict,
+def frozen_main_set(given: FrozenInputs) -> MainSet:
+    """The main set and control subset the rule gives now, which `check_comparative` has shown to be the frozen one."""
+    selection = main_set(load_items(given.manifest), given.screen_dir, given.decisions)
+    return MainSet.of(selection["main"], selection["control"])
+
+
+def run_confirm(bundle: Bundle, items: list[dict], images_dir: Path, out_dir: Path, main_set: MainSet,
                 record_sha256: str) -> dict:
-    """PREREG 2.1: runs the main set once, saving probe attention; a crash resumes safely. ``record_sha256``: the
-    stage-3 record's. Prints progress only, never margins or answers; then the consistency counts of 2.1 and 2.2."""
-    by_id = {item["item_id"]: item for item in items}
-    require_images([by_id[i] for i in selection["main"]], images_dir)
-    control = set(selection["control"])
-    main, controls = main_units(), control_units()
-
-    def units(item_id):
-        return controls if item_id in control else main
-
-    def subset(item_id):
-        return "control" if item_id in control else "main"
-
-    def files(item):
-        return [ItemFile(out_dir / "items" / f"{item['item_id']}.json", subset(item["item_id"]),
-                         row_units(units(item["item_id"]), BLIND))]
-
-    def produce(item, missing):
-        result, attention = run_item(bundle, item, open_image(images_dir, item), units(item["item_id"]), blind=BLIND)
-        return [({**result, "subset": subset(item["item_id"])}, attention)]
-
-    chosen = [by_id[i] for i in selection["main"]]
-    for position, _, _ in item_loop(chosen, record_sha256, files, produce):
-        if position % 25 == 0 or position == len(chosen):
-            print(f"{position}/{len(chosen)} items", flush=True)
-    found = checks(load_run(out_dir)[0])  # flags and counts only, never margins per item
-    return {"items": len(selection["main"]), "control": len(control),
-            "full_q_no_longer_eligible": found["full_q_no_longer_eligible"], "blind_now_eligible": found["blind_now_eligible"]}
+    """PREREG 2.1: the main set once, saving probe attention; a crash resumes safely. ``record_sha256``: the stage-3
+    record's. Prints progress only, never margins or answers; then the consistency counts of 2.1 and 2.2."""
+    return run_main_set(bundle, items, images_dir, out_dir, main_set, units, BLIND, record_sha256, keep_attention=True)

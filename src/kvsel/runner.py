@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -12,10 +11,11 @@ import numpy as np
 import torch
 from PIL import Image
 
+from .analysis.statistics import margin
 from .engine import greedy_releasing, probe, replay, score_sequence
+from .files import write_atomic, write_json
 from .model import Bundle
 from .models.family import Tokens
-from .models.llava_next import high_grid
 from .normalize import outcome
 from .prompts import surface_forms, window_composition
 from .protocol import Refusal
@@ -144,7 +144,7 @@ def _rows(bundle: Bundle, item: dict, image: Image.Image, units: list[Unit]) -> 
         k = layout.total if unit.selector == "full" else unit.budget.resolve(layout)
         row = run_unit(bundle, item, replace(unit, k=k, share=None), prefix, kept, tokens)
         rows.append({**row, "share": unit.share,
-                     "layout": {"base": layout.maps[0].rows, "grid": list(high_grid(layout)), "total": layout.total}})
+                     "layout": {"base": layout.maps[0].rows, "grid": list(layout.grid), "total": layout.total}})
     return tokens, rows, attention
 
 
@@ -178,11 +178,12 @@ def run_item(bundle: Bundle, item: dict, image: Image.Image, units: list[Unit], 
 # --- The item loop -------------------------------------------------------------------------------------------
 
 
-def write_json_atomic(path: Path, payload: dict) -> None:
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    with open(temporary, "w") as handle:
-        json.dump(payload, handle)
-    os.replace(temporary, path)
+def require_frozen_numerics(bundle: Bundle, settings: dict) -> None:
+    """Refuses a model whose prompt template or output head differs from the frozen screening settings."""
+    if bundle.family.template_version != settings["template"]:
+        raise Refusal(f"template {bundle.family.template_version} differs from the frozen {settings['template']}")
+    if bundle.decoder.head_precision != settings["head_precision"]:
+        raise Refusal(f"head precision {bundle.decoder.head_precision} differs from the frozen {settings['head_precision']}")
 
 
 def require_images(items: list[dict], images_dir: Path, hint: str = "") -> None:
@@ -257,7 +258,7 @@ def item_loop(items: list[dict], record_sha256: str | None, files: Callable[[dic
                     np.savez_compressed(arrays / f"{expected.path.stem}.npz", **attention)
                 if record_sha256 is not None:
                     result = {**result, "record_sha256": record_sha256}
-                write_json_atomic(expected.path, result)
+                write_json(expected.path, result)
                 results[expected.path] = result
         yield position, item, [results[expected.path] for expected in wanted]
 
@@ -274,7 +275,7 @@ def mark_screen(screen_dir: Path, kind: str) -> None:
     if path.exists() and (found := screen_kind(screen_dir)) != kind:
         raise Refusal(f"{screen_dir} holds a {found} screen, not a {kind} screen")
     path.parent.mkdir(parents=True, exist_ok=True)
-    write_json_atomic(path, {"kind": kind})
+    write_json(path, {"kind": kind})
 
 
 def screen_kind(screen_dir: Path) -> str:
@@ -286,10 +287,8 @@ def screen_kind(screen_dir: Path) -> str:
 
 
 def eligible(screen_row: dict, surface: str) -> bool:
-    """Full_Q gives a correct greedy answer and a positive margin under this surface rule."""
-    scores = screen_row["scores"]
-    margin = sum(scores["true"][surface]) - sum(scores["alt"][surface])
-    return screen_row["outcome"] == "correct" and margin > 0
+    """PREREG 1.4, condition 1: Full_Q gives a correct greedy answer and a positive margin under this surface rule."""
+    return screen_row["outcome"] == "correct" and margin(screen_row["scores"], surface) > 0
 
 
 def screen_item(bundle: Bundle, item: dict, image: Image.Image, surface: str, full_q: Unit) -> dict:
@@ -305,9 +304,8 @@ def screen_item(bundle: Bundle, item: dict, image: Image.Image, surface: str, fu
 def write_flags(screen_dir: Path, records: list[dict]) -> None:
     """eligible.jsonl: every screened item's flag, in screening (manifest) order. The one file counts and freezes
     read; the NeXT screen rewrites it after each item, so its count works mid-screen."""
-    temporary = Path(screen_dir) / "eligible.jsonl.tmp"
-    temporary.write_text("".join(json.dumps({"item_id": r["item_id"], "eligible": r["eligible"]}) + "\n" for r in records))
-    os.replace(temporary, Path(screen_dir) / "eligible.jsonl")
+    write_atomic(Path(screen_dir) / "eligible.jsonl",
+                 "".join(json.dumps({"item_id": r["item_id"], "eligible": r["eligible"]}) + "\n" for r in records))
 
 
 def screen_flags(screen_dir: Path) -> dict[str, bool]:

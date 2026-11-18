@@ -24,8 +24,8 @@ from ...analysis.blocks import (
     write_report,
 )
 from ...analysis.statistics import DELTA, RESAMPLES, SURFACE
-from ...analysis.tables import PRIMARY, behaviour_rates, checks, load_run, overlap
-from .run import ALPHA, CONDITIONS, CONTROL_CONDITIONS, EQUIVALENCE, FAMILY
+from ...analysis.tables import PRIMARY, behaviour_rates, consistency_counts, load_run, overlap
+from .run import ALPHA, CONDITIONS, CONTROL_CONDITIONS, EQUIVALENCE, HOLM_FAMILY
 
 ALL_CONDITIONS = CONDITIONS + CONTROL_CONDITIONS
 
@@ -64,16 +64,16 @@ def replication_results(run_dir: Path, record_path: Path, resamples: int = RESAM
         budgets[str(k)] = budget_results(at_k, ALL_CONDITIONS, resamples)
         rates[str(k)] = behaviour_rates(at_k)
         overlaps[str(k)] = overlap(at_k, ALL_CONDITIONS)
-    tests = {f"{h}: {name}, K = {k}": budgets[k]["margins"][name] for h, name, k in FAMILY}
+    tests = {f"{h}: {name}, K = {k}": budgets[k]["margins"][name] for h, name, k in HOLM_FAMILY}
     family = holm_family(tests, ALPHA)
     original = original_estimates(original_confirm, original_followup)
     readings = {test: reading(family["reject"][test], tests[test]["estimate"], original.get(k, {}).get(name, {}).get("estimate"))
-                for test, (_, name, k) in zip(tests, FAMILY, strict=True)}
+                for test, (_, name, k) in zip(tests, HOLM_FAMILY, strict=True)}
     _, name, k = EQUIVALENCE
     low, high = budgets[k]["margins"][name]["ci90"]
     return {
         "run": str(run_dir), "surface": SURFACE, "items": len(items), "images": len({r["image_id"] for r in rows}),
-        "control_items": len(record["control_ids"]), "checks": checks(rows),
+        "control_items": len(record["control_ids"]), "checks": consistency_counts(rows),
         "family": {**family, "reading": readings},
         "equivalence": {"test": f"R4: {name}, K = {k}", "delta": DELTA, "ci90": [low, high],
                         "equivalent": bool(-DELTA <= low and high <= DELTA)},

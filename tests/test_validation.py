@@ -52,8 +52,8 @@ def test_an_unknown_kind_is_refused():
 
 
 def test_each_family_declares_its_checks():
-    assert LLAVA15_PLAN.checks == ("E1", "E2", "E3", "E4", "E5", "E7")
-    assert NEXT_PLAN.checks == ("E1", "E2", "E3", "E4", "E7")
+    assert LLAVA15_PLAN.go_checks == ("E1", "E2", "E3", "E4", "E5", "E7")
+    assert NEXT_PLAN.go_checks == ("E1", "E2", "E3", "E4", "E7")
 
 
 def cost(prefill, probe, unit):
@@ -197,13 +197,17 @@ def test_the_command_prints_each_verdict_and_exits_by_the_go_rule(family, forced
     assert report["go"] == (forced == "go") and code == (0 if forced == "go" else 1)
     assert printed[-1] == ("GO" if forced == "go" else "NO-GO")
     assert ("E4: FAIL" in printed) == (forced == "no-go") and "E3: PASS" in printed
-    assert {c["item_id"] for c in report["costs"]} == {"q0", "q1"} and report["noise_floor_native_head"]["items"] == 2
+    assert {c["item_id"] for c in report["costs"]} == {"q0", "q1"}
+    assert report["noise_floor_fp32_head"] == report["noise_floor"] and report["noise_floor_native_head"]["items"] == 2
 
 
-@pytest.mark.parametrize("model", ["llava", "llava_next"])
-def test_validate_refuses_items_that_are_not_development_items(model, tmp_path, monkeypatch):
-    manifest = write_dataset(tmp_path, [make_item(0), make_item(1, "confirm")], [(64, 48)] * 2)
-    monkeypatch.setattr(cli, "bundle", lambda *_: pytest.fail("loaded the model before refusing"))
-    with pytest.raises(SystemExit, match="not development items") as stop:
-        cli.main(["validate", "--model", model, "--items", str(manifest), "--images", str(tmp_path), "--device", "cpu"])
-    assert stop.value.code == 2
+@pytest.mark.network
+def test_a_native_head_run_still_reports_the_fp32_floor(llava, dataset):
+    """Both head precisions' floors, whichever head the bundle uses (ticket 09)."""
+    items, directory, _ = dataset
+    native = validation.with_head(llava, "native")
+    report = validation.validate(native, items[:1], directory, LLAVA15_PLAN, noise_items=1, sparse_items=0,
+                                 repeat_items=0)
+    assert report.head_precision == "native" and report.noise_floor_native_head == report.noise_floor
+    assert report.noise_floor_fp32_head.items == 1
+    assert validation.with_head(llava, "fp32") is llava

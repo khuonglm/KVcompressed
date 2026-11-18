@@ -26,8 +26,10 @@ from .models import FAMILIES
 from .models.family import Family
 from .models.llava15 import LLAVA
 from .models.llava_next import NEXT
-from .protocol import Refusal, fill_evidence, sha256_file, write_pending
+from .prompts import SURFACE_FORMS
+from .protocol import FrozenInputs, Refusal, fill_evidence, sha256_file, write_pending
 from .runner import eligible, eligible_ids, require_images, screen_flags
+from .runs import MainSet
 from .studies import pilot
 from .studies.confirmatory import comparative, report, screening
 from .studies.followups import report as followup_report
@@ -41,7 +43,6 @@ from .studies.replication import select
 from .validation import summary, validate, write
 from .verification import build_queue, load_decisions, make_server, summarize
 
-SURFACES = ("lower", "capitalized", "upper")
 PREREG = Path("PREREG.md")
 PLANS = {LLAVA.name: pilot.VALIDATION, NEXT.name: next_comparative.VALIDATION}
 
@@ -55,10 +56,14 @@ def _json(value) -> None:
     print(json.dumps(value, indent=2))
 
 
-def _images_first(items: list[dict], ids: list[str], args) -> None:
+def _images_first(items: list[dict], main_set: MainSet, args) -> None:
     """The run's images, checked before the model loads (the run checks them again)."""
     by_id = {item["item_id"]: item for item in items}
-    require_images([by_id[i] for i in ids], args.images)
+    require_images([by_id[i] for i in main_set.ids], args.images)
+
+
+def _frozen_inputs(args) -> FrozenInputs:
+    return FrozenInputs(args.prereg, args.items, args.screen, args.decisions, args.stage1, args.record)
 
 
 def stage_printer():
@@ -128,7 +133,7 @@ def cmd_validate(args) -> None:
 def cmd_pilot_screen(args) -> None:
     pilot.run_screen(bundle(args, LLAVA), load_items(args.items), args.images, args.out)
     results = [json.loads(path.read_text()) for path in (args.out / "items").glob("*.json")]
-    for surface in SURFACES:
+    for surface in SURFACE_FORMS:
         print(f"eligible under `{surface}`: {sum(eligible(r['rows'][0], surface) for r in results)} of {len(results)}")
     print("sample greedy answers:", [r["rows"][0]["greedy_text"] for r in results][:20])
 
@@ -143,7 +148,7 @@ def cmd_pilot_run(args) -> None:
     pilot.run_items(bundle(args, LLAVA), chosen, args.images, args.out, pilot.pilot_units(k=args.k))
 
 
-def _report(args, records: bool) -> None:
+def cmd_report(args, records: bool) -> None:
     """The confirmatory report; without records, on pilot runs, whose item files carry no subset (a rehearsal)."""
     runs, frozen = {}, {}
     for dataset in report.DATASETS:
@@ -159,10 +164,6 @@ def _report(args, records: bool) -> None:
         raise Refusal("give at least one run, for example --gqa-run results/confirm/gqa_run")
     report.confirm_report(runs, args.out, args.resamples, frozen)
     print((args.out / "report.md").read_text())
-
-
-def cmd_pilot_report(args) -> None:
-    _report(args, records=False)
 
 
 # --- The confirmatory study ---------------------------------------------------------------------------------
@@ -181,25 +182,17 @@ def cmd_confirmatory_screen(args) -> None:
     _json({key: funnel[key] for key in ("screened", "eligible", "not_eligible")})
 
 
-def _stage3(args) -> tuple:
-    return args.prereg, args.items, args.screen, args.decisions, args.record, args.stage1
-
-
 def cmd_confirmatory_freeze(args) -> None:
-    payload = comparative.freeze_comparative(*_stage3(args))
+    payload = comparative.freeze_comparative(_frozen_inputs(args))
     _json({key: value for key, value in payload.items() if key != "settings"})
 
 
 def cmd_confirmatory_run(args) -> None:
-    comparative.check_comparative(*_stage3(args))  # before loading the model
-    items = load_items(args.items)
-    selection = comparative.main_set(items, args.screen, args.decisions)
-    _images_first(items, selection["main"], args)
-    _json(comparative.run_confirm(bundle(args, LLAVA), items, args.images, args.out, selection, sha256_file(args.record)))
-
-
-def cmd_confirmatory_report(args) -> None:
-    _report(args, records=True)
+    given = _frozen_inputs(args)
+    comparative.check_comparative(given)  # before loading the model
+    items, main_set = load_items(args.items), comparative.frozen_main_set(given)
+    _images_first(items, main_set, args)
+    _json(comparative.run_confirm(bundle(args, LLAVA), items, args.images, args.out, main_set, sha256_file(args.record)))
 
 
 # --- The follow-ups -----------------------------------------------------------------------------------------
@@ -207,13 +200,13 @@ def cmd_confirmatory_report(args) -> None:
 
 def cmd_followups_run(args) -> None:
     items = load_items(args.items)
-    selection = followups.confirm_selection(args.confirm_run, args.record, items)  # before loading the model
-    if not selection["code_unchanged"]:
+    main_set, code_unchanged = followups.confirm_selection(args.confirm_run, args.record, items)  # before the model
+    if not code_unchanged:
         print("note: the code differs from the stage-3 record; the confirmatory run used other code", flush=True)
-    _images_first(items, selection["main"], args)
-    found = followups.run_followup(bundle(args, LLAVA), items, args.items, args.images, args.out, selection,
+    _images_first(items, main_set, args)
+    found = followups.run_followup(bundle(args, LLAVA), items, args.items, args.images, args.out, main_set,
                                    sha256_file(args.record), tuple(args.parts))
-    _json({"confirm_code_unchanged": selection["code_unchanged"], **found})
+    _json({"confirm_code_unchanged": code_unchanged, **found})
 
 
 def cmd_followups_report(args) -> None:
@@ -223,9 +216,8 @@ def cmd_followups_report(args) -> None:
 # --- The replication ----------------------------------------------------------------------------------------
 
 
-def _replication(args) -> dict:
-    return {"prereg": args.prereg, "manifest": args.items, "screen": args.screen, "decisions": args.decisions,
-            "stage1": args.stage1, "gqa_record": args.gqa_record, "exclude_runs": args.exclude_runs, "record": args.record}
+def _replication(args) -> tuple:
+    return _frozen_inputs(args), args.gqa_record, args.exclude_runs
 
 
 def cmd_replication_count(args) -> None:
@@ -240,22 +232,22 @@ def cmd_replication_count(args) -> None:
 
 
 def cmd_replication_freeze(args) -> None:
-    frozen = replication.freeze_replication(**_replication(args))
+    frozen = replication.freeze_replication(*_replication(args))
     _json({key: frozen[key] for key in ("frozen_at", "replication_set_sha256", "code_sha256")}
           | {"replication": len(frozen["replication_ids"]), "control": len(frozen["control_ids"]),
              "excluded": dict(Counter(frozen["excluded"].values()))})
 
 
 def cmd_replication_run(args) -> None:
-    selection = replication.check_replication(**_replication(args))  # before loading the model
+    main_set = replication.frozen_main_set(replication.check_replication(*_replication(args)))  # before the model
     items = load_items(args.items)
-    _images_first(items, selection["replication_ids"], args)
-    _json(replication.run_replication(bundle(args, LLAVA), items, args.images, args.out, selection,
+    _images_first(items, main_set, args)
+    _json(replication.run_replication(bundle(args, LLAVA), items, args.images, args.out, main_set,
                                       sha256_file(args.record)))
 
 
 def cmd_replication_report(args) -> None:
-    replication.check_replication(**_replication(args), report=True)
+    replication.check_replication(*_replication(args), report=True)
     found = replication_report.replication_report(args.run, args.record, args.out, args.resamples,
                                                   args.original_confirm, args.original_followup)
     print(f"wrote {args.out / 'report.md'} ({found['items']} items)")
@@ -281,27 +273,22 @@ def cmd_next_count(args) -> None:
     _json(next_screening.count(load_items(args.items), args.decisions, args.screen))
 
 
-def _next(args) -> dict:
-    return {"prereg": args.prereg, "manifest": args.items, "screen_dir": args.screen, "decisions": args.decisions,
-            "stage1": args.stage1, "record": args.record}
-
-
 def cmd_next_freeze(args) -> None:
-    frozen = next_comparative.freeze_comparative(**_next(args))
+    frozen = next_comparative.freeze_comparative(_frozen_inputs(args))
     _json({key: frozen[key] for key in ("frozen_at", "main_set_sha256", "code_sha256")}
           | {"main": len(frozen["main_ids"]), "control": len(frozen["control_ids"])})
 
 
 def cmd_next_run(args) -> None:
-    selection = next_comparative.check_comparative(**_next(args))  # before loading the model
+    main_set = next_comparative.frozen_main_set(next_comparative.check_comparative(_frozen_inputs(args)))  # before the model
     items = load_items(args.items)
-    _images_first(items, selection["main_ids"], args)
-    _json(next_comparative.run_comparative(bundle(args, NEXT), items, args.images, args.out, selection,
+    _images_first(items, main_set, args)
+    _json(next_comparative.run_comparative(bundle(args, NEXT), items, args.images, args.out, main_set,
                                            sha256_file(args.record)))
 
 
 def cmd_next_report(args) -> None:
-    next_comparative.check_comparative(**_next(args), report=True)
+    next_comparative.check_comparative(_frozen_inputs(args), report=True)
     found = next_report.report(args.run, args.record, args.out, args.llava15, args.resamples)
     print(f"wrote {args.out / 'report.md'} ({found['items']} items)")
 
@@ -311,6 +298,8 @@ def cmd_next_report(args) -> None:
 
 def cmd_reproduce(args) -> None:
     """PREREG 1.9: the stored reports, and with --images a few items of each stored run, rerun and compared."""
+    if args.out.exists() and any(args.out.iterdir()):  # a rerun must not resume, and so reuse, older results
+        raise Refusal(f"{args.out} is not empty; give a new --out")
     reports, runs = reproduce.load_list(args.list)
     if args.reason:
         pending = write_pending(args.freeze, args.reason, date.today().isoformat())
@@ -336,14 +325,17 @@ def cmd_reproduce(args) -> None:
 # --- Arguments: one name and one default per meaning --------------------------------------------------------
 
 
-def add_model(sub, family: Family, head: bool = False) -> None:
-    """The model copy and device; ``head``: also the output head's precision, offered only off the frozen path."""
+def add_model(sub, family: Family | None, head: bool = False) -> None:
+    """The model copy and device; ``family`` None: the command takes `--model`. ``head``: also the output head's
+    precision, offered only off the frozen path."""
+    where = family.default_dir if family else "the family's folder under models/"
     sub.add_argument("--model-dir", type=Path, default=None,
-                     help=f"local model copy, used if present; otherwise the Hugging Face Hub (default: {family.default_dir})")
+                     help=f"local model copy, used if present; otherwise the Hugging Face Hub (default: {where})")
     sub.add_argument("--device", default="cuda")
     if head:
+        default = family.default_head_precision if family else "the family's"
         sub.add_argument("--head-precision", default=None, choices=["fp32", "native"],
-                         help=f"output head precision (default: {family.default_head_precision})")
+                         help=f"output head precision (default: {default})")
 
 
 def add_items(sub, what: str, images_needed: bool = True) -> None:
@@ -353,7 +345,7 @@ def add_items(sub, what: str, images_needed: bool = True) -> None:
 
 
 def add_surface(sub) -> None:
-    sub.add_argument("--surface", default=SURFACE, choices=SURFACES, help="surface rule (default: %(default)s)")
+    sub.add_argument("--surface", default=SURFACE, choices=SURFACE_FORMS, help="surface rule (default: %(default)s)")
 
 
 def add_resamples(sub) -> None:
@@ -455,7 +447,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_argument("--port", type=int, default=8765)
 
     sub = command(groups, "validate", "noise floor and the Level 2 checks on the real model; prints GO or NO-GO",
-                  cmd_validate, add_family, partial(add_items, what="development"), partial(add_model, family=LLAVA, head=True),
+                  cmd_validate, add_family, partial(add_items, what="development"), partial(add_model, family=None, head=True),
                   add_surface)
     sub.add_argument("--noise-items", type=int, default=50)
     sub.add_argument("--sparse-items", type=int, default=20, help="items for E3-E5")
@@ -472,7 +464,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_argument("--limit", type=int, default=200)
     sub.add_argument("--k", type=int, default=144, choices=[288, 144, 72])
     sub.add_argument("--out", type=Path, default=Path("results/pilot"))
-    command(study, "report", "the confirmatory analysis on pilot runs, as a rehearsal. No GPU", cmd_pilot_report,
+    command(study, "report", "the confirmatory analysis on pilot runs, as a rehearsal. No GPU", partial(cmd_report, records=False),
             partial(add_report_runs, records=False))
 
     study = group("confirmatory", "the confirmatory study (PREREG 1-2)")
@@ -496,7 +488,7 @@ def build_parser() -> argparse.ArgumentParser:
     command(study, "run", "the confirmatory run, once, on the frozen main set (GPU)", cmd_confirmatory_run, stage3,
             partial(add_run, family=LLAVA))
     command(study, "report", "the pre-registered analysis of confirmatory runs, Holm across datasets. No GPU",
-            cmd_confirmatory_report, partial(add_report_runs, records=True))
+            partial(cmd_report, records=True), partial(add_report_runs, records=True))
 
     study = group("followups", "the follow-ups (PREREG 2.4); not confirmatory")
     sub = command(study, "run", "follow-up units on the confirmatory main set (GPU)", cmd_followups_run,
@@ -554,7 +546,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_argument("--freeze", type=Path, default=Path("freeze"), help="the folder of records and the amendment log")
     sub.add_argument("--reason", default=None,
                      help="write a pending amendment entry, with this reason, for every record the current code no longer matches")
-    sub.add_argument("--out", type=Path, default=Path("results/reproduce"))
+    sub.add_argument("--out", type=Path, default=Path("results/reproduce"), help="a new or empty folder")
     sub.add_argument("--images", type=Path, default=None, help="also rerun stored run items (GPU); needed for the evidence")
     sub.add_argument("--rows", type=int, default=3, help="main and control items rerun per run")
     add_model(sub, LLAVA)

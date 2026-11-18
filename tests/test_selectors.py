@@ -43,7 +43,7 @@ def pool_one_map(values):
 
 # --- Kept sets are the ones the code gave before selection moved onto layouts ---------------------------------
 
-# Digests captured from the dispatchers before ticket 05 (runner.kept_for, followup.kept_for and random_set,
+# Digests captured from the dispatchers before ticket 05 (runner.kept_for, the follow-ups' kept_for and random_set,
 # validate.kept_sets, the NeXT package's selection.kept_sets and validate.sparse_set), on the inputs below; the
 # validation sets are now `kvsel.validation.validation_set`.
 KNOWN = {
@@ -85,12 +85,12 @@ def llava15_sets(selector, reserve):
 def computed() -> dict[str, str]:
     out = {f"llava15 {s} reserve={r}": digest(llava15_sets(s, r)) for s in ("pw", "qspan") for r in (False, True)}
     out["llava15 uniform"] = digest(kept_set(LAYOUT, "uniform", Budget(k=k)) for k in KS)
-    out["followup lt"] = digest(followup.kept_for(Unit("lt", k, False, "Q", "Q", followup=True), "i1", LAYOUT, {}, {"Q": LAYER2})
+    out["followup lt"] = digest(followup.followup_kept_set(Unit("lt", k, False, "Q", "Q", followup=True), "i1", LAYOUT, {}, {"Q": LAYER2})
                                 for k in KS)
-    out["followup pw"] = digest(followup.kept_for(Unit("pw", k, False, "Q", "Q", followup=True), "i1", LAYOUT, {"Q": ATTENTION}, {})
+    out["followup pw"] = digest(followup.followup_kept_set(Unit("pw", k, False, "Q", "Q", followup=True), "i1", LAYOUT, {"Q": ATTENTION}, {})
                                 for k in KS)
     out["followup random"] = digest(
-        followup.kept_for(Unit("random", k, False, "none", "Q", seed=s, followup=True), item, LAYOUT, {}, {})
+        followup.followup_kept_set(Unit("random", k, False, "none", "Q", seed=s, followup=True), item, LAYOUT, {}, {})
         for item in ("i1", "18182570") for s in range(5) for k in KS)
     out["validate"] = digest(validation_set(LAYOUT, Budget(k=k), kind, s, ATTENTION) for k in KS for s in range(4)
                              for kind in KINDS)

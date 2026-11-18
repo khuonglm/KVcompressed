@@ -8,9 +8,11 @@ from __future__ import annotations
 from .models.family import Tokens
 from .selectors import WINDOW_SIZE
 
+SURFACE_FORMS = ("lower", "capitalized", "upper")
+
 
 def surface_forms(answer: str) -> dict[str, str]:
-    """The exact strings scored for a semantic answer. Each form applies to true and alt alike."""
+    """The exact strings scored for a semantic answer, by form (``SURFACE_FORMS``). Each applies to true and alt alike."""
     return {
         "lower": answer.lower(),
         "capitalized": answer[:1].upper() + answer[1:].lower(),

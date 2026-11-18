@@ -19,6 +19,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
+from .analysis.statistics import SURFACE
 from .cache import entries_hash
 from .engine import Decoder, greedy, greedy_releasing, probe, release_cached_memory, replay, score_sequence
 from .model import Bundle, full_forward_logits
@@ -28,9 +29,8 @@ from .prompts import surface_forms, window_composition
 from .runner import NO_CONTEXT, Q, Unit, open_image, run_item, run_unit
 from .selectors import Budget, kept_set
 
-SURFACE = "capitalized"  # the default; `validate --surface` sets it per run
 SAMPLE_PER_COMPARISON = 20_000  # logit differences sampled per comparison for the 99th percentiles
-MARGIN_LIMIT = 0.01  # E3: mean |margin difference| in nats
+MIS = "mis"  # QH_mis: every check pairs its suffix with Q's
 GREEDY_STEPS = 10  # E3: tokens generated per kept set
 MEMORY_LIMIT_GB = 20  # the A100 slice
 KINDS = ("random", "concentrated", "scored")  # E3's kept-set kinds
@@ -51,17 +51,21 @@ class Projection:
 
 @dataclass(frozen=True)
 class Plan:
-    """A family's validation: E3's budgets and kept-set kinds, E5's budget (None: no E5), E7's units."""
+    """A family's validation: E3's budgets and kept-set kinds, E5's budget (None: no E5), E7's units, the tolerances
+    (tests/README.md, E3 criteria) and the GO rule."""
 
     budgets: tuple[Budget, ...]
     kinds: tuple[str, ...]
     units: tuple[Unit, ...]
     placebo: Budget | None = None
     projection: Projection | None = None
+    margin_limit: float = 0.01  # E3: mean |margin difference| in nats
+    p99_factor: float = 2.0  # E3: the logit p99 may be this many times the noise floor's
+    near_tie_factor: float = 2.0  # E3: a greedy mismatch is a near tie below this many times the floor's maximum
 
     @property
-    def checks(self) -> tuple[str, ...]:
-        """The checks whose passes make GO."""
+    def go_checks(self) -> tuple[str, ...]:
+        """The GO rule: GO when each of these checks passes."""
         return ("E1", "E2", "E3", "E4", *(("E5",) if self.placebo else ()), "E7")
 
 
@@ -181,6 +185,7 @@ class Report:
     device: str
     noise_floor: Floor  # Q suffix, the bundle's head
     noise_floor_mis: Floor
+    noise_floor_fp32_head: Floor  # one of these two is noise_floor
     noise_floor_native_head: Floor
     checks: dict[str, Serialization | Fidelity | SparseEquivalence | Hashes | Placebo | Determinism]
     costs: list[ItemCost]
@@ -261,9 +266,12 @@ def _replayed(bundle: Bundle, prefix, kept: torch.Tensor, suffix: torch.Tensor, 
     return logits, margin, greedy_releasing(bundle.decoder, box, max_new=GREEDY_STEPS, stop_at_eos=False)
 
 
-def native_head(bundle: Bundle) -> Bundle:
+def with_head(bundle: Bundle, precision: str) -> Bundle:
+    """The same model with the output head in ``precision``."""
+    if bundle.decoder.head_precision == precision:
+        return bundle
     old = bundle.decoder
-    return dataclasses.replace(bundle, decoder=Decoder(old.language_model, old.lm_head, "native", old.stop_ids,
+    return dataclasses.replace(bundle, decoder=Decoder(old.language_model, old.lm_head, precision, old.stop_ids,
                                                        old.head_slice_rows))
 
 
@@ -295,7 +303,7 @@ def serialization(bundle: Bundle, items: list[dict], images_dir: Path) -> Serial
             composition = window_composition(t)
             compositions[f"{name}: q={composition['question']:.3f} d={composition['description']:.3f}"] += 1
         totals.append(layout.total)
-        grids[f"{layout.maps[-1].rows}x{layout.maps[-1].cols}"] += 1
+        grids["{}x{}".format(*layout.grid)] += 1
     return Serialization(not failures, len(items), failures[:50], dict(compositions),
                          min(totals, default=None), max(totals, default=None), dict(grids.most_common()))
 
@@ -347,10 +355,10 @@ def sparse_equivalence(bundle: Bundle, loaded, floor: Floor, plan: Plan, surface
     """E3 on Q and QH_mis, at each budget and kept-set kind, with ``GREEDY_STEPS`` generated tokens."""
     generator = np.random.default_rng(1)
     samples, margins, mismatches = [], [], []
-    near_tie_limit = 2 * floor.logit_max
+    near_tie_limit = plan.near_tie_factor * floor.logit_max
     for position, (item, image) in enumerate(loaded):
         tokens, _, prefix, layout = _prefilled(bundle, item, image)
-        for name in (Q, "mis"):
+        for name in (Q, MIS):
             t, suffix = tokens[name], torch.tensor([tokens[name].suffix_ids])
             attention = probe(bundle.decoder, prefix, suffix)
             for budget in plan.budgets:
@@ -370,8 +378,9 @@ def sparse_equivalence(bundle: Bundle, loaded, floor: Floor, plan: Plan, surface
     p99 = float(np.percentile(np.concatenate(samples), 99)) if samples else float("nan")
     margin = float(np.mean(margins)) if margins else float("nan")
     real = sum(not m.near_tie for m in mismatches)
-    return SparseEquivalence(p99 <= 2 * floor.logit_p99 and margin < MARGIN_LIMIT and not real, p99, 2 * floor.logit_p99,
-                             margin, MARGIN_LIMIT, mismatches, real, len(margins))
+    p99_limit = plan.p99_factor * floor.logit_p99
+    return SparseEquivalence(p99 <= p99_limit and margin < plan.margin_limit and not real, p99, p99_limit, margin,
+                             plan.margin_limit, mismatches, real, len(margins))
 
 
 def cache_hashes(bundle: Bundle, loaded, plan: Plan) -> Hashes:
@@ -380,7 +389,7 @@ def cache_hashes(bundle: Bundle, loaded, plan: Plan) -> Hashes:
     for position, (item, image) in enumerate(loaded):
         tokens, _, prefix, layout = _prefilled(bundle, item, image)
         before = entries_hash(prefix.entries)
-        for name in (Q, "mis"):
+        for name in (Q, MIS):
             suffix = torch.tensor([tokens[name].suffix_ids])
             attention = probe(bundle.decoder, prefix, suffix)
             if entries_hash(prefix.entries) != before:
@@ -400,7 +409,7 @@ def placebo(bundle: Bundle, loaded, floor: Floor, budget: Budget) -> Placebo:
     worst, different_answers = 0.0, 0
     for position, (item, image) in enumerate(loaded):
         tokens, _, prefix, layout = _prefilled(bundle, item, image)
-        suffix = torch.tensor([tokens["mis"].suffix_ids])
+        suffix = torch.tensor([tokens[MIS].suffix_ids])
         kept = torch.from_numpy(validation_set(layout, budget, "scored", position, probe(bundle.decoder, prefix, suffix)))
         state_b, logits_b = replay(bundle.decoder, prefix, kept, suffix)
         state_c, logits_c = replay(bundle.decoder, prefix, kept.clone(), suffix)
@@ -449,10 +458,10 @@ def cost(bundle: Bundle, item: dict, image, progress: Callable[[str], None]) -> 
     tokens, inputs = bundle.family.contexts(bundle, item, image)
     (prefix, layout), prefill_seconds, prefill_peak = _timed(
         device, lambda: bundle.family.prefill(bundle, tokens[Q].prefix_ids, inputs))
-    grid = [layout.maps[-1].rows, layout.maps[-1].cols]
+    grid = list(layout.grid)
     progress(f"  {item['item_id']}: {layout.total} visual tokens, grid {grid[0]}x{grid[1]}")  # before any OOM
     _, probe_seconds, probe_peak = _timed(device, lambda: probe(bundle.decoder, prefix,
-                                                                 torch.tensor([tokens["mis"].suffix_ids])))
+                                                                 torch.tensor([tokens[MIS].suffix_ids])))
     longest = max(tokens, key=lambda name: len(tokens[name].suffix_ids))
     full = Unit("full", layout.total, False, NO_CONTEXT, longest)
     _, unit_seconds, unit_peak = _timed(device, lambda: run_unit(bundle, item, full, prefix,
@@ -462,10 +471,15 @@ def cost(bundle: Bundle, item: dict, image, progress: Callable[[str], None]) -> 
                     probe_seconds, unit_seconds)
 
 
+def mean_seconds(costs: list[ItemCost]) -> dict[str, float]:
+    """Mean prefill, probe and Full-unit seconds per item."""
+    return {key: float(np.mean([getattr(c, key) for c in costs])) for key in ("prefill_seconds", "probe_seconds",
+                                                                              "unit_seconds")}
+
+
 def projected_hours(costs: list[ItemCost], projection: Projection) -> dict[str, float]:
     """Upper bounds: every unit costs a Full unit, and the screen runs Full_Q and Blind_Q on every pool item."""
-    prefill, probe_, unit = (float(np.mean([getattr(c, key) for c in costs]))
-                             for key in ("prefill_seconds", "probe_seconds", "unit_seconds"))
+    prefill, probe_, unit = mean_seconds(costs).values()
     blind = prefill + unit
     probes = {u.selection for u in projection.main_units if u.selector == "pw"}
     extra_probes = {u.selection for u in projection.control_units if u.selector == "pw"} - probes
@@ -492,14 +506,12 @@ def validate(bundle: Bundle, items: list[dict], images_dir: Path, plan: Plan, no
     progress(f"noise floor, {head} head, Q suffix, {len(loaded)} items")
     floor = noise_floor(bundle, loaded, Q, surface)
     progress(f"noise floor, {head} head, QH_mis suffix, {len(loaded)} items")
-    floor_mis = noise_floor(bundle, loaded, "mis", surface)
-    if head == "native":
-        floor_native = floor
-    else:
-        progress(f"noise floor, native head, Q suffix, {len(loaded)} items")
-        floor_native = noise_floor(native_head(bundle), loaded, Q, surface)
+    floor_mis = noise_floor(bundle, loaded, MIS, surface)
+    other = "native" if head == "fp32" else "fp32"
+    progress(f"noise floor, {other} head, Q suffix, {len(loaded)} items")
+    floors = {head: floor, other: noise_floor(with_head(bundle, other), loaded, Q, surface)}
     progress(f"E2: full fidelity, both suffixes, {len(loaded)} items")
-    checks["E2"] = full_fidelity(bundle, loaded, {Q: floor, "mis": floor_mis})
+    checks["E2"] = full_fidelity(bundle, loaded, {Q: floor, MIS: floor_mis})
     progress(f"E3: sparse equivalence, {len(sparse)} items (the slowest check)")
     checks["E3"] = sparse_equivalence(bundle, sparse, floor, plan, surface)
     progress(f"E4: prefix hashes, {len(sparse)} items")
@@ -514,13 +526,15 @@ def validate(bundle: Bundle, items: list[dict], images_dir: Path, plan: Plan, no
     hours = projected_hours(costs, plan.projection) if plan.projection and costs else None
     progress("done")
     return Report(bundle.family.model_id, bundle.family.revision, head, surface, str(bundle.device), floor, floor_mis,
-                  floor_native, checks, costs, hours, all(checks[name].passed for name in plan.checks))
+                  floors["fp32"], floors["native"], checks, costs, hours,
+                  all(checks[name].passed for name in plan.go_checks))
 
 
 def summary(report: Report, out: Path) -> list[str]:
     """The lines a validate command prints after the report is written, ending in GO or NO-GO."""
     lines = [f"{name}: {'PASS' if check.passed else 'FAIL'}" for name, check in report.checks.items()]
     for label, floor in (("Q", report.noise_floor), ("QH_mis", report.noise_floor_mis),
+                         ("Q, fp32 head", report.noise_floor_fp32_head),
                          ("Q, native head", report.noise_floor_native_head)):
         lines.append(f"noise floor, {label}: logit p99 {floor.logit_p99:.4g}, max {floor.logit_max:.4g}; "
                      f"margin mean {floor.margin_mean_abs:.4g}, max {floor.margin_max_abs:.4g}")
@@ -535,8 +549,7 @@ def summary(report: Report, out: Path) -> list[str]:
         if peak > MEMORY_LIMIT_GB:
             lines.append(f"  over the {MEMORY_LIMIT_GB} GB GPU slice: the run would not fit")
     if report.costs:
-        mean = {key: float(np.mean([getattr(c, key) for c in report.costs]))
-                for key in ("prefill_seconds", "probe_seconds", "unit_seconds")}
+        mean = mean_seconds(report.costs)
         lines.append(f"time per item: prefill {mean['prefill_seconds']:.2f} s, probe {mean['probe_seconds']:.2f} s, "
                      f"Full unit {mean['unit_seconds']:.2f} s")
     if report.hours:

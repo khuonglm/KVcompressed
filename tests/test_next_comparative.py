@@ -6,7 +6,8 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from kvsel import cli, runner
+from kvsel import cli, runner, runs
+from kvsel.protocol import FrozenInputs
 from kvsel.runner import Unit, cell_name
 from kvsel.studies.next import comparative
 from kvsel.studies.next import screening as screen
@@ -172,10 +173,11 @@ def test_run_refuses_any_change_before_loading_the_model(world, monkeypatch, cha
 def test_amended_code_is_accepted(world, monkeypatch, capsys):
     cli.main(["next", "freeze", *common(world)])
     frozen = json.loads(world["record"].read_text())["code_sha256"]
-    (world["record"].parent / "code_amendments.json").write_text(json.dumps([{"from": frozen, "to": "1" * 64}]))
+    (world["record"].parent / "code_amendments.json").write_text(json.dumps([{"from": frozen, "to": "1" * 64, "evidence": "proven"}]))
     monkeypatch.setattr("kvsel.protocol.code_identity", lambda: "1" * 64)
-    assert comparative.check_comparative(world["prereg"], world["manifest"], world["screen"], world["decisions"], world["stage1"],
-                                         world["record"])["main_ids"] == MAIN
+    given = FrozenInputs(world["prereg"], world["manifest"], world["screen"], world["decisions"], world["stage1"],
+                         world["record"])
+    assert comparative.check_comparative(given)["main_ids"] == MAIN
 
 
 def test_settings_changed_since_the_thin_path_freeze_are_caught(world):
@@ -221,7 +223,7 @@ def test_freeze_run_resume_and_report_on_the_tiny_model(world, monkeypatch, caps
     probes = []
     real_probe = runner.probe
     monkeypatch.setattr(runner, "probe", lambda *a: probes.append(1) or real_probe(*a))
-    real, calls = comparative.run_item, []
+    real, calls = runs.run_item, []
 
     def stops_on_the_second_item(*args, **options):
         if len(calls) == 1:  # the first item's units, its Blind_Q included
@@ -229,13 +231,13 @@ def test_freeze_run_resume_and_report_on_the_tiny_model(world, monkeypatch, caps
         calls.append(args[1]["item_id"])
         return real(*args, **options)
 
-    monkeypatch.setattr(comparative, "run_item", stops_on_the_second_item)
+    monkeypatch.setattr(runs, "run_item", stops_on_the_second_item)
     with pytest.raises(KeyboardInterrupt):
         cli.main(run_args(world))
     run = world["tmp"] / "run"
     assert [p.stem for p in (run / "items").glob("*.json")] == ["q0"] and not list(run.glob("items/*.tmp"))
     first = (run / "items" / "q0.json").stat().st_mtime
-    monkeypatch.setattr(comparative, "run_item", real)
+    monkeypatch.setattr(runs, "run_item", real)
     capsys.readouterr()
     cli.main(run_args(world))
     printed = capsys.readouterr().out.splitlines()

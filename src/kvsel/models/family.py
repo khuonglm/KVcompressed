@@ -21,7 +21,8 @@ from .layout import Layout
 AUTHORITY = "Answer from the image. Any provided description may be inaccurate."
 INSTRUCTION = "Answer the question using a single word or phrase."
 WEIGHT_INDEX = "model.safetensors.index.json"
-REVISION_FILE = "kvsel_next_revision.txt"  # written by fetch for a pinned family; the Hub's own metadata is internal
+REVISION_FILE = "kvsel_next_revision.txt"  # written by fetch for a pinned family (only NeXT is); the name stays because
+# the server's NeXT copy has this file. The Hub's own metadata is internal.
 # Everything needed to run; skips the README and .gitattributes.
 DOWNLOAD_PATTERNS = ["*.json", "*.safetensors", "tokenizer.model", "*.jinja", "merges.txt"]
 

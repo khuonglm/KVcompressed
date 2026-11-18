@@ -7,7 +7,8 @@ import pytest
 
 from kvsel import protocol
 from kvsel.cli import main
-from kvsel.protocol import Refusal, code_identity, sha256_file
+from kvsel.protocol import FrozenInputs, Refusal, code_identity, sha256_file
+from kvsel.runs import MainSet
 from kvsel.studies.confirmatory import comparative
 from kvsel.studies.replication import run as replication
 from kvsel.studies.replication import select
@@ -110,6 +111,12 @@ PREREG = ("# Pre-registration\n\n## 1. Screening rules\nrule\n\n## 2. Comparativ
           "R1. The freeze refuses while this section is marked DRAFT.\n")
 
 
+def replicate(stage_function, record, args):
+    """Freeze or check the replication with the world's inputs."""
+    given = FrozenInputs(args["prereg"], args["manifest"], args["screen"], args["decisions"], args["stage1"], record)
+    return stage_function(given, args["gqa_record"], args["exclude_runs"])
+
+
 @pytest.fixture
 def world(tmp_path, monkeypatch, sizes):
     """Main set i0, i1 (GQA record frozen); replication i2, i3, i4 with control i2; i5 is spare."""
@@ -132,7 +139,7 @@ def world(tmp_path, monkeypatch, sizes):
     stage1 = tmp_path / "freeze" / "screening.json"
     freeze_screening(prereg, [manifest], stage1)
     gqa_record = tmp_path / "freeze" / "comparative_gqa.json"
-    comparative.freeze_comparative(prereg, manifest, screen, decisions, gqa_record, stage1)
+    comparative.freeze_comparative(FrozenInputs(prereg, manifest, screen, decisions, stage1, gqa_record))
     args = {"prereg": prereg, "manifest": manifest, "screen": screen, "decisions": decisions, "stage1": stage1,
                 "gqa_record": gqa_record, "exclude_runs": []}
     return items, args, tmp_path / "freeze" / "replication_gqa.json"
@@ -145,24 +152,24 @@ def undraft(prereg):
 def test_freeze_refuses_a_draft_section(world):
     _, args, record = world
     with pytest.raises(Refusal, match="DRAFT"):
-        replication.freeze_replication(record=record, **args)
+        replicate(replication.freeze_replication, record, args)
     assert not record.exists()
 
 
 def test_freeze_records_the_replication_set_and_its_check(world):
     items, args, record = world
     undraft(args["prereg"])
-    frozen = replication.freeze_replication(record=record, **args)
+    frozen = replicate(replication.freeze_replication, record, args)
     assert frozen["replication_ids"] == ["i2", "i3", "i4"]
     assert frozen["control_ids"] == ["i2"]
     assert frozen["code_sha256"] == code_identity()
-    assert replication.freeze_replication(record=record, **args) == frozen  # same state: no change, no error
-    assert replication.check_replication(record=record, **args)["replication_ids"] == ["i2", "i3", "i4"]
+    assert replicate(replication.freeze_replication, record, args) == frozen  # same state: no change, no error
+    assert replicate(replication.check_replication, record, args)["replication_ids"] == ["i2", "i3", "i4"]
     append_decision(args["decisions"], items[3], FAIL, "tester")  # a decision changed after the freeze
     with pytest.raises(Refusal, match="replication_set_sha256"):
-        replication.check_replication(record=record, **args)
+        replicate(replication.check_replication, record, args)
     with pytest.raises(Refusal, match="already exists"):
-        replication.freeze_replication(record=record, **args)
+        replicate(replication.freeze_replication, record, args)
 
 
 def test_freeze_refuses_a_short_set_and_a_changed_main_set(world, tmp_path):
@@ -173,10 +180,10 @@ def test_freeze_refuses_a_short_set_and_a_changed_main_set(world, tmp_path):
     for item_id in ("i4", "i5"):
         (old / f"{item_id}.json").write_text("{}")
     with pytest.raises(Refusal, match="replication set has 2 of 3"):
-        replication.freeze_replication(record=record, **{**args, "exclude_runs": [tmp_path / "old_run"]})
+        replicate(replication.freeze_replication, record, {**args, "exclude_runs": [tmp_path / "old_run"]})
     append_decision(args["decisions"], items[1], FAIL, "tester")  # main set changes: i1 now failed
     with pytest.raises(Refusal, match="main set"):
-        replication.freeze_replication(record=record, **args)
+        replicate(replication.freeze_replication, record, args)
     assert not record.exists()
 
 
@@ -185,20 +192,20 @@ def test_check_refuses_changes_and_accepts_only_amended_code(world, tmp_path, mo
 
     _, args, record = world
     undraft(args["prereg"])
-    frozen = replication.freeze_replication(record=record, **args)
+    frozen = replicate(replication.freeze_replication, record, args)
     old_run = tmp_path / "old_run"
     old_run.mkdir()
     with pytest.raises(Refusal, match="exclude_runs"):  # a different exclusion list, even an empty folder
-        replication.check_replication(record=record, **{**args, "exclude_runs": [old_run]})
+        replicate(replication.check_replication, record, {**args, "exclude_runs": [old_run]})
     monkeypatch.setattr(protocol, "code_identity", lambda: "new code")
     with pytest.raises(Refusal, match="code_sha256"):
-        replication.check_replication(record=record, **args)
+        replicate(replication.check_replication, record, args)
     (record.parent / CODE_AMENDMENTS).write_text(json.dumps([{"from": frozen["code_sha256"], "to": "new code",
                                                                "date": "2026-11-20", "reason": "r", "evidence": "e"}]))
-    assert replication.check_replication(record=record, **args)["replication_ids"] == ["i2", "i3", "i4"]
+    assert replicate(replication.check_replication, record, args)["replication_ids"] == ["i2", "i3", "i4"]
     args["prereg"].write_text(args["prereg"].read_text() + "\nAn edit after the freeze.\n")
     with pytest.raises(Refusal, match="prereg_sha256"):
-        replication.check_replication(record=record, **args)
+        replicate(replication.check_replication, record, args)
 
 
 def test_selection_matches_the_frozen_main_set_rule(sizes, tmp_path, monkeypatch):
@@ -353,7 +360,7 @@ def test_run_on_the_tiny_model(tiny_llava, tmp_path, capsys):
     bundle = bundle_from_model(tiny_llava, LLAVA.load_tokenizer(), LLAVA.load_processor())
     Image.fromarray(np.random.default_rng(0).integers(0, 255, (60, 80, 3), dtype=np.uint8)).save(tmp_path / "img.jpg")
     items = [item(0), item(1)]
-    selection = {"replication_ids": ["i0", "i1"], "control_ids": ["i0"]}
+    selection = MainSet.of(["i0", "i1"], ["i0"])
     summary = run_replication(bundle, items, tmp_path, tmp_path / "run", selection, "rec")
     assert capsys.readouterr().out == "2/2 items\n"  # progress only, no per-item outcome
     assert summary["items"] == 2 and summary["control"] == 1 and summary["blind_now_eligible"] in (0, 1, 2)
@@ -390,7 +397,7 @@ def test_commands_freeze_run_and_report(world, tmp_path, monkeypatch, capsys):
     (tmp_path / "img.jpg").touch()  # the run checks its images before loading the model
     monkeypatch.setattr(run_module, "run_replication",
                         lambda bundle, items, images, out, selection, record_sha256: seen.update(
-                            ids=selection["replication_ids"], out=out, record=record_sha256) or {"items": 3})
+                            ids=list(selection.ids), out=out, record=record_sha256) or {"items": 3})
     main(["replication", "run", *common, "--images", str(tmp_path), "--out", str(tmp_path / "run")])
     assert seen == {"ids": ["i2", "i3", "i4"], "out": tmp_path / "run", "record": sha256_file(record)}
     run = synthetic_run(tmp_path / "synthetic", ["i2", "i3", "i4"], {"i2"})

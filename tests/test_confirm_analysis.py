@@ -133,8 +133,10 @@ def test_checks_flag_blind_and_full_q_problems(tmp_path):
 
 def test_incomplete_run_is_refused(tmp_path):
     run, manifest = make_run(tmp_path, n=10, n_control=4)
-    with pytest.raises(Refusal, match="frozen main set has 1000"):
+    with pytest.raises(Refusal, match="missing 990 main-set items; rerun `kvsel confirmatory run`"):
         dataset_results(run, manifest, resamples=100, expected_items=1000)
+    with pytest.raises(Refusal, match="5 extra item files"):
+        dataset_results(run, manifest, resamples=100, expected_items=5)
 
 
 def test_development_runs_are_rehearsals(tmp_path):
@@ -201,10 +203,10 @@ def test_record_checks_code_and_completeness(tmp_path):
         confirm_report({"gqa": (run, manifest)}, tmp_path / "bad", resamples=50, records={"gqa": record})
     # a dated code amendment from the frozen code to the current code is accepted; a broken chain is not
     amendments = tmp_path / "code_amendments.json"
-    amendments.write_text(json.dumps([{"from": "1" * 64, "to": code_identity()}]))
+    amendments.write_text(json.dumps([{"from": "1" * 64, "to": code_identity(), "evidence": "proven"}]))
     with pytest.raises(Refusal, match="code changed"):
         confirm_report({"gqa": (run, manifest)}, tmp_path / "bad", resamples=50, records={"gqa": record})
-    amendments.write_text(json.dumps([{"from": "0" * 64, "to": "2" * 64}, {"from": "2" * 64, "to": code_identity()}]))
+    amendments.write_text(json.dumps([{"from": "0" * 64, "to": "2" * 64, "evidence": "proven"}, {"from": "2" * 64, "to": code_identity(), "evidence": "proven"}]))
     confirm_report({"gqa": (run, manifest)}, tmp_path / "chain", resamples=50, records={"gqa": record})
 
 

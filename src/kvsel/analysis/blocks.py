@@ -14,13 +14,17 @@ from .tables import PRIMARY, has_cells, paired_behaviour, wide_margins
 # --- Results -------------------------------------------------------------------------------------------------
 
 
-def check_complete(run_dir: Path, found: set[str], expected: set[str], what: str, rerun: str) -> None:
-    """Refuse a run missing frozen items or holding items outside the frozen set."""
-    missing, extra = expected - found, found - expected
+def check_complete(run_dir: Path, found: set[str], expected: set[str] | int, what: str, rerun: str) -> None:
+    """Refuse a run missing frozen items or holding items outside the frozen set. ``expected`` is the frozen ids, or
+    only their number where the record holds a count (the confirmatory stage-3 record)."""
+    if isinstance(expected, int):
+        missing, extra = max(expected - len(found), 0), max(len(found) - expected, 0)
+    else:
+        missing, extra = len(expected - found), len(found - expected)
     if missing:
-        raise Refusal(f"{run_dir} is missing {len(missing)} {what}; rerun {rerun} to finish it")
+        raise Refusal(f"{run_dir} is missing {missing} {what}; rerun {rerun} to finish it")
     if extra:
-        raise Refusal(f"{run_dir} has {len(extra)} extra item files outside the frozen set; move them out")
+        raise Refusal(f"{run_dir} has {extra} extra item files outside the frozen set; move them out")
 
 
 def budget_results(rows: list[dict], conditions: tuple[str, ...], resamples: int = RESAMPLES) -> dict:

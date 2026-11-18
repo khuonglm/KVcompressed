@@ -9,6 +9,7 @@ from test_confirm_analysis import make_run, scores
 
 from kvsel.protocol import Refusal, code_identity
 from kvsel.runner import Unit, cell_name
+from kvsel.runs import MainSet
 from kvsel.studies.followups import run as fu
 from kvsel.studies.followups.report import followup_report, followup_results
 from kvsel.studies.pilot import pilot_units
@@ -34,7 +35,7 @@ def test_random_sets_are_seeded_per_item():
     from kvsel.models.llava15 import LAYOUT
 
     def random_set(item_id, seed):
-        return fu.kept_for(Unit("random", 144, False, "none", "Q", seed=seed, followup=True), item_id, LAYOUT, {}, {})
+        return fu.followup_kept_set(Unit("random", 144, False, "none", "Q", seed=seed, followup=True), item_id, LAYOUT, {}, {})
 
     a = random_set("i1", 0)
     assert len(a) == 144 == len(set(a.tolist())) and np.all(np.diff(a) > 0) and a.max() < 576
@@ -86,8 +87,8 @@ def confirm_fixture(tmp_path, n=20, n_control=8):
 
 def test_confirm_selection(tmp_path):
     run, _, record, items = confirm_fixture(tmp_path)
-    selection = fu.confirm_selection(run, record, items)
-    assert len(selection["main"]) == 20 and len(selection["control"]) == 8 and selection["code_unchanged"]
+    main_set, code_unchanged = fu.confirm_selection(run, record, items)
+    assert len(main_set.ids) == 20 and len(main_set.control) == 8 and code_unchanged
     (run / "items" / "extra.json").write_text(json.dumps({"item_id": "extra", "subset": "main"}))
     with pytest.raises(Refusal, match="move files outside the main set"):
         fu.confirm_selection(run, record, items)
@@ -200,7 +201,7 @@ def test_followup_runs_on_the_tiny_model(tiny_llava, tmp_path):
     manifest = tmp_path / "m.jsonl"
     manifest.write_text("".join(json.dumps(i) + "\n" for i in items))
 
-    selection = {"main": ["i0", "i1"], "control": ["i0"]}
+    selection = MainSet.of(["i0", "i1"], ["i0"])
     summary = fu.run_followup(bundle, items, manifest, tmp_path, tmp_path / "fu", selection, "rec")
     assert summary["files_per_part"] == {"budgets": 2, "lt": 2, "random": 2, "restore": 1}
     budgets = json.loads((tmp_path / "fu" / "budgets" / "items" / "i1.json").read_text())

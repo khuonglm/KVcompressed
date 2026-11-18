@@ -18,6 +18,14 @@ from ..validation import KINDS, Plan
 ALL_CONDITIONS = ("mis", "match", "irr")
 
 
+def full(answering: str = Q) -> Unit:
+    """A Full anchor on LLaVA-1.5: every visual entry, answering ``answering`` (PREREG 2.1)."""
+    return Unit("full", LAYOUT.total, False, NO_CONTEXT, answering)
+
+
+FULL_Q = full()  # the screen's unit (PREREG 1.4), and Blind_Q on the blank image (2.2)
+
+
 def pilot_units(conditions=ALL_CONDITIONS, k: int = 144, selectors=("pw", "qspan")) -> list[Unit]:
     """Cells A-D, Full anchors, uniform reference, and the reserve variants for the primary selector (PREREG 2.1,
     whose main and control unit lists are this grid at K = 144)."""
@@ -29,7 +37,7 @@ def pilot_units(conditions=ALL_CONDITIONS, k: int = 144, selectors=("pw", "qspan
             units.append(Unit(selector, k, False, Q, condition))  # C_c
             units.append(Unit(selector, k, False, condition, Q))  # D_c
     for answering in (Q, *conditions):
-        units.append(Unit("full", LAYOUT.total, False, NO_CONTEXT, answering))
+        units.append(full(answering))
         units.append(Unit("uniform", k, False, NO_CONTEXT, answering))
     units.append(Unit("pw", k, True, Q, Q))
     for condition in conditions:
@@ -70,4 +78,4 @@ def run_items(bundle: Bundle, items: list[dict], images_dir: Path, out_dir: Path
 def run_screen(bundle: Bundle, items: list[dict], images_dir: Path, out_dir: Path) -> None:
     """Full_Q only, on development items, in the same one-file-per-item form."""
     mark_screen(out_dir, DEVELOPMENT)
-    run_items(bundle, items, images_dir, out_dir, [Unit("full", LAYOUT.total, False, NO_CONTEXT, Q)])
+    run_items(bundle, items, images_dir, out_dir, [FULL_Q])

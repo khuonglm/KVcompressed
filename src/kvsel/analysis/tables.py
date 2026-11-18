@@ -88,7 +88,7 @@ def paired_behaviour(rows: list[dict], condition: str) -> dict[str, pd.Series]:
             for result in ("correct", "alt")}
 
 
-def checks(rows: list[dict]) -> dict:
+def consistency_counts(rows: list[dict]) -> dict:
     """Consistency with the screen: Full_Q still eligible, Blind_Q never eligible, truncation."""
     full_q = [r for r in rows if r["selector"] == "full" and r["cell"] == "Q"]
     blind = [r for r in rows if r["selector"] == "blind"]

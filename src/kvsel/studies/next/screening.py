@@ -6,12 +6,12 @@ freeze. Both NeXT stages refuse while section 4 has a DRAFT line or a "[to fill"
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
+from ...items.manifest import require_confirmatory
 from ...model import Bundle
 from ...models.llava_next import NEXT
-from ...protocol import Prereg, Refusal, Stage, check, freeze, manifests
+from ...protocol import Prereg, Stage, check, freeze, manifests
 from ...runner import (
     FLAGS,
     NO_CONTEXT,
@@ -21,6 +21,7 @@ from ...runner import (
     item_loop,
     mark_screen,
     open_image,
+    require_frozen_numerics,
     require_images,
     screen_flags,
     screen_item,
@@ -69,9 +70,7 @@ def stage(prereg: Path, manifest: Path, record: Path) -> Stage:
 
 
 def freeze_screening(prereg: Path, manifest: Path, record: Path = RECORD) -> dict:
-    splits = {json.loads(line).get("split") for line in Path(manifest).read_text().splitlines() if line.strip()}
-    if splits != {"confirm"}:
-        raise Refusal(f"{manifest} is not a confirmatory manifest (splits: {sorted(map(str, splits))})")
+    require_confirmatory(manifest)
     return freeze(stage(prereg, manifest, record))
 
 
@@ -94,10 +93,7 @@ def run_screen(bundle: Bundle, items: list[dict], images_dir: Path, out_dir: Pat
 
     `settings` is the frozen record's, which `check_screening` has shown equal to SCREENING; ``record_sha256`` is
     that record's hash."""
-    if bundle.family.template_version != settings["template"]:
-        raise Refusal(f"template {bundle.family.template_version} differs from the frozen {settings['template']}")
-    if bundle.decoder.head_precision != settings["head_precision"]:
-        raise Refusal(f"head precision {bundle.decoder.head_precision} differs from the frozen {settings['head_precision']}")
+    require_frozen_numerics(bundle, settings)
     require_images(items, images_dir)
     mark_screen(out_dir, FLAGS)
 
