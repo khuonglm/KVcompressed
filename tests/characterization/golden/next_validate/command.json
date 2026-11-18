@@ -1,0 +1,29 @@
+{
+ "exit_code": 1,
+ "stdout": [
+  "[  0.0 min] E1: serialization and layouts, 4 items",
+  "[  0.0 min] item 1/2: noise floor, E2, E3, E4",
+  "  936 visual tokens, grid 24x14",
+  "  936 visual tokens, run peak None GB, 0.0 s",
+  "[  0.0 min] item 2/2: noise floor, E2",
+  "  1080 visual tokens, grid 24x20",
+  "  1080 visual tokens, run peak None GB, 0.0 s",
+  "[  0.0 min] E7: determinism, 1 items",
+  "[  0.0 min] done",
+  "E1: PASS",
+  "E2: PASS",
+  "E3: FAIL",
+  "E4: PASS",
+  "E7: PASS",
+  "noise floor, Q:   {'logit_p99': 0.0, 'logit_max': 0.0, 'margin_mean_abs': 0.0, 'margin_max_abs': 0.0}",
+  "noise floor, mis: {'logit_p99': 0.0, 'logit_max': 0.0, 'margin_mean_abs': 0.0, 'margin_max_abs': 0.0}",
+  "visual tokens: 936-1560, grids {'24x14': 1, '24x20': 1, '24x40': 1, '24x36': 1}",
+  "peak GPU memory: n/a (not on CUDA)",
+  "time per item: 0.0 s in validate; prefill 0.00 s, probe 0.00 s, Full unit 0.00 s",
+  "projected: screen <= 0.0 h, comparative run <= 0.0 h",
+  "model llava-hf/llava-v1.6-vicuna-7b-hf at revision c916e6cdcd760b4cecd1dd4907f84ac649f93b23",
+  "full report: next_validate/report.json",
+  "NO-GO"
+ ],
+ "stderr": []
+}

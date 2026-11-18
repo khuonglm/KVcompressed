@@ -1,0 +1,6 @@
+{"builder": "fixture", "decision": "pass", "digest": "744223c88767971d483a207b8a5b1287d0c5ce49ccd58898b14d102f9298a1cb", "item_id": "n0", "note": "", "time": "2026-11-01T00:00:00+0000", "verifier": "tester"}
+{"builder": "fixture", "decision": "pass", "digest": "bc7ba641228ae58fee63f2dd830b4e689d452982a47275731f23a2957f9e79b4", "item_id": "n1", "note": "", "time": "2026-11-01T00:01:00+0000", "verifier": "tester"}
+{"builder": "fixture", "decision": "pass", "digest": "7f9a3f043592c75d93b4773451f4482af285c596c3098d88fd975b89598a1cd5", "item_id": "n2", "note": "", "time": "2026-11-01T00:02:00+0000", "verifier": "tester"}
+{"builder": "fixture", "decision": "a_true_wrong", "digest": "65e015fcac7b0ec6447b98ad629a7575d6514c10043d2b7ee74b6fdba601f96b", "item_id": "n3", "note": "", "time": "2026-11-01T00:03:00+0000", "verifier": "tester"}
+{"builder": "fixture", "decision": "pass", "digest": "4808ad2edea3e0e67cb154d9c3981f435df0bc49933425962b17c1089bf52c59", "item_id": "n4", "note": "", "time": "2026-11-01T00:04:00+0000", "verifier": "tester"}
+{"builder": "fixture", "decision": "pass", "digest": "9156be12e9dd37c2e1e4b2d49f0fe5d422589d951814bfac6f64db21334a8119", "item_id": "n5", "note": "", "time": "2026-11-01T00:05:00+0000", "verifier": "tester"}

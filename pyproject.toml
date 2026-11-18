@@ -44,4 +44,8 @@ packages = ["src/kvsel", "src/kvsel_next"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-markers = ["network: needs the LLaVA tokenizer and image-processor config from the Hugging Face Hub"]
+markers = [
+    "network: needs the LLaVA tokenizer and image-processor config from the Hugging Face Hub",
+    "slow: minutes long; deselected by default, run with `pytest -m slow`",
+]
+addopts = "-m 'not slow'"

@@ -13,8 +13,8 @@ from pathlib import Path
 
 from PIL import Image
 
-from .geometry import PAD_COLOR
 from .model import Bundle
+from .models.llava15 import NUM_VISUAL
 from .runner import (
     NO_CONTEXT,
     Q,
@@ -25,13 +25,7 @@ from .runner import (
     write_json_atomic,
 )
 
-FULL_Q = Unit("full", 576, False, NO_CONTEXT, Q)
-
-
-def blank_image(bundle: Bundle) -> Image.Image:
-    """A blank image of the padding colour: the blind baseline (PREREG, amendment 1)."""
-    size = bundle.family.image_size
-    return Image.new("RGB", (size, size), PAD_COLOR)
+FULL_Q = Unit("full", NUM_VISUAL, False, NO_CONTEXT, Q)
 
 
 def screen_item(bundle: Bundle, item: dict, image: Image.Image, blank: Image.Image, settings: dict) -> dict:
@@ -60,7 +54,7 @@ def run_confirm_screen(bundle: Bundle, items: list[dict], images_dir: Path, out_
                          "fetch them or screen fewer items with --limit")
 
     (out_dir / "items").mkdir(parents=True, exist_ok=True)
-    blank = blank_image(bundle)
+    blank = bundle.family.blank_image()
     flags: dict[str, bool] = {}
     for position, item in enumerate(items, 1):
         target = out_dir / "items" / f"{item['item_id']}.json"

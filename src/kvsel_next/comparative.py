@@ -1,7 +1,7 @@
 """NeXT stage 3 (PREREG 4.2, 4.4): the comparative freeze and the run.
 
 At each share, cell A and cells B, C, D for mis and irr (and match on control items), then the Full
-anchors and Blind_Q: the replication's unit lists with shares for budgets. It mirrors `kvsel.replication.protocol` and `.run` instead of calling them: their units assume 576 tokens.
+anchors and Blind_Q: the replication's unit lists with shares for budgets. It mirrors `kvsel.replication.protocol` and `.run` instead of calling them: their units assume LLaVA-1.5's fixed grid.
 """
 
 from __future__ import annotations
@@ -20,12 +20,12 @@ from kvsel.confirm_analysis import SURFACE, checks, load_run
 from kvsel.engine import probe
 from kvsel.freeze import sha256_file
 from kvsel.model import Bundle
+from kvsel.models.llava_next import NEXT, high_grid
 from kvsel.runner import NO_CONTEXT, Q, Unit, load_items, open_image, write_json_atomic
-from kvsel.verify import load_decisions
+from kvsel.verification import load_decisions
 
 from . import screen
-from .model import on_device, prefill, run_unit
-from .prompts import contexts_for
+from .model import run_unit
 from .selection import SHARES, budget, kept_sets
 
 assert screen.SCREENING["surface"] == SURFACE, "kvsel's `checks` scores consistency under its own surface rule"
@@ -60,7 +60,7 @@ def units(*, control: bool) -> list[NextUnit]:
     return out + [NextUnit("full", FULL, NO_CONTEXT, answering) for answering in (Q, *conditions)]
 
 
-BLIND = NextUnit("full", FULL, NO_CONTEXT, Q)  # on screen.blank_like(image)
+BLIND = NextUnit("full", FULL, NO_CONTEXT, Q)  # on NEXT.blank_image(image)
 
 
 def settings() -> dict:
@@ -72,12 +72,12 @@ def settings() -> dict:
 
 def run_item(bundle: Bundle, item: dict, image: Image.Image, plan: list[NextUnit]) -> dict:
     """One prefill, one probe per selection context; each share's kept set comes from that probe."""
-    tokens, inputs = contexts_for(bundle.image_processor, item, image)
-    prefix, layout = prefill(bundle, tokens[Q].prefix_ids, inputs)
+    tokens, inputs = NEXT.contexts(bundle, item, image)
+    prefix, layout = NEXT.prefill(bundle, tokens[Q].prefix_ids, inputs)
     contexts = sorted({u.selection for u in plan if u.selector == "pw"})
-    kept = {c: kept_sets(layout, probe(bundle.decoder, on_device(prefix, bundle.device), torch.tensor([tokens[c].suffix_ids])))
-            for c in contexts}  # each probe gets its own GPU copy of the prefix, freed when it returns
-    record = {"base": layout.base, "grid": list(layout.grid), "total": layout.total}
+    kept = {c: kept_sets(layout, probe(bundle.decoder, prefix, torch.tensor([tokens[c].suffix_ids])))
+            for c in contexts}  # each probe moves its own GPU copy of the prefix, freed when it returns
+    record = {"base": layout.maps[0].rows, "grid": list(high_grid(layout)), "total": layout.total}
     rows = []
     for u in plan:
         if u.selector == "full":
@@ -102,7 +102,7 @@ def run_comparative(bundle: Bundle, items: list[dict], images_dir: Path, out_dir
             item = by_id[item_id]
             image = open_image(images_dir, item)
             result = run_item(bundle, item, image, units(control=item_id in control))
-            blind = run_item(bundle, item, screen.blank_like(image), [BLIND])["rows"][0]
+            blind = run_item(bundle, item, NEXT.blank_image(image), [BLIND])["rows"][0]
             result["rows"].append({**blind, "selector": "blind"})
             result["subset"] = "control" if item_id in control else "main"
             write_json_atomic(target, result)

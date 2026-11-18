@@ -24,11 +24,26 @@ def test_every_command_parses_its_help(monkeypatch, command):
     assert stopped.value.code == 0
 
 
-def test_fetch_model_uses_the_family_repository_and_directory(monkeypatch):
+@pytest.mark.parametrize("model,out,model_id", [
+    (None, "models/llava-1.5-7b-hf", "llava-hf/llava-1.5-7b-hf"),
+    ("llava_next", "models/llava-v1.6-vicuna-7b-hf", "llava-hf/llava-v1.6-vicuna-7b-hf"),
+])
+def test_fetch_model_uses_the_family_repository_and_directory(monkeypatch, model, out, model_id):
     calls = {}
-    monkeypatch.setattr("kvsel.model_files.fetch_model", lambda out, workers, model_id: calls.update(out=out, model_id=model_id) or [])
-    run_cli(monkeypatch, "fetch-model")
-    assert calls == {"out": Path("models/llava-1.5-7b-hf"), "model_id": "llava-hf/llava-1.5-7b-hf"}
+    monkeypatch.setattr("kvsel.models.family.Family.fetch",
+                        lambda family, out, workers: calls.update(out=out, model_id=family.model_id) or [])
+    run_cli(monkeypatch, "fetch-model", *(["--model", model] if model else []))
+    assert calls == {"out": Path(out), "model_id": model_id}
+
+
+def test_model_family_is_chosen_only_where_both_families_run(monkeypatch, capsys):
+    """`--model` offers the two-family registry on fetch-model; the LLaVA-1.5 pipeline commands don't offer it."""
+    with pytest.raises(SystemExit):
+        run_cli(monkeypatch, "fetch-model", "--help")
+    assert "llava,llava_next" in capsys.readouterr().out
+    with pytest.raises(SystemExit):
+        run_cli(monkeypatch, "validate", "--help")
+    assert "--model " not in capsys.readouterr().out
 
 
 def test_screen_prints_eligibility(monkeypatch, tmp_path, capsys):

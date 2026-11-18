@@ -12,17 +12,13 @@ import torch
 from PIL import Image
 
 from .engine import greedy, probe, replay, score_sequence
-from .families import LLAVA, Family
-from .model import Bundle, pixel_values, prefill
+from .items.manifest import load_items  # noqa: F401  callers still import it from here until ticket 08
+from .model import Bundle
+from .models.family import Tokens
+from .models.llava15 import NUM_VISUAL
 from .normalize import outcome
-from .prompts import (
-    Tokens,
-    candidate_ids,
-    surface_forms,
-    tokenize_prompt,
-    window_composition,
-)
-from .selectors import pw_attn, question_span_attn, top_k, uniform_grid, with_reserve
+from .prompts import surface_forms, window_composition
+from .selectors import Budget, kept_set
 
 ALL_CONDITIONS = ("mis", "match", "irr")
 ATTENTION_SELECTORS = ("pw", "qspan")
@@ -49,7 +45,7 @@ def pilot_units(conditions=ALL_CONDITIONS, k: int = 144, selectors=("pw", "qspan
             units.append(Unit(selector, k, False, Q, condition))  # C_c
             units.append(Unit(selector, k, False, condition, Q))  # D_c
     for answering in (Q, *conditions):
-        units.append(Unit("full", 576, False, NO_CONTEXT, answering))
+        units.append(Unit("full", NUM_VISUAL, False, NO_CONTEXT, answering))
         units.append(Unit("uniform", k, False, NO_CONTEXT, answering))
     units.append(Unit("pw", k, True, Q, Q))
     for condition in conditions:
@@ -71,26 +67,10 @@ def cell_name(unit: Unit) -> str:
     return f"D_{unit.selection}"
 
 
-def contexts_for(item: dict, tokenizer, family: Family = LLAVA) -> dict[str, Tokens]:
-    tokens = {Q: tokenize_prompt(tokenizer, item["question"], family=family)}
-    for condition, description in item["descriptions"].items():
-        tokens[condition] = tokenize_prompt(tokenizer, item["question"], description, family)
-    return tokens
-
-
-def kept_for(unit: Unit, attention: dict[str, np.ndarray], tokens: dict[str, Tokens]) -> np.ndarray:
-    if unit.selector == "full":
-        return np.arange(576)
-    if unit.selector == "uniform":
-        return uniform_grid(unit.k)
-    source = attention[unit.selection]
-    if unit.selector == "pw":
-        scores = pw_attn(source)
-    elif unit.selector == "qspan":
-        scores = question_span_attn(source, tokens[unit.selection].question_span)
-    else:
-        raise ValueError(f"unknown selector {unit.selector!r}")
-    return with_reserve(scores, unit.k) if unit.reserve else top_k(scores, unit.k)
+def kept_for(unit: Unit, layout, attention: dict[str, np.ndarray], tokens: dict[str, Tokens]) -> np.ndarray:
+    selection = tokens.get(unit.selection)
+    return kept_set(layout, unit.selector, Budget(k=unit.k), attention=attention.get(unit.selection),
+                    question_span=selection and selection.question_span, reserve=unit.reserve)
 
 
 def score_candidates(bundle: Bundle, state, prompt: str, a_true: str, a_alt: str) -> dict:
@@ -101,7 +81,7 @@ def score_candidates(bundle: Bundle, state, prompt: str, a_true: str, a_alt: str
         seen: dict[str, list[float]] = {}
         for form, surface in surface_forms(answer).items():
             if surface not in seen:
-                ids = candidate_ids(bundle.tokenizer, prompt, surface, bundle.family)
+                ids = bundle.family.candidate_ids(bundle.tokenizer, prompt, surface)
                 seen[surface] = score_sequence(bundle.decoder, state, ids)
             by_form[form] = seen[surface]
         scores[name] = by_form
@@ -128,14 +108,14 @@ def run_unit(bundle: Bundle, item: dict, unit: Unit, prefix, kept: np.ndarray, t
 
 
 def run_item(bundle: Bundle, item: dict, image: Image.Image, units: list[Unit]) -> tuple[dict, dict[str, np.ndarray]]:
-    tokens = contexts_for(item, bundle.tokenizer, bundle.family)
-    prefix = prefill(bundle, tokens[Q].prefix_ids, pixel_values(bundle, image))
+    tokens, inputs = bundle.family.contexts(bundle, item, image)
+    prefix, layout = bundle.family.prefill(bundle, tokens[Q].prefix_ids, inputs)
     selection_contexts = sorted({u.selection for u in units if u.selector in ATTENTION_SELECTORS})
     attention = {
         context: probe(bundle.decoder, prefix, torch.tensor([tokens[context].suffix_ids]))
         for context in selection_contexts
     }
-    rows = [run_unit(bundle, item, unit, prefix, kept_for(unit, attention, tokens), tokens) for unit in units]
+    rows = [run_unit(bundle, item, unit, prefix, kept_for(unit, layout, attention, tokens), tokens) for unit in units]
     result = {
         "item_id": item["item_id"],
         "image_id": item["image_id"],
@@ -156,11 +136,6 @@ def run_item(bundle: Bundle, item: dict, image: Image.Image, units: list[Unit]) 
         "rows": rows,
     }
     return result, attention
-
-
-def load_items(path: Path) -> list[dict]:
-    with open(path) as handle:
-        return [json.loads(line) for line in handle if line.strip()]
 
 
 def require_development(items: list[dict]) -> None:
@@ -210,5 +185,5 @@ def eligible(screen_row: dict, surface: str) -> bool:
 
 def run_screen(bundle: Bundle, items: list[dict], images_dir: Path, out_dir: Path) -> None:
     """Full_Q only, on development items, in the same one-file-per-item form."""
-    run_items(bundle, items, images_dir, out_dir, [Unit("full", 576, False, NO_CONTEXT, Q)])
+    run_items(bundle, items, images_dir, out_dir, [Unit("full", NUM_VISUAL, False, NO_CONTEXT, Q)])
 

@@ -1,0 +1,12 @@
+{
+ "exit_code": 0,
+ "stdout": [
+  "{",
+  "  \"main_set\": 2,",
+  "  \"control\": 1,",
+  "  \"short_of_1000\": false,",
+  "  \"unscreened_passed\": 1",
+  "}"
+ ],
+ "stderr": []
+}

@@ -15,7 +15,7 @@ RECORD = Path("freeze/replication_gqa.json")
 def cmd_count(args) -> None:
     from ..confirm import load_flags, main_set
     from ..runner import load_items
-    from ..verify import load_decisions
+    from ..verification import load_decisions
     from .select import earlier_run_ids, replication_set
 
     items = load_items(args.items)

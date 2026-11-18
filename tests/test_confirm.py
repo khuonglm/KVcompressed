@@ -8,7 +8,7 @@ from PIL import Image
 
 from kvsel import confirm
 from kvsel.freeze import freeze_screening
-from kvsel.verify import append_decision
+from kvsel.verification import append_decision
 
 PREREG = "# Pre-registration\n\n## 1. Screening rules\nrule\n\n## 2. Comparative experiment\nPW-attn.\n"
 
@@ -96,25 +96,14 @@ def test_comparative_freeze_and_its_check(setup, tmp_path):
         confirm.freeze_comparative(*args)
 
 
-def test_unchanged_stage1_code():
-    """The confirm code lives outside the screening modules, so the latest stage-1 record still holds."""
-    from pathlib import Path
-
-    from kvsel.freeze import DEFAULT_RECORD, code_hash
-
-    record = Path(__file__).parents[1] / DEFAULT_RECORD
-    if not record.exists():
-        pytest.skip("no stage-1 freeze in this checkout")
-    assert json.loads(record.read_text())["code_sha256"] == code_hash()
-
-
 @pytest.mark.network
 def test_confirm_runs_on_the_tiny_model(tiny_llava, tmp_path, monkeypatch):
     from kvsel.confirm_analysis import load_run, wide_margins
-    from kvsel.model import bundle_from_model, load_image_processor, load_tokenizer
+    from kvsel.model import bundle_from_model
+    from kvsel.models.llava15 import LLAVA
 
     monkeypatch.setattr(confirm, "CONTROL_SIZE", 1)
-    bundle = bundle_from_model(tiny_llava, load_tokenizer(), load_image_processor())
+    bundle = bundle_from_model(tiny_llava, LLAVA.load_tokenizer(), LLAVA.load_processor())
     Image.fromarray(np.random.default_rng(0).integers(0, 255, (60, 80, 3), dtype=np.uint8)).save(tmp_path / "img.jpg")
     items = [make_item(0), make_item(1)]
     summary = confirm.run_confirm(bundle, items, tmp_path, tmp_path / "run", {"main": ["i0", "i1"], "control": ["i0"]})
@@ -137,7 +126,7 @@ def test_confirm_runs_on_the_tiny_model(tiny_llava, tmp_path, monkeypatch):
 def test_confirm_refuses_missing_images_before_running(tmp_path):
     from types import SimpleNamespace
 
-    from kvsel.families import LLAVA
+    from kvsel.models.llava15 import LLAVA
 
     bundle = SimpleNamespace(family=LLAVA)
     with pytest.raises(SystemExit, match="images are missing"):

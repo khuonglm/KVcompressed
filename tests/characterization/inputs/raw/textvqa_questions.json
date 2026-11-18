@@ -1,0 +1,80 @@
+{
+ "data": [
+  {
+   "answers": [
+    "canon",
+    "canon",
+    "canon",
+    "canon",
+    "canon",
+    "canon",
+    "nikon",
+    "nikon",
+    "nikon",
+    "nikon"
+   ],
+   "image_height": 500,
+   "image_id": "t0",
+   "image_width": 1000,
+   "question": "what is the brand?",
+   "question_id": 1
+  },
+  {
+   "answers": [
+    "sony",
+    "sony",
+    "sony",
+    "sony",
+    "sony",
+    "sony",
+    "sony",
+    "x",
+    "x",
+    "x"
+   ],
+   "image_height": 500,
+   "image_id": "t1",
+   "image_width": 1000,
+   "question": "what is the brand?",
+   "question_id": 2
+  },
+  {
+   "answers": [
+    "fuji",
+    "fuji",
+    "fuji",
+    "fuji",
+    "fuji",
+    "nikon",
+    "nikon",
+    "nikon",
+    "nikon",
+    "nikon"
+   ],
+   "image_height": 500,
+   "image_id": "t2",
+   "image_width": 1000,
+   "question": "what is the brand?",
+   "question_id": 3
+  },
+  {
+   "answers": [
+    "nikon",
+    "nikon",
+    "nikon",
+    "nikon",
+    "nikon",
+    "nikon",
+    "nikon",
+    "nikon",
+    "y",
+    "y"
+   ],
+   "image_height": 500,
+   "image_id": "t3",
+   "image_width": 1000,
+   "question": "what is the brand?",
+   "question_id": 4
+  }
+ ]
+}

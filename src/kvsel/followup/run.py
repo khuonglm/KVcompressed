@@ -20,19 +20,18 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from .. import NUM_VISUAL
 from ..confirm import code_hash_all
 from ..confirm_analysis import CODE_AMENDMENTS, code_accepted, evidence_sets
-from ..model import Bundle, pixel_values, prefill
+from ..engine import probe
+from ..model import Bundle
 from ..runner import (
     NO_CONTEXT,
     Q,
-    contexts_for,
     open_image,
     run_unit,
     write_json_atomic,
 )
-from ..selectors import pw_attn, top_k, uniform_grid
+from ..selectors import Budget, kept_set, pw_attn, top_k
 
 PARTS = ("budgets", "lt", "random", "restore")
 CONDITION = "mis"
@@ -84,15 +83,6 @@ def _generator(*key) -> np.random.Generator:
     return np.random.default_rng(int.from_bytes(digest[:8], "big"))
 
 
-def random_set(item_id: str, seed: int, k: int = K) -> np.ndarray:
-    return np.sort(_generator(item_id, "random", seed).choice(NUM_VISUAL, size=k, replace=False))
-
-
-def lt_early(layer2_last: np.ndarray) -> np.ndarray:
-    """LT-early scores: layer-2 attention from the last suffix token, mean over heads; no pooling."""
-    return np.asarray(layer2_last, dtype=np.float64)
-
-
 def restoration_sets(item_id: str, scores_q: np.ndarray, scores_mis: np.ndarray, evidence: set[int], m: int,
                      k: int = K) -> dict | None:
     """Oracle restoration (proposal, section 6), or None if the item doesn't qualify for this m.
@@ -119,31 +109,11 @@ def restoration_sets(item_id: str, scores_q: np.ndarray, scores_mis: np.ndarray,
     return {"treatment": treatment, "controls": controls, "removed": sorted(removable[:m])}
 
 
-def probe_two(decoder, prefix, suffix_ids: torch.Tensor) -> tuple[np.ndarray, np.ndarray]:
-    """One probe pass giving both PW-attn's input (as `engine.probe`, same operations in the same
-    order) and LT-early's input (layer 2, last suffix token, mean over heads)."""
-    _, _, attentions = decoder.step(suffix_ids, prefix.entries, prefix.logical_start, prefix.length,
-                                    output_attentions=True)
-    start, stop = prefix.num_nonvisual, prefix.length
-    total = None
-    for attention in attentions[2:]:
-        layer = attention[0, :, :, start:stop].float().mean(dim=0)
-        total = layer if total is None else total + layer
-    late = (total / (len(attentions) - 2)).float().cpu().numpy()
-    layer2 = attentions[2][0, :, -1, start:stop].float().mean(dim=0).cpu().numpy()
-    return late, layer2
-
-
-def kept_for(unit: FUnit, item_id: str, late: dict, layer2: dict) -> np.ndarray:
-    if unit.selector == "pw":
-        return top_k(pw_attn(late[unit.selection]), unit.k)
-    if unit.selector == "lt":
-        return top_k(lt_early(layer2[unit.selection]), unit.k)
-    if unit.selector == "uniform":
-        return uniform_grid(unit.k)
-    if unit.selector == "random":
-        return random_set(item_id, unit.seed, unit.k)
-    raise ValueError(f"unknown selector {unit.selector!r}")
+def kept_for(unit: FUnit, item_id: str, layout, late: dict, layer2: dict) -> np.ndarray:
+    """The unit's kept set; a random set is seeded by the item and the unit's seed."""
+    rng = _generator(item_id, "random", unit.seed) if unit.selector == "random" else None
+    return kept_set(layout, unit.selector, Budget(k=unit.k), attention=late.get(unit.selection),
+                    layer2=layer2.get(unit.selection), rng=rng)
 
 
 def confirm_selection(confirm_run: Path, record: Path, items: list[dict]) -> dict:
@@ -187,18 +157,20 @@ def run_followup(bundle: Bundle, items: list[dict], manifest: Path, images_dir: 
                 and (p != "restore" or item_id in evidence)]
         if todo:
             item = by_id[item_id]
-            tokens = contexts_for(item, bundle.tokenizer, bundle.family)
-            prefix = prefill(bundle, tokens[Q].prefix_ids, pixel_values(bundle, open_image(images_dir, item)))
+            tokens, inputs = bundle.family.contexts(bundle, item, open_image(images_dir, item))
+            prefix, layout = bundle.family.prefill(bundle, tokens[Q].prefix_ids, inputs)
             late, layer2 = {}, {}
             for context in (Q, CONDITION):
-                late[context], layer2[context] = probe_two(bundle.decoder, prefix, torch.tensor([tokens[context].suffix_ids]))
-            kept_144 = {context: top_k(pw_attn(late[context]), K).tolist() for context in (Q, CONDITION)}
+                late[context], layer2[context] = probe(bundle.decoder, prefix, torch.tensor([tokens[context].suffix_ids]),
+                                                       layer2_last=True)
+            kept_144 = {context: kept_set(layout, "pw", Budget(k=K), attention=late[context]).tolist()
+                        for context in (Q, CONDITION)}
             for part in todo:
                 extra = {}
                 if part == "restore":
-                    rows, extra = _restore_rows(bundle, item, prefix, tokens, late, evidence[item_id])
+                    rows, extra = _restore_rows(bundle, item, prefix, layout, tokens, late, evidence[item_id])
                 else:
-                    rows = [run_unit(bundle, item, unit, prefix, kept_for(unit, item_id, late, layer2), tokens)
+                    rows = [run_unit(bundle, item, unit, prefix, kept_for(unit, item_id, layout, late, layer2), tokens)
                             for unit in part_units(part)]
                 result = {"item_id": item_id, "image_id": item["image_id"], "dataset": item["dataset"],
                           "subset": "control" if item_id in control else "main", "part": part,
@@ -218,9 +190,9 @@ def run_followup(bundle: Bundle, items: list[dict], manifest: Path, images_dir: 
     return summary
 
 
-def _restore_rows(bundle, item, prefix, tokens, late, evidence: set[int]) -> tuple[list[dict], dict]:
+def _restore_rows(bundle, item, prefix, layout, tokens, late, evidence: set[int]) -> tuple[list[dict], dict]:
     item_id = item["item_id"]
-    scores_q, scores_mis = pw_attn(late[Q]), pw_attn(late[CONDITION])
+    scores_q, scores_mis = pw_attn(layout, late[Q]), pw_attn(layout, late[CONDITION])
     reference = FUnit("restore", K, False, CONDITION, CONDITION, arm="reference")
     rows = [run_unit(bundle, item, reference, prefix, top_k(scores_mis, K), tokens)]
     qualifying = {}

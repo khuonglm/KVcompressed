@@ -12,10 +12,10 @@ import torch
 
 from .cache import entries_hash
 from .engine import Decoder, greedy, probe, replay, score_sequence
-from .families import LLAVA, Family
-from .model import Bundle, full_forward_logits, pixel_values, prefill
-from .prompts import candidate_ids, surface_forms, window_composition
-from .runner import Q, contexts_for, open_image, pilot_units, run_item
+from .model import Bundle, full_forward_logits
+from .models.llava15 import LLAVA, NUM_VISUAL, Llava15
+from .prompts import surface_forms, window_composition
+from .runner import Q, open_image, pilot_units, run_item
 from .selectors import pw_attn, top_k
 
 SAMPLE_PER_COMPARISON = 20_000
@@ -32,7 +32,7 @@ def sample_differences(difference: torch.Tensor, generator: np.random.Generator)
 def margin_incremental(bundle: Bundle, state, prompt: str, a_true: str, a_alt: str, surface: str = SURFACE) -> float:
     total = {}
     for name, answer in (("true", a_true), ("alt", a_alt)):
-        ids = candidate_ids(bundle.tokenizer, prompt, surface_forms(answer)[surface], bundle.family)
+        ids = bundle.family.candidate_ids(bundle.tokenizer, prompt, surface_forms(answer)[surface])
         total[name] = sum(score_sequence(bundle.decoder, state, ids))
     return total["true"] - total["alt"]
 
@@ -41,19 +41,19 @@ def margin_full_forward(bundle: Bundle, tokens, pixels, a_true: str, a_alt: str,
     total = {}
     base = tokens.prefix_ids + tokens.suffix_ids
     for name, answer in (("true", a_true), ("alt", a_alt)):
-        ids = candidate_ids(bundle.tokenizer, tokens.prompt, surface_forms(answer)[surface], bundle.family)
+        ids = bundle.family.candidate_ids(bundle.tokenizer, tokens.prompt, surface_forms(answer)[surface])
         logits = full_forward_logits(bundle, base + ids[:-1], pixels, len(base) - 1)
         log_probs = torch.log_softmax(logits[0], dim=-1)
         total[name] = sum(float(log_probs[i, token]) for i, token in enumerate(ids))
     return total["true"] - total["alt"]
 
 
-def check_serialization(tokenizer, items: list[dict], family: Family = LLAVA) -> dict:
+def check_serialization(tokenizer, items: list[dict], family: Llava15 = LLAVA) -> dict:
     """E1 on all development items. Tokenizer only."""
     failures: list[str] = []
     compositions = {}
     for item in items:
-        tokens = contexts_for(item, tokenizer, family)
+        tokens = family.tokens(tokenizer, item)
         if len({tuple(t.prefix_ids) for t in tokens.values()}) != 1:
             failures.append(f"{item['item_id']}: prefix differs between contexts")
         spans = {tuple(t.suffix_ids[t.question_span[0] : t.question_span[1]]) for t in tokens.values()}
@@ -63,7 +63,7 @@ def check_serialization(tokenizer, items: list[dict], family: Family = LLAVA) ->
             for surface in surface_forms(answer).values():
                 for t in tokens.values():
                     try:
-                        candidate_ids(tokenizer, t.prompt, surface, family)
+                        family.candidate_ids(tokenizer, t.prompt, surface)
                     except ValueError as error:
                         failures.append(f"{item['item_id']}: {error}")
         for name, t in tokens.items():
@@ -77,13 +77,13 @@ def noise_floor(bundle: Bundle, loaded: list[tuple[dict, object]], context: str 
     """Full forward vs prefix-then-suffix with the full cache, on one suffix."""
     generator = np.random.default_rng(0)
     samples, maxima, margins = [], [], []
-    keep_all = torch.arange(576)
+    keep_all = torch.arange(NUM_VISUAL)
     for item, image in loaded:
-        tokens = contexts_for(item, bundle.tokenizer, bundle.family)[context]
-        pixels = pixel_values(bundle, image)
+        contexts, pixels = bundle.family.contexts(bundle, item, image)
+        tokens = contexts[context]
         ids = tokens.prefix_ids + tokens.suffix_ids
         full = full_forward_logits(bundle, ids, pixels, len(tokens.prefix_ids))
-        prefix = prefill(bundle, tokens.prefix_ids, pixels)
+        prefix, _ = bundle.family.prefill(bundle, tokens.prefix_ids, pixels)
         state, incremental = replay(bundle.decoder, prefix, keep_all, torch.tensor([tokens.suffix_ids]), "dense")
         difference = full - incremental
         samples.append(sample_differences(difference, generator))
@@ -103,20 +103,20 @@ def noise_floor(bundle: Bundle, loaded: list[tuple[dict, object]], context: str 
 
 
 def run_e2(bundle: Bundle, loaded, floors: dict[str, dict]) -> dict:
-    """Compact K = 576 on each suffix, against one full pass and that suffix's own noise floor.
+    """Compact with every visual entry kept, on each suffix, against one full pass and that suffix's own noise floor.
 
     Compact must also equal dense with nothing dropped exactly: that is the part of this test the
-    noise floor cannot show, since at K = 576 the two compute the same thing.
+    noise floor cannot show, since with nothing dropped the two compute the same thing.
     """
-    keep_all = torch.arange(576)
+    keep_all = torch.arange(NUM_VISUAL)
     by_suffix = {}
     for name, floor in floors.items():
         worst_full, worst_dense = 0.0, 0.0
         for item, image in loaded:
-            tokens = contexts_for(item, bundle.tokenizer, bundle.family)[name]
-            pixels = pixel_values(bundle, image)
+            contexts, pixels = bundle.family.contexts(bundle, item, image)
+            tokens = contexts[name]
             full = full_forward_logits(bundle, tokens.prefix_ids + tokens.suffix_ids, pixels, len(tokens.prefix_ids))
-            prefix = prefill(bundle, tokens.prefix_ids, pixels)
+            prefix, _ = bundle.family.prefill(bundle, tokens.prefix_ids, pixels)
             suffix = torch.tensor([tokens.suffix_ids])
             _, compact_logits = replay(bundle.decoder, prefix, keep_all, suffix, "compact")
             _, dense_logits = replay(bundle.decoder, prefix, keep_all, suffix, "dense")
@@ -132,7 +132,7 @@ def run_e2(bundle: Bundle, loaded, floors: dict[str, dict]) -> dict:
 
 
 def kept_sets(k: int, seed: int, attention: np.ndarray) -> dict[str, np.ndarray]:
-    random_set = np.random.default_rng(seed).choice(576, k, replace=False)
+    random_set = np.random.default_rng(seed).choice(NUM_VISUAL, k, replace=False)
     return {"random": np.sort(random_set), "concentrated": np.arange(k), "scored": top_k(pw_attn(attention), k)}
 
 
@@ -145,8 +145,8 @@ def run_e3_e4(bundle: Bundle, loaded, floor: dict, budgets=(288, 144, 72), progr
     for position, (item, image) in enumerate(loaded):
         if progress:
             progress(f"  E3 item {position + 1}/{len(loaded)}")
-        tokens = contexts_for(item, bundle.tokenizer, bundle.family)
-        prefix = prefill(bundle, tokens[Q].prefix_ids, pixel_values(bundle, image))
+        tokens, pixels = bundle.family.contexts(bundle, item, image)
+        prefix, _ = bundle.family.prefill(bundle, tokens[Q].prefix_ids, pixels)
         before = entries_hash(prefix.entries)
         for name in (Q, "mis"):
             suffix = torch.tensor([tokens[name].suffix_ids])
@@ -197,8 +197,8 @@ def run_e5(bundle: Bundle, loaded, floor: dict) -> dict:
     """Placebo: the same kept indices and suffix through the B and C code path."""
     worst, different_answers = 0.0, 0
     for position, (item, image) in enumerate(loaded):
-        tokens = contexts_for(item, bundle.tokenizer, bundle.family)
-        prefix = prefill(bundle, tokens[Q].prefix_ids, pixel_values(bundle, image))
+        tokens, pixels = bundle.family.contexts(bundle, item, image)
+        prefix, _ = bundle.family.prefill(bundle, tokens[Q].prefix_ids, pixels)
         suffix = torch.tensor([tokens["mis"].suffix_ids])
         kept = torch.from_numpy(kept_sets(144, position, probe(bundle.decoder, prefix, suffix))["scored"])
         state_b, logits_b = replay(bundle.decoder, prefix, kept, suffix)
@@ -225,7 +225,7 @@ def run_e7(bundle: Bundle, loaded) -> dict:
 
 def native_head(bundle: Bundle) -> Bundle:
     old = bundle.decoder
-    decoder = Decoder(old.language_model, old.lm_head, "native", old.stop_ids, old.fp32_head_copy)
+    decoder = Decoder(old.language_model, old.lm_head, "native", old.stop_ids, old.head_slice_rows)
     return dataclasses.replace(bundle, decoder=decoder)
 
 

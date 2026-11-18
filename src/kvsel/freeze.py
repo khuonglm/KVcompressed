@@ -13,7 +13,7 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
-from .families import LLAVA
+from .models.llava15 import LLAVA
 
 # Fixed screening settings. Eligibility: Full_Q's greedy answer is correct and its margin is positive
 # under this surface rule (decision 2; greedy answers are mostly capitalized on both datasets).
@@ -35,8 +35,8 @@ SCREENING = {
 # Modules whose code decides a screen's outcome. A later confirm module must not live in these files,
 # or resuming the screen would be refused.
 SCREENING_MODULES = (
-    "__init__.py", "cache.py", "engine.py", "families.py", "geometry.py", "model.py", "normalize.py",
-    "prompts.py", "runner.py", "screening.py",
+    "__init__.py", "cache.py", "engine.py", "model.py", "models/family.py", "models/layout.py", "models/llava15.py",
+    "normalize.py", "prompts.py", "runner.py", "screening.py",  # LLaVA-1.5's own files only: no NeXT change touches it
 )
 PREREG_SECTION = "## 1. Screening rules"
 DEFAULT_RECORD = Path("freeze/screening_amend2.json")  # supersedes amendment 1, which superseded screening.json

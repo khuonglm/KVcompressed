@@ -1,0 +1,367 @@
+{
+  "stage": "comparative",
+  "frozen_at": "<timestamp>",
+  "prereg_sha256": "c7621ba5e64d12bb7f75982b812f195370c4422471b656b79d455a10c711225b",
+  "stage1_record_sha256": "<code hash>",
+  "manifest": {
+    "gqa_confirm.jsonl": "547e392ba1e4b330b4f9503f4c0714b0a3e95a415bd9241513788e71195b9a03"
+  },
+  "screen_flags_sha256": "420579f1dd147c50a917d783c76a909976bdaff4183c3bb27e4adfbeb877c52b",
+  "main_set_sha256": "c0c80fe0f5f85ccc12480a41eec96ae3db0d4a7237325bd829cb5c396d8b2bf5",
+  "main_items": 2,
+  "control_items": 1,
+  "failed_before_cutoff": 1,
+  "code_sha256": "<code hash>",
+  "settings": {
+    "k": 144,
+    "selectors": [
+      "pw",
+      "qspan"
+    ],
+    "primary_selector": "pw",
+    "surface": "capitalized",
+    "main_units": [
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "mis",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "mis",
+        "answering": "Q"
+      },
+      {
+        "selector": "qspan",
+        "k": 144,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "Q"
+      },
+      {
+        "selector": "qspan",
+        "k": 144,
+        "reserve": false,
+        "selection": "mis",
+        "answering": "mis"
+      },
+      {
+        "selector": "qspan",
+        "k": 144,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "mis"
+      },
+      {
+        "selector": "qspan",
+        "k": 144,
+        "reserve": false,
+        "selection": "mis",
+        "answering": "Q"
+      },
+      {
+        "selector": "full",
+        "k": 576,
+        "reserve": false,
+        "selection": "none",
+        "answering": "Q"
+      },
+      {
+        "selector": "uniform",
+        "k": 144,
+        "reserve": false,
+        "selection": "none",
+        "answering": "Q"
+      },
+      {
+        "selector": "full",
+        "k": 576,
+        "reserve": false,
+        "selection": "none",
+        "answering": "mis"
+      },
+      {
+        "selector": "uniform",
+        "k": 144,
+        "reserve": false,
+        "selection": "none",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": true,
+        "selection": "Q",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": true,
+        "selection": "mis",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": true,
+        "selection": "Q",
+        "answering": "mis"
+      }
+    ],
+    "control_units": [
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "mis",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "mis",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "match",
+        "answering": "match"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "match"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "match",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "irr",
+        "answering": "irr"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "irr"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "irr",
+        "answering": "Q"
+      },
+      {
+        "selector": "qspan",
+        "k": 144,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "Q"
+      },
+      {
+        "selector": "qspan",
+        "k": 144,
+        "reserve": false,
+        "selection": "mis",
+        "answering": "mis"
+      },
+      {
+        "selector": "qspan",
+        "k": 144,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "mis"
+      },
+      {
+        "selector": "qspan",
+        "k": 144,
+        "reserve": false,
+        "selection": "mis",
+        "answering": "Q"
+      },
+      {
+        "selector": "qspan",
+        "k": 144,
+        "reserve": false,
+        "selection": "match",
+        "answering": "match"
+      },
+      {
+        "selector": "qspan",
+        "k": 144,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "match"
+      },
+      {
+        "selector": "qspan",
+        "k": 144,
+        "reserve": false,
+        "selection": "match",
+        "answering": "Q"
+      },
+      {
+        "selector": "qspan",
+        "k": 144,
+        "reserve": false,
+        "selection": "irr",
+        "answering": "irr"
+      },
+      {
+        "selector": "qspan",
+        "k": 144,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "irr"
+      },
+      {
+        "selector": "qspan",
+        "k": 144,
+        "reserve": false,
+        "selection": "irr",
+        "answering": "Q"
+      },
+      {
+        "selector": "full",
+        "k": 576,
+        "reserve": false,
+        "selection": "none",
+        "answering": "Q"
+      },
+      {
+        "selector": "uniform",
+        "k": 144,
+        "reserve": false,
+        "selection": "none",
+        "answering": "Q"
+      },
+      {
+        "selector": "full",
+        "k": 576,
+        "reserve": false,
+        "selection": "none",
+        "answering": "mis"
+      },
+      {
+        "selector": "uniform",
+        "k": 144,
+        "reserve": false,
+        "selection": "none",
+        "answering": "mis"
+      },
+      {
+        "selector": "full",
+        "k": 576,
+        "reserve": false,
+        "selection": "none",
+        "answering": "match"
+      },
+      {
+        "selector": "uniform",
+        "k": 144,
+        "reserve": false,
+        "selection": "none",
+        "answering": "match"
+      },
+      {
+        "selector": "full",
+        "k": 576,
+        "reserve": false,
+        "selection": "none",
+        "answering": "irr"
+      },
+      {
+        "selector": "uniform",
+        "k": 144,
+        "reserve": false,
+        "selection": "none",
+        "answering": "irr"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": true,
+        "selection": "Q",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": true,
+        "selection": "mis",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": true,
+        "selection": "Q",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": true,
+        "selection": "match",
+        "answering": "match"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": true,
+        "selection": "Q",
+        "answering": "match"
+      }
+    ],
+    "blind": "Full_Q on a blank image of the padding colour; consistency check, should never be eligible",
+    "main_size": 2,
+    "control_size": 1
+  }
+}

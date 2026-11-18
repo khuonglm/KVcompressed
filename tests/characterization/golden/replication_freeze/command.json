@@ -1,0 +1,17 @@
+{
+ "exit_code": 0,
+ "stdout": [
+  "{",
+  "  \"frozen_at\": \"<timestamp>\",",
+  "  \"replication_set_sha256\": \"fb789eea9c23464c0f378c7784532b5821fcce4f59c7fccc32daad743b55b5ed\",",
+  "  \"code_sha256\": \"<code hash>\",",
+  "  \"replication\": 2,",
+  "  \"control\": 1,",
+  "  \"excluded\": {",
+  "    \"image in the main set\": 1,",
+  "    \"has a file in an earlier run\": 1",
+  "  }",
+  "}"
+ ],
+ "stderr": []
+}

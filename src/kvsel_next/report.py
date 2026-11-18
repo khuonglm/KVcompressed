@@ -13,9 +13,9 @@ from pathlib import Path
 
 import numpy as np
 
-from kvsel import NUM_VISUAL
 from kvsel.analysis import RESAMPLES, holm
 from kvsel.confirm_analysis import SURFACE, _fmt, _plain, _table, checks, load_run
+from kvsel.models.llava15 import NUM_VISUAL
 from kvsel.replication.report import _interval, behaviour_rates, budget_results, overlap
 
 from .selection import SHARES

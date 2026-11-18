@@ -1,0 +1,8 @@
+{
+ "exit_code": 0,
+ "stdout": [
+  "2 eligible items selected under `capitalized`",
+  "2/2 items"
+ ],
+ "stderr": []
+}

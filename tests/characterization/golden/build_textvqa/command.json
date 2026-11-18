@@ -1,0 +1,34 @@
+{
+ "exit_code": 0,
+ "stdout": [
+  "{",
+  "  \"questions\": 4,",
+  "  \"image_has_ocr\": 4,",
+  "  \"modal_answer_has_5_votes\": 3,",
+  "  \"answer_matches_complete_ocr_tokens\": 3,",
+  "  \"alternative_found\": 3,",
+  "  \"irrelevant_text_found\": 3,",
+  "  \"description_lengths_within_3_tokens\": 3,",
+  "  \"unique_images\": 3,",
+  "  \"dev_candidates\": 1,",
+  "  \"dev_images\": 1,",
+  "  \"confirm_pool\": 2,",
+  "  \"confirm_images\": 2,",
+  "  \"repeated_answers\": 0,",
+  "  \"rotated_boxes\": 0,",
+  "  \"by_character_class\": {",
+  "    \"alpha\": 3",
+  "  },",
+  "  \"multi_token_answers\": 0,",
+  "  \"builder\": \"textvqa-3\",",
+  "  \"source\": [",
+  "    \"textvqa_questions.json\"",
+  "  ],",
+  "  \"dev_sha256\": \"ecda40cf099839c9b500161c57d322f8402e3a4bef442fc3971ad0f46364cbc9\",",
+  "  \"confirm_sha256\": \"a89962422be5fc12948de772cfa21d2d9d129fc2afb4b36ac759bb9e9f201bbd\"",
+  "}"
+ ],
+ "stderr": [
+  "no local model at models/llava-1.5-7b-hf; using llava-hf/llava-1.5-7b-hf from the Hugging Face Hub"
+ ]
+}

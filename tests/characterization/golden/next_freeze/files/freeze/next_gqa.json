@@ -1,0 +1,410 @@
+{
+  "stage": "next_comparative",
+  "frozen_at": "<timestamp>",
+  "prereg_sha256": "c7621ba5e64d12bb7f75982b812f195370c4422471b656b79d455a10c711225b",
+  "stage1_record_sha256": "<code hash>",
+  "manifest": {
+    "next_confirm.jsonl": "4ff1801743830fe4bb448d7291ada25129b0da03e6d227f00d6c89cb970fb92b"
+  },
+  "screen_flags_sha256": "aed4228158d7a6205be24b1bb245fbdcd22db95a09fe000111c9df57cd811510",
+  "main_set_sha256": "aa91342f2aca79565216f0dcab2cec5da95e1ee321ce4c8a9c1ec3c6ee78b763",
+  "main_ids": [
+    "n1",
+    "n4"
+  ],
+  "main_size_frozen_at_stage1": 2,
+  "control_ids": [
+    "n1"
+  ],
+  "code_sha256": "<code hash>",
+  "settings": {
+    "shares": [
+      0.125,
+      0.25,
+      0.5
+    ],
+    "main_units": [
+      {
+        "selector": "pw",
+        "share": 0.125,
+        "selection": "Q",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "share": 0.125,
+        "selection": "mis",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "share": 0.125,
+        "selection": "Q",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "share": 0.125,
+        "selection": "mis",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "share": 0.125,
+        "selection": "irr",
+        "answering": "irr"
+      },
+      {
+        "selector": "pw",
+        "share": 0.125,
+        "selection": "Q",
+        "answering": "irr"
+      },
+      {
+        "selector": "pw",
+        "share": 0.125,
+        "selection": "irr",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "share": 0.25,
+        "selection": "Q",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "share": 0.25,
+        "selection": "mis",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "share": 0.25,
+        "selection": "Q",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "share": 0.25,
+        "selection": "mis",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "share": 0.25,
+        "selection": "irr",
+        "answering": "irr"
+      },
+      {
+        "selector": "pw",
+        "share": 0.25,
+        "selection": "Q",
+        "answering": "irr"
+      },
+      {
+        "selector": "pw",
+        "share": 0.25,
+        "selection": "irr",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "share": 0.5,
+        "selection": "Q",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "share": 0.5,
+        "selection": "mis",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "share": 0.5,
+        "selection": "Q",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "share": 0.5,
+        "selection": "mis",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "share": 0.5,
+        "selection": "irr",
+        "answering": "irr"
+      },
+      {
+        "selector": "pw",
+        "share": 0.5,
+        "selection": "Q",
+        "answering": "irr"
+      },
+      {
+        "selector": "pw",
+        "share": 0.5,
+        "selection": "irr",
+        "answering": "Q"
+      },
+      {
+        "selector": "full",
+        "share": 1.0,
+        "selection": "none",
+        "answering": "Q"
+      },
+      {
+        "selector": "full",
+        "share": 1.0,
+        "selection": "none",
+        "answering": "mis"
+      },
+      {
+        "selector": "full",
+        "share": 1.0,
+        "selection": "none",
+        "answering": "irr"
+      }
+    ],
+    "control_units": [
+      {
+        "selector": "pw",
+        "share": 0.125,
+        "selection": "Q",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "share": 0.125,
+        "selection": "mis",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "share": 0.125,
+        "selection": "Q",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "share": 0.125,
+        "selection": "mis",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "share": 0.125,
+        "selection": "irr",
+        "answering": "irr"
+      },
+      {
+        "selector": "pw",
+        "share": 0.125,
+        "selection": "Q",
+        "answering": "irr"
+      },
+      {
+        "selector": "pw",
+        "share": 0.125,
+        "selection": "irr",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "share": 0.125,
+        "selection": "match",
+        "answering": "match"
+      },
+      {
+        "selector": "pw",
+        "share": 0.125,
+        "selection": "Q",
+        "answering": "match"
+      },
+      {
+        "selector": "pw",
+        "share": 0.125,
+        "selection": "match",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "share": 0.25,
+        "selection": "Q",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "share": 0.25,
+        "selection": "mis",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "share": 0.25,
+        "selection": "Q",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "share": 0.25,
+        "selection": "mis",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "share": 0.25,
+        "selection": "irr",
+        "answering": "irr"
+      },
+      {
+        "selector": "pw",
+        "share": 0.25,
+        "selection": "Q",
+        "answering": "irr"
+      },
+      {
+        "selector": "pw",
+        "share": 0.25,
+        "selection": "irr",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "share": 0.25,
+        "selection": "match",
+        "answering": "match"
+      },
+      {
+        "selector": "pw",
+        "share": 0.25,
+        "selection": "Q",
+        "answering": "match"
+      },
+      {
+        "selector": "pw",
+        "share": 0.25,
+        "selection": "match",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "share": 0.5,
+        "selection": "Q",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "share": 0.5,
+        "selection": "mis",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "share": 0.5,
+        "selection": "Q",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "share": 0.5,
+        "selection": "mis",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "share": 0.5,
+        "selection": "irr",
+        "answering": "irr"
+      },
+      {
+        "selector": "pw",
+        "share": 0.5,
+        "selection": "Q",
+        "answering": "irr"
+      },
+      {
+        "selector": "pw",
+        "share": 0.5,
+        "selection": "irr",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "share": 0.5,
+        "selection": "match",
+        "answering": "match"
+      },
+      {
+        "selector": "pw",
+        "share": 0.5,
+        "selection": "Q",
+        "answering": "match"
+      },
+      {
+        "selector": "pw",
+        "share": 0.5,
+        "selection": "match",
+        "answering": "Q"
+      },
+      {
+        "selector": "full",
+        "share": 1.0,
+        "selection": "none",
+        "answering": "Q"
+      },
+      {
+        "selector": "full",
+        "share": 1.0,
+        "selection": "none",
+        "answering": "mis"
+      },
+      {
+        "selector": "full",
+        "share": 1.0,
+        "selection": "none",
+        "answering": "irr"
+      },
+      {
+        "selector": "full",
+        "share": 1.0,
+        "selection": "none",
+        "answering": "match"
+      }
+    ],
+    "blind_unit": {
+      "selector": "full",
+      "share": 1.0,
+      "selection": "none",
+      "answering": "Q"
+    },
+    "surface": "capitalized",
+    "family": [
+      [
+        "N1",
+        "S_H^(mis)",
+        0.25
+      ],
+      [
+        "N2",
+        "S_H^(irr)",
+        0.25
+      ],
+      [
+        "N3",
+        "E_harm^(mis)",
+        0.25
+      ],
+      [
+        "N4",
+        "T_irr",
+        0.25
+      ]
+    ],
+    "alpha": 0.05,
+    "equivalence": null
+  }
+}

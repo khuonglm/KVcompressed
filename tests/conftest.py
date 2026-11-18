@@ -16,9 +16,24 @@ def tiny_llama():
     return LlamaForCausalLM(config).eval()
 
 
+ACCELERATOR = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else None
+
+
+@pytest.fixture(scope="session", params=["device", "cpu"])
+def residency(request):
+    """Where the prefix lives relative to the decoder. The prefix fixtures stay in CPU memory, so a CPU-held prefix
+    means a decoder on an accelerator."""
+    if request.param == "cpu" and ACCELERATOR is None:
+        pytest.skip("a CPU-held prefix needs a decoder on an accelerator")
+    return request.param
+
+
 @pytest.fixture(scope="session")
-def tiny_decoder(tiny_llama):
-    return Decoder(tiny_llama.model, tiny_llama.lm_head)
+def tiny_decoder(tiny_llama, residency):
+    import copy
+
+    model = tiny_llama if residency == "device" else copy.deepcopy(tiny_llama).to(ACCELERATOR)
+    return Decoder(model.model, model.lm_head)
 
 
 @pytest.fixture(scope="session")
@@ -30,8 +45,7 @@ def tiny_prefix(tiny_llama):
     return Prefix(entries_from_cache(output.past_key_values), 5, 576)
 
 
-@pytest.fixture(scope="session")
-def tiny_llava():
+def make_tiny_llava():
     """Same classes as the real model, random weights, full 576-token image grid."""
     torch.manual_seed(2)
     text = LlamaConfig(
@@ -49,7 +63,11 @@ def tiny_llava():
 
 
 @pytest.fixture(scope="session")
-def tiny_llava_next():
+def tiny_llava():
+    return make_tiny_llava()
+
+
+def make_tiny_llava_next():
     """LLaVA-NeXT classes with random weights: 24 x 24 base tile, AnyRes on with the real pinpoints."""
     from transformers import LlavaNextConfig, LlavaNextForConditionalGeneration
 
@@ -67,3 +85,8 @@ def tiny_llava_next():
         image_grid_pinpoints=[[336, 672], [672, 336], [672, 672], [1008, 336], [336, 1008]],
     )
     return LlavaNextForConditionalGeneration(config).eval()
+
+
+@pytest.fixture(scope="session")
+def tiny_llava_next():
+    return make_tiny_llava_next()

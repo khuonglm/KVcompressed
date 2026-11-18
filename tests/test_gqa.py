@@ -2,7 +2,8 @@
 
 import json
 
-from kvsel.gqa import VOCABULARY, build, build_items, iter_json_object, load_questions, parse_program, split_by_image
+from kvsel.items.gqa import VOCABULARY, build, build_items, iter_json_object, load_questions, parse_program
+from kvsel.items.shared import split_by_image
 
 
 def obj(name, attributes, x=0, y=0, w=10, h=10):

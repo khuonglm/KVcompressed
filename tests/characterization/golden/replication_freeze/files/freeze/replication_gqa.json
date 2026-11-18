@@ -1,0 +1,494 @@
+{
+  "stage": "replication",
+  "frozen_at": "<timestamp>",
+  "prereg_sha256": "c7621ba5e64d12bb7f75982b812f195370c4422471b656b79d455a10c711225b",
+  "stage1_record_sha256": "<code hash>",
+  "gqa_record_sha256": "<code hash>",
+  "manifest": {
+    "gqa_confirm.jsonl": "547e392ba1e4b330b4f9503f4c0714b0a3e95a415bd9241513788e71195b9a03"
+  },
+  "screen_flags_sha256": "420579f1dd147c50a917d783c76a909976bdaff4183c3bb27e4adfbeb877c52b",
+  "replication_set_sha256": "fb789eea9c23464c0f378c7784532b5821fcce4f59c7fccc32daad743b55b5ed",
+  "replication_ids": [
+    "c7",
+    "c8"
+  ],
+  "control_ids": [
+    "c7"
+  ],
+  "failed_before_cutoff": 1,
+  "exclude_runs": [
+    "earlier_run"
+  ],
+  "excluded": {
+    "c4": "image in the main set",
+    "c5": "has a file in an earlier run"
+  },
+  "code_sha256": "<code hash>",
+  "settings": {
+    "budgets": [
+      72,
+      144,
+      288
+    ],
+    "size": 2,
+    "control_size": 1,
+    "main_units": [
+      {
+        "selector": "pw",
+        "k": 72,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "k": 72,
+        "reserve": false,
+        "selection": "mis",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "k": 72,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "k": 72,
+        "reserve": false,
+        "selection": "mis",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "k": 72,
+        "reserve": false,
+        "selection": "irr",
+        "answering": "irr"
+      },
+      {
+        "selector": "pw",
+        "k": 72,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "irr"
+      },
+      {
+        "selector": "pw",
+        "k": 72,
+        "reserve": false,
+        "selection": "irr",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "mis",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "mis",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "irr",
+        "answering": "irr"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "irr"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "irr",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "k": 288,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "k": 288,
+        "reserve": false,
+        "selection": "mis",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "k": 288,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "k": 288,
+        "reserve": false,
+        "selection": "mis",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "k": 288,
+        "reserve": false,
+        "selection": "irr",
+        "answering": "irr"
+      },
+      {
+        "selector": "pw",
+        "k": 288,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "irr"
+      },
+      {
+        "selector": "pw",
+        "k": 288,
+        "reserve": false,
+        "selection": "irr",
+        "answering": "Q"
+      },
+      {
+        "selector": "full",
+        "k": 576,
+        "reserve": false,
+        "selection": "none",
+        "answering": "Q"
+      },
+      {
+        "selector": "full",
+        "k": 576,
+        "reserve": false,
+        "selection": "none",
+        "answering": "mis"
+      },
+      {
+        "selector": "full",
+        "k": 576,
+        "reserve": false,
+        "selection": "none",
+        "answering": "irr"
+      }
+    ],
+    "control_units": [
+      {
+        "selector": "pw",
+        "k": 72,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "k": 72,
+        "reserve": false,
+        "selection": "mis",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "k": 72,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "k": 72,
+        "reserve": false,
+        "selection": "mis",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "k": 72,
+        "reserve": false,
+        "selection": "irr",
+        "answering": "irr"
+      },
+      {
+        "selector": "pw",
+        "k": 72,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "irr"
+      },
+      {
+        "selector": "pw",
+        "k": 72,
+        "reserve": false,
+        "selection": "irr",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "k": 72,
+        "reserve": false,
+        "selection": "match",
+        "answering": "match"
+      },
+      {
+        "selector": "pw",
+        "k": 72,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "match"
+      },
+      {
+        "selector": "pw",
+        "k": 72,
+        "reserve": false,
+        "selection": "match",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "mis",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "mis",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "irr",
+        "answering": "irr"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "irr"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "irr",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "match",
+        "answering": "match"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "match"
+      },
+      {
+        "selector": "pw",
+        "k": 144,
+        "reserve": false,
+        "selection": "match",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "k": 288,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "k": 288,
+        "reserve": false,
+        "selection": "mis",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "k": 288,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "mis"
+      },
+      {
+        "selector": "pw",
+        "k": 288,
+        "reserve": false,
+        "selection": "mis",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "k": 288,
+        "reserve": false,
+        "selection": "irr",
+        "answering": "irr"
+      },
+      {
+        "selector": "pw",
+        "k": 288,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "irr"
+      },
+      {
+        "selector": "pw",
+        "k": 288,
+        "reserve": false,
+        "selection": "irr",
+        "answering": "Q"
+      },
+      {
+        "selector": "pw",
+        "k": 288,
+        "reserve": false,
+        "selection": "match",
+        "answering": "match"
+      },
+      {
+        "selector": "pw",
+        "k": 288,
+        "reserve": false,
+        "selection": "Q",
+        "answering": "match"
+      },
+      {
+        "selector": "pw",
+        "k": 288,
+        "reserve": false,
+        "selection": "match",
+        "answering": "Q"
+      },
+      {
+        "selector": "full",
+        "k": 576,
+        "reserve": false,
+        "selection": "none",
+        "answering": "Q"
+      },
+      {
+        "selector": "full",
+        "k": 576,
+        "reserve": false,
+        "selection": "none",
+        "answering": "mis"
+      },
+      {
+        "selector": "full",
+        "k": 576,
+        "reserve": false,
+        "selection": "none",
+        "answering": "irr"
+      },
+      {
+        "selector": "full",
+        "k": 576,
+        "reserve": false,
+        "selection": "none",
+        "answering": "match"
+      }
+    ],
+    "blind_unit": {
+      "selector": "full",
+      "k": 576,
+      "reserve": false,
+      "selection": "none",
+      "answering": "Q"
+    },
+    "surface": "capitalized",
+    "family": [
+      [
+        "R1",
+        "S_H^(mis)",
+        "72"
+      ],
+      [
+        "R1",
+        "S_H^(mis)",
+        "144"
+      ],
+      [
+        "R2",
+        "S_H^(irr)",
+        "72"
+      ],
+      [
+        "R2",
+        "S_H^(irr)",
+        "144"
+      ],
+      [
+        "R3",
+        "E_harm^(mis)",
+        "72"
+      ],
+      [
+        "R5",
+        "T_irr",
+        "72"
+      ]
+    ],
+    "alpha": 0.05,
+    "equivalence": [
+      "R4",
+      "S_H^(mis)",
+      "288"
+    ],
+    "delta": 0.1
+  }
+}

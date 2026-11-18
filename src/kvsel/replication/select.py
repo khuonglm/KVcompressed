@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ..verify import PASS
+from ..verification import PASS
 
 REPLICATION_SIZE = 1000
 CONTROL_SIZE = 300

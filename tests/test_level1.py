@@ -52,7 +52,8 @@ def test_incremental_generation_steps_match_dense(tiny_decoder, tiny_prefix):
 
 def test_control_physical_positions_are_detected(tiny_decoder, tiny_prefix):
     kept = random_set(144, 7)
-    entries = compact(tiny_prefix.entries, kept, tiny_prefix.num_nonvisual)
+    compacted = compact(tiny_prefix.entries, kept, tiny_prefix.num_nonvisual)
+    entries = tuple((k.to(tiny_decoder.device), v.to(tiny_decoder.device)) for k, v in compacted)
     physical = entries[0][0].shape[2]
     hidden, _, _ = tiny_decoder.step(SUFFIX, entries, physical, physical)  # logical start is wrong on purpose
     wrong = tiny_decoder.logits(hidden)
@@ -105,6 +106,17 @@ def test_probe_shape_and_probability_bound(tiny_decoder, tiny_prefix):
     attention = probe(tiny_decoder, tiny_prefix, SUFFIX)
     assert attention.shape == (50, 576)
     assert np.all(attention >= 0) and attention.sum(axis=1).max() <= 1 + 1e-5
+
+
+def test_probe_layer2_equals_the_followups_lt_early_input(tiny_decoder, tiny_prefix):
+    """Against the follow-ups' former copied probe, captured on this model before it was removed (18 November 2026)."""
+    from pathlib import Path
+
+    if tiny_decoder.device.type != "cpu":
+        pytest.skip("captured with CPU arithmetic")
+    late, layer2 = probe(tiny_decoder, tiny_prefix, SUFFIX, layer2_last=True)
+    assert np.array_equal(layer2, np.load(Path(__file__).parent / "characterization" / "lt_early_layer2.npy"))
+    assert np.array_equal(late, probe(tiny_decoder, tiny_prefix, SUFFIX))
 
 
 def test_score_sequence_matches_manual_chain(tiny_decoder, tiny_prefix):

@@ -1,0 +1,2139 @@
+{
+  "run": "next_run",
+  "surface": "capitalized",
+  "items": 2,
+  "images": 2,
+  "control_items": 1,
+  "main_size_frozen_at_stage1": 2,
+  "checks": {
+    "full_q_no_longer_eligible": 0,
+    "blind_rows": 2,
+    "blind_now_eligible": 0,
+    "blind_mean_margin": 0.16092777252197266,
+    "truncated_share": 0.25,
+    "visual_tokens_min": 984,
+    "visual_tokens_max": 1320,
+    "grids": {
+      "24x30": 1,
+      "24x16": 1
+    }
+  },
+  "family": {
+    "alpha": 0.05,
+    "tests": {
+      "N1: S_H^(mis), 25.0%": {
+        "estimate": -0.0006680488586425781,
+        "ci95": [
+          -0.005267143249511719,
+          0.0039310455322265625
+        ],
+        "ci90": [
+          -0.005267143249511719,
+          0.0039310455322265625
+        ],
+        "se": 0.003076058268925552,
+        "p_one_sided": 0.803921568627451,
+        "p_two_sided": 0.43137254901960786,
+        "items": 2,
+        "images": 2,
+        "reading": "practically small"
+      },
+      "N2: S_H^(irr), 25.0%": {
+        "estimate": 7.724761962890625e-05,
+        "ci95": [
+          -0.004897117614746094,
+          0.005051612854003906
+        ],
+        "ci90": [
+          -0.004897117614746094,
+          0.005051612854003906
+        ],
+        "se": 0.0033270544179814783,
+        "p_one_sided": 0.2549019607843137,
+        "p_two_sided": 0.5098039215686274,
+        "items": 2,
+        "images": 2,
+        "reading": "practically small"
+      },
+      "N3: E_harm^(mis), 25.0%": {
+        "estimate": 0.0005135536193847656,
+        "ci95": [
+          -0.0051059722900390625,
+          0.006133079528808594
+        ],
+        "ci90": [
+          -0.0051059722900390625,
+          0.006133079528808594
+        ],
+        "se": 0.0037585636805896974,
+        "p_one_sided": 0.2549019607843137,
+        "p_two_sided": 0.5098039215686274,
+        "items": 2,
+        "images": 2,
+        "reading": "practically small"
+      },
+      "N4: T_irr, 25.0%": {
+        "estimate": -0.0007452964782714844,
+        "ci95": [
+          -0.0011205673217773438,
+          -0.000370025634765625
+        ],
+        "ci90": [
+          -0.0011205673217773438,
+          -0.000370025634765625
+        ],
+        "se": 0.0002509961490559263,
+        "p_one_sided": 1.0,
+        "p_two_sided": 0.0392156862745098,
+        "items": 2,
+        "images": 2,
+        "reading": "opposite direction, practically small"
+      }
+    },
+    "reject": {
+      "N1: S_H^(mis), 25.0%": false,
+      "N2: S_H^(irr), 25.0%": false,
+      "N3: E_harm^(mis), 25.0%": false,
+      "N4: T_irr, 25.0%": false
+    }
+  },
+  "shares": {
+    "12.5%": {
+      "margins": {
+        "S_H^(mis)": {
+          "estimate": 0.01895618438720703,
+          "ci95": [
+            0.012955665588378906,
+            0.024956703186035156
+          ],
+          "ci90": [
+            0.012955665588378906,
+            0.024956703186035156
+          ],
+          "se": 0.004013386962795143,
+          "p_one_sided": 0.0196078431372549,
+          "p_two_sided": 0.0392156862745098,
+          "items": 2,
+          "images": 2,
+          "reading": "positive, practically small"
+        },
+        "S_Q^(mis)": {
+          "estimate": 0.02016735076904297,
+          "ci95": [
+            0.014333724975585938,
+            0.0260009765625
+          ],
+          "ci90": [
+            0.014333724975585938,
+            0.0260009765625
+          ],
+          "se": 0.0039017622459341836,
+          "p_one_sided": 0.0196078431372549,
+          "p_two_sided": 0.0392156862745098,
+          "items": 2,
+          "images": 2,
+          "reading": "positive, practically small"
+        },
+        "I^(mis)": {
+          "estimate": -0.0012111663818359375,
+          "ci95": [
+            -0.0013780593872070312,
+            -0.0010442733764648438
+          ],
+          "ci90": [
+            -0.0013780593872070312,
+            -0.0010442733764648438
+          ],
+          "se": 0.00011162471686095834,
+          "p_one_sided": 1.0,
+          "p_two_sided": 0.0392156862745098,
+          "items": 2,
+          "images": 2,
+          "reading": "opposite direction, practically small"
+        },
+        "E_harm^(mis)": {
+          "estimate": 0.019397258758544922,
+          "ci95": [
+            0.015155792236328125,
+            0.02363872528076172
+          ],
+          "ci90": [
+            0.015155792236328125,
+            0.02363872528076172
+          ],
+          "se": 0.0028368624470806415,
+          "p_one_sided": 0.0196078431372549,
+          "p_two_sided": 0.0392156862745098,
+          "items": 2,
+          "images": 2,
+          "reading": "positive, practically small"
+        },
+        "S_H^(irr)": {
+          "estimate": 0.01820087432861328,
+          "ci95": [
+            0.011445999145507812,
+            0.02495574951171875
+          ],
+          "ci90": [
+            0.011445999145507812,
+            0.02495574951171875
+          ],
+          "se": 0.004517930683006674,
+          "p_one_sided": 0.0196078431372549,
+          "p_two_sided": 0.0392156862745098,
+          "items": 2,
+          "images": 2,
+          "reading": "positive, practically small"
+        },
+        "S_Q^(irr)": {
+          "estimate": 0.01928091049194336,
+          "ci95": [
+            0.012560844421386719,
+            0.0260009765625
+          ],
+          "ci90": [
+            0.012560844421386719,
+            0.0260009765625
+          ],
+          "se": 0.004494648956347103,
+          "p_one_sided": 0.0196078431372549,
+          "p_two_sided": 0.0392156862745098,
+          "items": 2,
+          "images": 2,
+          "reading": "positive, practically small"
+        },
+        "I^(irr)": {
+          "estimate": -0.0010800361633300781,
+          "ci95": [
+            -0.0011148452758789062,
+            -0.00104522705078125
+          ],
+          "ci90": [
+            -0.0011148452758789062,
+            -0.00104522705078125
+          ],
+          "se": 2.328172665957131e-05,
+          "p_one_sided": 1.0,
+          "p_two_sided": 0.0392156862745098,
+          "items": 2,
+          "images": 2,
+          "reading": "opposite direction, practically small"
+        },
+        "E_harm^(irr)": {
+          "estimate": 0.01812267303466797,
+          "ci95": [
+            0.013251304626464844,
+            0.022994041442871094
+          ],
+          "ci90": [
+            0.013251304626464844,
+            0.022994041442871094
+          ],
+          "se": 0.0032581660212901444,
+          "p_one_sided": 0.0196078431372549,
+          "p_two_sided": 0.0392156862745098,
+          "items": 2,
+          "images": 2,
+          "reading": "positive, practically small"
+        },
+        "S_H^(match)": {
+          "estimate": 0.024982452392578125,
+          "ci95": [
+            0.024982452392578125,
+            0.024982452392578125
+          ],
+          "ci90": [
+            0.024982452392578125,
+            0.024982452392578125
+          ],
+          "se": 0.0,
+          "p_one_sided": 0.0196078431372549,
+          "p_two_sided": 0.0392156862745098,
+          "items": 1,
+          "images": 1,
+          "reading": "positive, practically small"
+        },
+        "S_Q^(match)": {
+          "estimate": 0.0260009765625,
+          "ci95": [
+            0.0260009765625,
+            0.0260009765625
+          ],
+          "ci90": [
+            0.0260009765625,
+            0.0260009765625
+          ],
+          "se": 0.0,
+          "p_one_sided": 0.0196078431372549,
+          "p_two_sided": 0.0392156862745098,
+          "items": 1,
+          "images": 1,
+          "reading": "positive, practically small"
+        },
+        "I^(match)": {
+          "estimate": -0.001018524169921875,
+          "ci95": [
+            -0.001018524169921875,
+            -0.001018524169921875
+          ],
+          "ci90": [
+            -0.001018524169921875,
+            -0.001018524169921875
+          ],
+          "se": 0.0,
+          "p_one_sided": 1.0,
+          "p_two_sided": 0.0392156862745098,
+          "items": 1,
+          "images": 1,
+          "reading": "opposite direction, practically small"
+        },
+        "E_harm^(match)": {
+          "estimate": 0.022630691528320312,
+          "ci95": [
+            0.022630691528320312,
+            0.022630691528320312
+          ],
+          "ci90": [
+            0.022630691528320312,
+            0.022630691528320312
+          ],
+          "se": 0.0,
+          "p_one_sided": 0.0196078431372549,
+          "p_two_sided": 0.0392156862745098,
+          "items": 1,
+          "images": 1,
+          "reading": "positive, practically small"
+        },
+        "T_irr": {
+          "estimate": 0.00075531005859375,
+          "ci95": [
+            9.5367431640625e-07,
+            0.0015096664428710938
+          ],
+          "ci90": [
+            9.5367431640625e-07,
+            0.0015096664428710938
+          ],
+          "se": 0.0005045437202115317,
+          "p_one_sided": 0.0196078431372549,
+          "p_two_sided": 0.0392156862745098,
+          "items": 2,
+          "images": 2,
+          "reading": "positive, practically small"
+        },
+        "T_match": {
+          "estimate": -2.574920654296875e-05,
+          "ci95": [
+            -2.574920654296875e-05,
+            -2.574920654296875e-05
+          ],
+          "ci90": [
+            -2.574920654296875e-05,
+            -2.574920654296875e-05
+          ],
+          "se": 0.0,
+          "p_one_sided": 1.0,
+          "p_two_sided": 0.0392156862745098,
+          "items": 1,
+          "images": 1,
+          "reading": "opposite direction, practically small"
+        }
+      },
+      "behaviour_paired": {
+        "correct: C_mis \u2212 B_mis": {
+          "estimate": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci90": [
+            0.0,
+            0.0
+          ],
+          "se": 0.0,
+          "p_one_sided": 1.0,
+          "p_two_sided": 1.0,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "alt: C_mis \u2212 B_mis": {
+          "estimate": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci90": [
+            0.0,
+            0.0
+          ],
+          "se": 0.0,
+          "p_one_sided": 1.0,
+          "p_two_sided": 1.0,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "correct: C_irr \u2212 B_irr": {
+          "estimate": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci90": [
+            0.0,
+            0.0
+          ],
+          "se": 0.0,
+          "p_one_sided": 1.0,
+          "p_two_sided": 1.0,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "alt: C_irr \u2212 B_irr": {
+          "estimate": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci90": [
+            0.0,
+            0.0
+          ],
+          "se": 0.0,
+          "p_one_sided": 1.0,
+          "p_two_sided": 1.0,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "correct: C_match \u2212 B_match": {
+          "estimate": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci90": [
+            0.0,
+            0.0
+          ],
+          "se": 0.0,
+          "p_one_sided": 1.0,
+          "p_two_sided": 1.0,
+          "items": 1,
+          "images": 1,
+          "reading": "practically small"
+        },
+        "alt: C_match \u2212 B_match": {
+          "estimate": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci90": [
+            0.0,
+            0.0
+          ],
+          "se": 0.0,
+          "p_one_sided": 1.0,
+          "p_two_sided": 1.0,
+          "items": 1,
+          "images": 1,
+          "reading": "practically small"
+        }
+      }
+    },
+    "25.0%": {
+      "margins": {
+        "S_H^(mis)": {
+          "estimate": -0.0006680488586425781,
+          "ci95": [
+            -0.005267143249511719,
+            0.0039310455322265625
+          ],
+          "ci90": [
+            -0.005267143249511719,
+            0.0039310455322265625
+          ],
+          "se": 0.003076058268925552,
+          "p_one_sided": 0.803921568627451,
+          "p_two_sided": 0.43137254901960786,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "S_Q^(mis)": {
+          "estimate": -0.0006504058837890625,
+          "ci95": [
+            -0.005743980407714844,
+            0.004443168640136719
+          ],
+          "ci90": [
+            -0.005743980407714844,
+            0.004443168640136719
+          ],
+          "se": 0.0034067863585964487,
+          "p_one_sided": 0.803921568627451,
+          "p_two_sided": 0.43137254901960786,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "I^(mis)": {
+          "estimate": -1.7642974853515625e-05,
+          "ci95": [
+            -0.0005121231079101562,
+            0.000476837158203125
+          ],
+          "ci90": [
+            -0.0005121231079101562,
+            0.000476837158203125
+          ],
+          "se": 0.00033072808967089654,
+          "p_one_sided": 0.7647058823529411,
+          "p_two_sided": 0.5098039215686274,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "E_harm^(mis)": {
+          "estimate": 0.0005135536193847656,
+          "ci95": [
+            -0.0051059722900390625,
+            0.006133079528808594
+          ],
+          "ci90": [
+            -0.0051059722900390625,
+            0.006133079528808594
+          ],
+          "se": 0.0037585636805896974,
+          "p_one_sided": 0.2549019607843137,
+          "p_two_sided": 0.5098039215686274,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "S_H^(irr)": {
+          "estimate": 7.724761962890625e-05,
+          "ci95": [
+            -0.004897117614746094,
+            0.005051612854003906
+          ],
+          "ci90": [
+            -0.004897117614746094,
+            0.005051612854003906
+          ],
+          "se": 0.0033270544179814783,
+          "p_one_sided": 0.2549019607843137,
+          "p_two_sided": 0.5098039215686274,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "S_Q^(irr)": {
+          "estimate": 9.870529174804688e-05,
+          "ci95": [
+            -0.0053539276123046875,
+            0.005551338195800781
+          ],
+          "ci90": [
+            -0.0053539276123046875,
+            0.005551338195800781
+          ],
+          "se": 0.003646938963728739,
+          "p_one_sided": 0.2549019607843137,
+          "p_two_sided": 0.5098039215686274,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "I^(irr)": {
+          "estimate": -2.1457672119140625e-05,
+          "ci95": [
+            -0.000499725341796875,
+            0.00045680999755859375
+          ],
+          "ci90": [
+            -0.000499725341796875,
+            0.00045680999755859375
+          ],
+          "se": 0.0003198845457472606,
+          "p_one_sided": 0.7647058823529411,
+          "p_two_sided": 0.5098039215686274,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "E_harm^(irr)": {
+          "estimate": 0.0009016990661621094,
+          "ci95": [
+            -0.005101203918457031,
+            0.00690460205078125
+          ],
+          "ci90": [
+            -0.005101203918457031,
+            0.00690460205078125
+          ],
+          "se": 0.004014981601607442,
+          "p_one_sided": 0.2549019607843137,
+          "p_two_sided": 0.5098039215686274,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "S_H^(match)": {
+          "estimate": -0.005263328552246094,
+          "ci95": [
+            -0.005263328552246094,
+            -0.005263328552246094
+          ],
+          "ci90": [
+            -0.005263328552246094,
+            -0.005263328552246094
+          ],
+          "se": 0.0,
+          "p_one_sided": 1.0,
+          "p_two_sided": 0.0392156862745098,
+          "items": 1,
+          "images": 1,
+          "reading": "opposite direction, practically small"
+        },
+        "S_Q^(match)": {
+          "estimate": -0.005743980407714844,
+          "ci95": [
+            -0.005743980407714844,
+            -0.005743980407714844
+          ],
+          "ci90": [
+            -0.005743980407714844,
+            -0.005743980407714844
+          ],
+          "se": 0.0,
+          "p_one_sided": 1.0,
+          "p_two_sided": 0.0392156862745098,
+          "items": 1,
+          "images": 1,
+          "reading": "opposite direction, practically small"
+        },
+        "I^(match)": {
+          "estimate": 0.00048065185546875,
+          "ci95": [
+            0.00048065185546875,
+            0.00048065185546875
+          ],
+          "ci90": [
+            0.00048065185546875,
+            0.00048065185546875
+          ],
+          "se": 0.0,
+          "p_one_sided": 0.0196078431372549,
+          "p_two_sided": 0.0392156862745098,
+          "items": 1,
+          "images": 1,
+          "reading": "positive, practically small"
+        },
+        "E_harm^(match)": {
+          "estimate": -0.005684852600097656,
+          "ci95": [
+            -0.005684852600097656,
+            -0.005684852600097656
+          ],
+          "ci90": [
+            -0.005684852600097656,
+            -0.005684852600097656
+          ],
+          "se": 0.0,
+          "p_one_sided": 1.0,
+          "p_two_sided": 0.0392156862745098,
+          "items": 1,
+          "images": 1,
+          "reading": "opposite direction, practically small"
+        },
+        "T_irr": {
+          "estimate": -0.0007452964782714844,
+          "ci95": [
+            -0.0011205673217773438,
+            -0.000370025634765625
+          ],
+          "ci90": [
+            -0.0011205673217773438,
+            -0.000370025634765625
+          ],
+          "se": 0.0002509961490559263,
+          "p_one_sided": 1.0,
+          "p_two_sided": 0.0392156862745098,
+          "items": 2,
+          "images": 2,
+          "reading": "opposite direction, practically small"
+        },
+        "T_match": {
+          "estimate": -3.814697265625e-06,
+          "ci95": [
+            -3.814697265625e-06,
+            -3.814697265625e-06
+          ],
+          "ci90": [
+            -3.814697265625e-06,
+            -3.814697265625e-06
+          ],
+          "se": 0.0,
+          "p_one_sided": 1.0,
+          "p_two_sided": 0.0392156862745098,
+          "items": 1,
+          "images": 1,
+          "reading": "opposite direction, practically small"
+        }
+      },
+      "behaviour_paired": {
+        "correct: C_mis \u2212 B_mis": {
+          "estimate": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci90": [
+            0.0,
+            0.0
+          ],
+          "se": 0.0,
+          "p_one_sided": 1.0,
+          "p_two_sided": 1.0,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "alt: C_mis \u2212 B_mis": {
+          "estimate": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci90": [
+            0.0,
+            0.0
+          ],
+          "se": 0.0,
+          "p_one_sided": 1.0,
+          "p_two_sided": 1.0,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "correct: C_irr \u2212 B_irr": {
+          "estimate": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci90": [
+            0.0,
+            0.0
+          ],
+          "se": 0.0,
+          "p_one_sided": 1.0,
+          "p_two_sided": 1.0,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "alt: C_irr \u2212 B_irr": {
+          "estimate": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci90": [
+            0.0,
+            0.0
+          ],
+          "se": 0.0,
+          "p_one_sided": 1.0,
+          "p_two_sided": 1.0,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "correct: C_match \u2212 B_match": {
+          "estimate": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci90": [
+            0.0,
+            0.0
+          ],
+          "se": 0.0,
+          "p_one_sided": 1.0,
+          "p_two_sided": 1.0,
+          "items": 1,
+          "images": 1,
+          "reading": "practically small"
+        },
+        "alt: C_match \u2212 B_match": {
+          "estimate": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci90": [
+            0.0,
+            0.0
+          ],
+          "se": 0.0,
+          "p_one_sided": 1.0,
+          "p_two_sided": 1.0,
+          "items": 1,
+          "images": 1,
+          "reading": "practically small"
+        }
+      }
+    },
+    "50.0%": {
+      "margins": {
+        "S_H^(mis)": {
+          "estimate": 0.0006756782531738281,
+          "ci95": [
+            -0.001056671142578125,
+            0.0024080276489257812
+          ],
+          "ci90": [
+            -0.001056671142578125,
+            0.0024080276489257812
+          ],
+          "se": 0.0011586645610167476,
+          "p_one_sided": 0.2549019607843137,
+          "p_two_sided": 0.5098039215686274,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "S_Q^(mis)": {
+          "estimate": 0.0006542205810546875,
+          "ci95": [
+            -0.0011453628540039062,
+            0.0024538040161132812
+          ],
+          "ci90": [
+            -0.0011453628540039062,
+            0.0024538040161132812
+          ],
+          "se": 0.0012036333755235907,
+          "p_one_sided": 0.2549019607843137,
+          "p_two_sided": 0.5098039215686274,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "I^(mis)": {
+          "estimate": 2.1457672119140625e-05,
+          "ci95": [
+            -4.57763671875e-05,
+            8.869171142578125e-05
+          ],
+          "ci90": [
+            -4.57763671875e-05,
+            8.869171142578125e-05
+          ],
+          "se": 4.496881450684322e-05,
+          "p_one_sided": 0.21568627450980393,
+          "p_two_sided": 0.43137254901960786,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "E_harm^(mis)": {
+          "estimate": 0.0012583732604980469,
+          "ci95": [
+            -0.0007925033569335938,
+            0.0033092498779296875
+          ],
+          "ci90": [
+            -0.0007925033569335938,
+            0.0033092498779296875
+          ],
+          "se": 0.0013717083063399481,
+          "p_one_sided": 0.2549019607843137,
+          "p_two_sided": 0.5098039215686274,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "S_H^(irr)": {
+          "estimate": 0.0006361007690429688,
+          "ci95": [
+            -0.0014829635620117188,
+            0.0027551651000976562
+          ],
+          "ci90": [
+            -0.0014829635620117188,
+            0.0027551651000976562
+          ],
+          "se": 0.0014173149763717112,
+          "p_one_sided": 0.2549019607843137,
+          "p_two_sided": 0.5098039215686274,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "S_Q^(irr)": {
+          "estimate": 0.0006070137023925781,
+          "ci95": [
+            -0.0015716552734375,
+            0.0027856826782226562
+          ],
+          "ci90": [
+            -0.0015716552734375,
+            0.0027856826782226562
+          ],
+          "se": 0.0014571809466791962,
+          "p_one_sided": 0.2549019607843137,
+          "p_two_sided": 0.5098039215686274,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "I^(irr)": {
+          "estimate": 2.9087066650390625e-05,
+          "ci95": [
+            -3.0517578125e-05,
+            8.869171142578125e-05
+          ],
+          "ci90": [
+            -3.0517578125e-05,
+            8.869171142578125e-05
+          ],
+          "se": 3.986597030748512e-05,
+          "p_one_sided": 0.21568627450980393,
+          "p_two_sided": 0.43137254901960786,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "E_harm^(irr)": {
+          "estimate": 0.0010614395141601562,
+          "ci95": [
+            -0.0013751983642578125,
+            0.003498077392578125
+          ],
+          "ci90": [
+            -0.0013751983642578125,
+            0.003498077392578125
+          ],
+          "se": 0.0016297208661699917,
+          "p_one_sided": 0.2549019607843137,
+          "p_two_sided": 0.5098039215686274,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "S_H^(match)": {
+          "estimate": -0.0010519027709960938,
+          "ci95": [
+            -0.0010519027709960938,
+            -0.0010519027709960938
+          ],
+          "ci90": [
+            -0.0010519027709960938,
+            -0.0010519027709960938
+          ],
+          "se": 0.0,
+          "p_one_sided": 1.0,
+          "p_two_sided": 0.0392156862745098,
+          "items": 1,
+          "images": 1,
+          "reading": "opposite direction, practically small"
+        },
+        "S_Q^(match)": {
+          "estimate": -0.0011453628540039062,
+          "ci95": [
+            -0.0011453628540039062,
+            -0.0011453628540039062
+          ],
+          "ci90": [
+            -0.0011453628540039062,
+            -0.0011453628540039062
+          ],
+          "se": 0.0,
+          "p_one_sided": 1.0,
+          "p_two_sided": 0.0392156862745098,
+          "items": 1,
+          "images": 1,
+          "reading": "opposite direction, practically small"
+        },
+        "I^(match)": {
+          "estimate": 9.34600830078125e-05,
+          "ci95": [
+            9.34600830078125e-05,
+            9.34600830078125e-05
+          ],
+          "ci90": [
+            9.34600830078125e-05,
+            9.34600830078125e-05
+          ],
+          "se": 0.0,
+          "p_one_sided": 0.0196078431372549,
+          "p_two_sided": 0.0392156862745098,
+          "items": 1,
+          "images": 1,
+          "reading": "positive, practically small"
+        },
+        "E_harm^(match)": {
+          "estimate": -0.0010213851928710938,
+          "ci95": [
+            -0.0010213851928710938,
+            -0.0010213851928710938
+          ],
+          "ci90": [
+            -0.0010213851928710938,
+            -0.0010213851928710938
+          ],
+          "se": 0.0,
+          "p_one_sided": 1.0,
+          "p_two_sided": 0.0392156862745098,
+          "items": 1,
+          "images": 1,
+          "reading": "opposite direction, practically small"
+        },
+        "T_irr": {
+          "estimate": 3.9577484130859375e-05,
+          "ci95": [
+            -0.000347137451171875,
+            0.00042629241943359375
+          ],
+          "ci90": [
+            -0.000347137451171875,
+            0.00042629241943359375
+          ],
+          "se": 0.00025865041535496345,
+          "p_one_sided": 0.21568627450980393,
+          "p_two_sided": 0.43137254901960786,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "T_match": {
+          "estimate": -4.76837158203125e-06,
+          "ci95": [
+            -4.76837158203125e-06,
+            -4.76837158203125e-06
+          ],
+          "ci90": [
+            -4.76837158203125e-06,
+            -4.76837158203125e-06
+          ],
+          "se": 0.0,
+          "p_one_sided": 1.0,
+          "p_two_sided": 0.0392156862745098,
+          "items": 1,
+          "images": 1,
+          "reading": "opposite direction, practically small"
+        }
+      },
+      "behaviour_paired": {
+        "correct: C_mis \u2212 B_mis": {
+          "estimate": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci90": [
+            0.0,
+            0.0
+          ],
+          "se": 0.0,
+          "p_one_sided": 1.0,
+          "p_two_sided": 1.0,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "alt: C_mis \u2212 B_mis": {
+          "estimate": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci90": [
+            0.0,
+            0.0
+          ],
+          "se": 0.0,
+          "p_one_sided": 1.0,
+          "p_two_sided": 1.0,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "correct: C_irr \u2212 B_irr": {
+          "estimate": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci90": [
+            0.0,
+            0.0
+          ],
+          "se": 0.0,
+          "p_one_sided": 1.0,
+          "p_two_sided": 1.0,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "alt: C_irr \u2212 B_irr": {
+          "estimate": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci90": [
+            0.0,
+            0.0
+          ],
+          "se": 0.0,
+          "p_one_sided": 1.0,
+          "p_two_sided": 1.0,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "correct: C_match \u2212 B_match": {
+          "estimate": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci90": [
+            0.0,
+            0.0
+          ],
+          "se": 0.0,
+          "p_one_sided": 1.0,
+          "p_two_sided": 1.0,
+          "items": 1,
+          "images": 1,
+          "reading": "practically small"
+        },
+        "alt: C_match \u2212 B_match": {
+          "estimate": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci90": [
+            0.0,
+            0.0
+          ],
+          "se": 0.0,
+          "p_one_sided": 1.0,
+          "p_two_sided": 1.0,
+          "items": 1,
+          "images": 1,
+          "reading": "practically small"
+        }
+      }
+    }
+  },
+  "behaviour_rates": {
+    "12.5%": {
+      "blind|Q": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      },
+      "full|Q": {
+        "correct": 1.0,
+        "alt": 0.0,
+        "other": 0.0
+      },
+      "full|irr": {
+        "correct": 1.0,
+        "alt": 0.0,
+        "other": 0.0
+      },
+      "full|match": {
+        "correct": 1.0,
+        "alt": 0.0,
+        "other": 0.0
+      },
+      "full|mis": {
+        "correct": 1.0,
+        "alt": 0.0,
+        "other": 0.0
+      },
+      "pw|A": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      },
+      "pw|B_irr": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      },
+      "pw|B_match": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      },
+      "pw|B_mis": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      },
+      "pw|C_irr": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      },
+      "pw|C_match": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      },
+      "pw|C_mis": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      },
+      "pw|D_irr": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      },
+      "pw|D_match": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      },
+      "pw|D_mis": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      }
+    },
+    "25.0%": {
+      "blind|Q": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      },
+      "full|Q": {
+        "correct": 1.0,
+        "alt": 0.0,
+        "other": 0.0
+      },
+      "full|irr": {
+        "correct": 1.0,
+        "alt": 0.0,
+        "other": 0.0
+      },
+      "full|match": {
+        "correct": 1.0,
+        "alt": 0.0,
+        "other": 0.0
+      },
+      "full|mis": {
+        "correct": 1.0,
+        "alt": 0.0,
+        "other": 0.0
+      },
+      "pw|A": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      },
+      "pw|B_irr": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      },
+      "pw|B_match": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      },
+      "pw|B_mis": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      },
+      "pw|C_irr": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      },
+      "pw|C_match": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      },
+      "pw|C_mis": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      },
+      "pw|D_irr": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      },
+      "pw|D_match": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      },
+      "pw|D_mis": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      }
+    },
+    "50.0%": {
+      "blind|Q": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      },
+      "full|Q": {
+        "correct": 1.0,
+        "alt": 0.0,
+        "other": 0.0
+      },
+      "full|irr": {
+        "correct": 1.0,
+        "alt": 0.0,
+        "other": 0.0
+      },
+      "full|match": {
+        "correct": 1.0,
+        "alt": 0.0,
+        "other": 0.0
+      },
+      "full|mis": {
+        "correct": 1.0,
+        "alt": 0.0,
+        "other": 0.0
+      },
+      "pw|A": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      },
+      "pw|B_irr": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      },
+      "pw|B_match": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      },
+      "pw|B_mis": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      },
+      "pw|C_irr": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      },
+      "pw|C_match": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      },
+      "pw|C_mis": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      },
+      "pw|D_irr": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      },
+      "pw|D_match": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      },
+      "pw|D_mis": {
+        "correct": 0.0,
+        "alt": 0.0,
+        "other": 1.0
+      }
+    }
+  },
+  "overlap": {
+    "12.5%": {
+      "mis": {
+        "mean_jaccard": 0.5589887640449438,
+        "share_changed": 1.0
+      },
+      "irr": {
+        "mean_jaccard": 0.5544692737430168,
+        "share_changed": 1.0
+      },
+      "match": {
+        "mean_jaccard": 0.5,
+        "share_changed": 1.0
+      }
+    },
+    "25.0%": {
+      "mis": {
+        "mean_jaccard": 0.5615560640732266,
+        "share_changed": 1.0
+      },
+      "irr": {
+        "mean_jaccard": 0.5575263282920263,
+        "share_changed": 1.0
+      },
+      "match": {
+        "mean_jaccard": 0.5926773455377574,
+        "share_changed": 1.0
+      }
+    },
+    "50.0%": {
+      "mis": {
+        "mean_jaccard": 0.7372859083721242,
+        "share_changed": 1.0
+      },
+      "irr": {
+        "mean_jaccard": 0.7372859083721242,
+        "share_changed": 1.0
+      },
+      "match": {
+        "mean_jaccard": 0.7660972404730617,
+        "share_changed": 1.0
+      }
+    }
+  },
+  "llava15": {
+    "12.5%": {
+      "S_H^(mis)": {
+        "estimate": 0.0010170936584472656,
+        "ci95": [
+          -0.004405021667480469,
+          0.006439208984375
+        ],
+        "ci90": [
+          -0.004405021667480469,
+          0.006439208984375
+        ],
+        "se": 0.003626527586931306,
+        "p_one_sided": 0.21568627450980393,
+        "p_two_sided": 0.43137254901960786,
+        "items": 2,
+        "images": 2,
+        "reading": "practically small"
+      },
+      "S_Q^(mis)": {
+        "estimate": 0.0013837814331054688,
+        "ci95": [
+          -0.004504203796386719,
+          0.007271766662597656
+        ],
+        "ci90": [
+          -0.004504203796386719,
+          0.007271766662597656
+        ],
+        "se": 0.0039381200108546096,
+        "p_one_sided": 0.21568627450980393,
+        "p_two_sided": 0.43137254901960786,
+        "items": 2,
+        "images": 2,
+        "reading": "practically small"
+      },
+      "I^(mis)": {
+        "estimate": -0.0003666877746582031,
+        "ci95": [
+          -0.0008325576782226562,
+          9.918212890625e-05
+        ],
+        "ci90": [
+          -0.0008325576782226562,
+          9.918212890625e-05
+        ],
+        "se": 0.0003115924239233037,
+        "p_one_sided": 0.803921568627451,
+        "p_two_sided": 0.43137254901960786,
+        "items": 2,
+        "images": 2,
+        "reading": "practically small"
+      },
+      "E_harm^(mis)": {
+        "estimate": -0.00014066696166992188,
+        "ci95": [
+          -0.005917549133300781,
+          0.0056362152099609375
+        ],
+        "ci90": [
+          -0.005917549133300781,
+          0.0056362152099609375
+        ],
+        "se": 0.0038638098422014576,
+        "p_one_sided": 0.7647058823529411,
+        "p_two_sided": 0.5098039215686274,
+        "items": 2,
+        "images": 2,
+        "reading": "practically small"
+      },
+      "S_H^(irr)": {
+        "estimate": 0.0008406639099121094,
+        "ci95": [
+          -0.00461578369140625,
+          0.006297111511230469
+        ],
+        "ci90": [
+          -0.00461578369140625,
+          0.006297111511230469
+        ],
+        "se": 0.003649490385828418,
+        "p_one_sided": 0.21568627450980393,
+        "p_two_sided": 0.43137254901960786,
+        "items": 2,
+        "images": 2,
+        "reading": "practically small"
+      },
+      "S_Q^(irr)": {
+        "estimate": 0.0013837814331054688,
+        "ci95": [
+          -0.004504203796386719,
+          0.007271766662597656
+        ],
+        "ci90": [
+          -0.004504203796386719,
+          0.007271766662597656
+        ],
+        "se": 0.0039381200108546096,
+        "p_one_sided": 0.21568627450980393,
+        "p_two_sided": 0.43137254901960786,
+        "items": 2,
+        "images": 2,
+        "reading": "practically small"
+      },
+      "I^(irr)": {
+        "estimate": -0.0005431175231933594,
+        "ci95": [
+          -0.0009746551513671875,
+          -0.00011157989501953125
+        ],
+        "ci90": [
+          -0.0009746551513671875,
+          -0.00011157989501953125
+        ],
+        "se": 0.00028862962502619225,
+        "p_one_sided": 1.0,
+        "p_two_sided": 0.0392156862745098,
+        "items": 2,
+        "images": 2,
+        "reading": "opposite direction, practically small"
+      },
+      "E_harm^(irr)": {
+        "estimate": 0.002456188201904297,
+        "ci95": [
+          -0.0033473968505859375,
+          0.008259773254394531
+        ],
+        "ci90": [
+          -0.0033473968505859375,
+          0.008259773254394531
+        ],
+        "se": 0.003881669796899212,
+        "p_one_sided": 0.21568627450980393,
+        "p_two_sided": 0.43137254901960786,
+        "items": 2,
+        "images": 2,
+        "reading": "practically small"
+      },
+      "S_H^(match)": {
+        "estimate": 0.006352424621582031,
+        "ci95": [
+          0.006352424621582031,
+          0.006352424621582031
+        ],
+        "ci90": [
+          0.006352424621582031,
+          0.006352424621582031
+        ],
+        "se": 0.0,
+        "p_one_sided": 0.0196078431372549,
+        "p_two_sided": 0.0392156862745098,
+        "items": 1,
+        "images": 1,
+        "reading": "positive, practically small"
+      },
+      "S_Q^(match)": {
+        "estimate": 0.007271766662597656,
+        "ci95": [
+          0.007271766662597656,
+          0.007271766662597656
+        ],
+        "ci90": [
+          0.007271766662597656,
+          0.007271766662597656
+        ],
+        "se": 0.0,
+        "p_one_sided": 0.0196078431372549,
+        "p_two_sided": 0.0392156862745098,
+        "items": 1,
+        "images": 1,
+        "reading": "positive, practically small"
+      },
+      "I^(match)": {
+        "estimate": -0.000919342041015625,
+        "ci95": [
+          -0.000919342041015625,
+          -0.000919342041015625
+        ],
+        "ci90": [
+          -0.000919342041015625,
+          -0.000919342041015625
+        ],
+        "se": 0.0,
+        "p_one_sided": 1.0,
+        "p_two_sided": 0.0392156862745098,
+        "items": 1,
+        "images": 1,
+        "reading": "opposite direction, practically small"
+      },
+      "E_harm^(match)": {
+        "estimate": 0.006457328796386719,
+        "ci95": [
+          0.006457328796386719,
+          0.006457328796386719
+        ],
+        "ci90": [
+          0.006457328796386719,
+          0.006457328796386719
+        ],
+        "se": 0.0,
+        "p_one_sided": 0.0196078431372549,
+        "p_two_sided": 0.0392156862745098,
+        "items": 1,
+        "images": 1,
+        "reading": "positive, practically small"
+      },
+      "T_irr": {
+        "estimate": 0.00017642974853515625,
+        "ci95": [
+          0.00014209747314453125,
+          0.00021076202392578125
+        ],
+        "ci90": [
+          0.00014209747314453125,
+          0.00021076202392578125
+        ],
+        "se": 2.296279889711143e-05,
+        "p_one_sided": 0.0196078431372549,
+        "p_two_sided": 0.0392156862745098,
+        "items": 2,
+        "images": 2,
+        "reading": "positive, practically small"
+      },
+      "T_match": {
+        "estimate": 8.678436279296875e-05,
+        "ci95": [
+          8.678436279296875e-05,
+          8.678436279296875e-05
+        ],
+        "ci90": [
+          8.678436279296875e-05,
+          8.678436279296875e-05
+        ],
+        "se": 0.0,
+        "p_one_sided": 0.0196078431372549,
+        "p_two_sided": 0.0392156862745098,
+        "items": 1,
+        "images": 1,
+        "reading": "positive, practically small"
+      }
+    },
+    "25.0%": {
+      "S_H^(mis)": {
+        "estimate": -0.004986763000488281,
+        "ci95": [
+          -0.006985664367675781,
+          -0.0029878616333007812
+        ],
+        "ci90": [
+          -0.006985664367675781,
+          -0.0029878616333007812
+        ],
+        "se": 0.0013369451802318212,
+        "p_one_sided": 1.0,
+        "p_two_sided": 0.0392156862745098,
+        "items": 2,
+        "images": 2,
+        "reading": "opposite direction, practically small"
+      },
+      "S_Q^(mis)": {
+        "estimate": -0.0052509307861328125,
+        "ci95": [
+          -0.007279396057128906,
+          -0.0032224655151367188
+        ],
+        "ci90": [
+          -0.007279396057128906,
+          -0.0032224655151367188
+        ],
+        "se": 0.0013567187015043336,
+        "p_one_sided": 1.0,
+        "p_two_sided": 0.0392156862745098,
+        "items": 2,
+        "images": 2,
+        "reading": "opposite direction, practically small"
+      },
+      "I^(mis)": {
+        "estimate": 0.00026416778564453125,
+        "ci95": [
+          0.0002346038818359375,
+          0.000293731689453125
+        ],
+        "ci90": [
+          0.0002346038818359375,
+          0.000293731689453125
+        ],
+        "se": 1.977352127251262e-05,
+        "p_one_sided": 0.0196078431372549,
+        "p_two_sided": 0.0392156862745098,
+        "items": 2,
+        "images": 2,
+        "reading": "positive, practically small"
+      },
+      "E_harm^(mis)": {
+        "estimate": -0.007334709167480469,
+        "ci95": [
+          -0.009807586669921875,
+          -0.0048618316650390625
+        ],
+        "ci90": [
+          -0.009807586669921875,
+          -0.0048618316650390625
+        ],
+        "se": 0.0016539593761169427,
+        "p_one_sided": 1.0,
+        "p_two_sided": 0.0392156862745098,
+        "items": 2,
+        "images": 2,
+        "reading": "opposite direction, practically small"
+      },
+      "S_H^(irr)": {
+        "estimate": -0.005004405975341797,
+        "ci95": [
+          -0.006987571716308594,
+          -0.003021240234375
+        ],
+        "ci90": [
+          -0.006987571716308594,
+          -0.003021240234375
+        ],
+        "se": 0.0013264205640706448,
+        "p_one_sided": 1.0,
+        "p_two_sided": 0.0392156862745098,
+        "items": 2,
+        "images": 2,
+        "reading": "opposite direction, practically small"
+      },
+      "S_Q^(irr)": {
+        "estimate": -0.0052509307861328125,
+        "ci95": [
+          -0.007279396057128906,
+          -0.0032224655151367188
+        ],
+        "ci90": [
+          -0.007279396057128906,
+          -0.0032224655151367188
+        ],
+        "se": 0.0013567187015043336,
+        "p_one_sided": 1.0,
+        "p_two_sided": 0.0392156862745098,
+        "items": 2,
+        "images": 2,
+        "reading": "opposite direction, practically small"
+      },
+      "I^(irr)": {
+        "estimate": 0.0002465248107910156,
+        "ci95": [
+          0.00020122528076171875,
+          0.0002918243408203125
+        ],
+        "ci90": [
+          0.00020122528076171875,
+          0.0002918243408203125
+        ],
+        "se": 3.0298137433688694e-05,
+        "p_one_sided": 0.0196078431372549,
+        "p_two_sided": 0.0392156862745098,
+        "items": 2,
+        "images": 2,
+        "reading": "positive, practically small"
+      },
+      "E_harm^(irr)": {
+        "estimate": -0.005381584167480469,
+        "ci95": [
+          -0.0077972412109375,
+          -0.0029659271240234375
+        ],
+        "ci90": [
+          -0.0077972412109375,
+          -0.0029659271240234375
+        ],
+        "se": 0.0016156880446217571,
+        "p_one_sided": 1.0,
+        "p_two_sided": 0.0392156862745098,
+        "items": 2,
+        "images": 2,
+        "reading": "opposite direction, practically small"
+      },
+      "S_H^(match)": {
+        "estimate": -0.0030298233032226562,
+        "ci95": [
+          -0.0030298233032226562,
+          -0.0030298233032226562
+        ],
+        "ci90": [
+          -0.0030298233032226562,
+          -0.0030298233032226562
+        ],
+        "se": 0.0,
+        "p_one_sided": 1.0,
+        "p_two_sided": 0.0392156862745098,
+        "items": 1,
+        "images": 1,
+        "reading": "opposite direction, practically small"
+      },
+      "S_Q^(match)": {
+        "estimate": -0.0032224655151367188,
+        "ci95": [
+          -0.0032224655151367188,
+          -0.0032224655151367188
+        ],
+        "ci90": [
+          -0.0032224655151367188,
+          -0.0032224655151367188
+        ],
+        "se": 0.0,
+        "p_one_sided": 1.0,
+        "p_two_sided": 0.0392156862745098,
+        "items": 1,
+        "images": 1,
+        "reading": "opposite direction, practically small"
+      },
+      "I^(match)": {
+        "estimate": 0.0001926422119140625,
+        "ci95": [
+          0.0001926422119140625,
+          0.0001926422119140625
+        ],
+        "ci90": [
+          0.0001926422119140625,
+          0.0001926422119140625
+        ],
+        "se": 0.0,
+        "p_one_sided": 0.0196078431372549,
+        "p_two_sided": 0.0392156862745098,
+        "items": 1,
+        "images": 1,
+        "reading": "positive, practically small"
+      },
+      "E_harm^(match)": {
+        "estimate": -0.0044078826904296875,
+        "ci95": [
+          -0.0044078826904296875,
+          -0.0044078826904296875
+        ],
+        "ci90": [
+          -0.0044078826904296875,
+          -0.0044078826904296875
+        ],
+        "se": 0.0,
+        "p_one_sided": 1.0,
+        "p_two_sided": 0.0392156862745098,
+        "items": 1,
+        "images": 1,
+        "reading": "opposite direction, practically small"
+      },
+      "T_irr": {
+        "estimate": 1.7642974853515625e-05,
+        "ci95": [
+          1.9073486328125e-06,
+          3.337860107421875e-05
+        ],
+        "ci90": [
+          1.9073486328125e-06,
+          3.337860107421875e-05
+        ],
+        "se": 1.0524616161176073e-05,
+        "p_one_sided": 0.0196078431372549,
+        "p_two_sided": 0.0392156862745098,
+        "items": 2,
+        "images": 2,
+        "reading": "positive, practically small"
+      },
+      "T_match": {
+        "estimate": 4.1961669921875e-05,
+        "ci95": [
+          4.1961669921875e-05,
+          4.1961669921875e-05
+        ],
+        "ci90": [
+          4.1961669921875e-05,
+          4.1961669921875e-05
+        ],
+        "se": 0.0,
+        "p_one_sided": 0.0196078431372549,
+        "p_two_sided": 0.0392156862745098,
+        "items": 1,
+        "images": 1,
+        "reading": "positive, practically small"
+      }
+    },
+    "50.0%": {
+      "S_H^(mis)": {
+        "estimate": -0.004282951354980469,
+        "ci95": [
+          -0.005215644836425781,
+          -0.0033502578735351562
+        ],
+        "ci90": [
+          -0.005215644836425781,
+          -0.0033502578735351562
+        ],
+        "se": 0.0006238227033715272,
+        "p_one_sided": 1.0,
+        "p_two_sided": 0.0392156862745098,
+        "items": 2,
+        "images": 2,
+        "reading": "opposite direction, practically small"
+      },
+      "S_Q^(mis)": {
+        "estimate": -0.0044708251953125,
+        "ci95": [
+          -0.005423545837402344,
+          -0.0035181045532226562
+        ],
+        "ci90": [
+          -0.005423545837402344,
+          -0.0035181045532226562
+        ],
+        "se": 0.0006372176693948422,
+        "p_one_sided": 1.0,
+        "p_two_sided": 0.0392156862745098,
+        "items": 2,
+        "images": 2,
+        "reading": "opposite direction, practically small"
+      },
+      "I^(mis)": {
+        "estimate": 0.00018787384033203125,
+        "ci95": [
+          0.0001678466796875,
+          0.0002079010009765625
+        ],
+        "ci90": [
+          0.0001678466796875,
+          0.0002079010009765625
+        ],
+        "se": 1.3394966023315e-05,
+        "p_one_sided": 0.0196078431372549,
+        "p_two_sided": 0.0392156862745098,
+        "items": 2,
+        "images": 2,
+        "reading": "positive, practically small"
+      },
+      "E_harm^(mis)": {
+        "estimate": -0.005235195159912109,
+        "ci95": [
+          -0.006138801574707031,
+          -0.0043315887451171875
+        ],
+        "ci90": [
+          -0.006138801574707031,
+          -0.0043315887451171875
+        ],
+        "se": 0.0006043681098614745,
+        "p_one_sided": 1.0,
+        "p_two_sided": 0.0392156862745098,
+        "items": 2,
+        "images": 2,
+        "reading": "opposite direction, practically small"
+      },
+      "S_H^(irr)": {
+        "estimate": -0.004467010498046875,
+        "ci95": [
+          -0.005564689636230469,
+          -0.0033693313598632812
+        ],
+        "ci90": [
+          -0.005564689636230469,
+          -0.0033693313598632812
+        ],
+        "se": 0.0007341717091826459,
+        "p_one_sided": 1.0,
+        "p_two_sided": 0.0392156862745098,
+        "items": 2,
+        "images": 2,
+        "reading": "opposite direction, practically small"
+      },
+      "S_Q^(irr)": {
+        "estimate": -0.004628181457519531,
+        "ci95": [
+          -0.005738258361816406,
+          -0.0035181045532226562
+        ],
+        "ci90": [
+          -0.005738258361816406,
+          -0.0035181045532226562
+        ],
+        "se": 0.0007424638310066029,
+        "p_one_sided": 1.0,
+        "p_two_sided": 0.0392156862745098,
+        "items": 2,
+        "images": 2,
+        "reading": "opposite direction, practically small"
+      },
+      "I^(irr)": {
+        "estimate": 0.00016117095947265625,
+        "ci95": [
+          0.000148773193359375,
+          0.0001735687255859375
+        ],
+        "ci90": [
+          0.000148773193359375,
+          0.0001735687255859375
+        ],
+        "se": 8.292121823956906e-06,
+        "p_one_sided": 0.0196078431372549,
+        "p_two_sided": 0.0392156862745098,
+        "items": 2,
+        "images": 2,
+        "reading": "positive, practically small"
+      },
+      "E_harm^(irr)": {
+        "estimate": -0.004540443420410156,
+        "ci95": [
+          -0.005640983581542969,
+          -0.0034399032592773438
+        ],
+        "ci90": [
+          -0.005640983581542969,
+          -0.0034399032592773438
+        ],
+        "se": 0.0007360852757574053,
+        "p_one_sided": 1.0,
+        "p_two_sided": 0.0392156862745098,
+        "items": 2,
+        "images": 2,
+        "reading": "opposite direction, practically small"
+      },
+      "S_H^(match)": {
+        "estimate": -0.0052433013916015625,
+        "ci95": [
+          -0.0052433013916015625,
+          -0.0052433013916015625
+        ],
+        "ci90": [
+          -0.0052433013916015625,
+          -0.0052433013916015625
+        ],
+        "se": 0.0,
+        "p_one_sided": 1.0,
+        "p_two_sided": 0.0392156862745098,
+        "items": 1,
+        "images": 1,
+        "reading": "opposite direction, practically small"
+      },
+      "S_Q^(match)": {
+        "estimate": -0.005423545837402344,
+        "ci95": [
+          -0.005423545837402344,
+          -0.005423545837402344
+        ],
+        "ci90": [
+          -0.005423545837402344,
+          -0.005423545837402344
+        ],
+        "se": 0.0,
+        "p_one_sided": 1.0,
+        "p_two_sided": 0.0392156862745098,
+        "items": 1,
+        "images": 1,
+        "reading": "opposite direction, practically small"
+      },
+      "I^(match)": {
+        "estimate": 0.00018024444580078125,
+        "ci95": [
+          0.00018024444580078125,
+          0.00018024444580078125
+        ],
+        "ci90": [
+          0.00018024444580078125,
+          0.00018024444580078125
+        ],
+        "se": 0.0,
+        "p_one_sided": 0.0196078431372549,
+        "p_two_sided": 0.0392156862745098,
+        "items": 1,
+        "images": 1,
+        "reading": "positive, practically small"
+      },
+      "E_harm^(match)": {
+        "estimate": -0.005972862243652344,
+        "ci95": [
+          -0.005972862243652344,
+          -0.005972862243652344
+        ],
+        "ci90": [
+          -0.005972862243652344,
+          -0.005972862243652344
+        ],
+        "se": 0.0,
+        "p_one_sided": 1.0,
+        "p_two_sided": 0.0392156862745098,
+        "items": 1,
+        "images": 1,
+        "reading": "opposite direction, practically small"
+      },
+      "T_irr": {
+        "estimate": 0.00018405914306640625,
+        "ci95": [
+          1.9073486328125e-05,
+          0.0003490447998046875
+        ],
+        "ci90": [
+          1.9073486328125e-05,
+          0.0003490447998046875
+        ],
+        "se": 0.00011034900581111882,
+        "p_one_sided": 0.0196078431372549,
+        "p_two_sided": 0.0392156862745098,
+        "items": 2,
+        "images": 2,
+        "reading": "positive, practically small"
+      },
+      "T_match": {
+        "estimate": 2.765655517578125e-05,
+        "ci95": [
+          2.765655517578125e-05,
+          2.765655517578125e-05
+        ],
+        "ci90": [
+          2.765655517578125e-05,
+          2.765655517578125e-05
+        ],
+        "se": 0.0,
+        "p_one_sided": 0.0196078431372549,
+        "p_two_sided": 0.0392156862745098,
+        "items": 1,
+        "images": 1,
+        "reading": "positive, practically small"
+      }
+    }
+  }
+}

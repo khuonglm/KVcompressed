@@ -25,7 +25,7 @@ from .analysis import (
     margin,
     read_interval,
 )
-from .geometry import MAPPING_RULES, box_to_square, evidence_patches
+from .models.llava15 import MAPPING_RULES, box_to_square, evidence_patches
 from .runner import eligible
 
 SURFACE = "capitalized"
@@ -84,10 +84,6 @@ def kept_sets(rows: list[dict], selector: str = PRIMARY) -> dict[tuple[str, str]
     """Kept visual indices per (item, selection context), for the unreserved selector at its budget."""
     return {(r["item_id"], r["selection"]): set(r["kept"]) for r in rows
             if r["selector"] == selector and not r["reserve"] and r["kept"] is not None}
-
-
-def jaccard(a: set[int], b: set[int]) -> float:
-    return len(a & b) / len(a | b) if a | b else 1.0
 
 
 def clustered_ols(y: np.ndarray, x: np.ndarray, clusters: np.ndarray) -> dict:

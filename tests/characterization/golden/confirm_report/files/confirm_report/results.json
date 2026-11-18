@@ -1,0 +1,716 @@
+{
+  "datasets": {
+    "gqa": {
+      "run": "confirm_run",
+      "rehearsal": false,
+      "surface": "capitalized",
+      "items": 2,
+      "images": 2,
+      "control_items": 1,
+      "checks": {
+        "full_q_no_longer_eligible": 0,
+        "blind_rows": 2,
+        "blind_now_eligible": 0,
+        "blind_mean_margin": 0.587012767791748,
+        "truncated_share": 0.04
+      },
+      "tests": {
+        "S_H^(mis)": {
+          "estimate": 0.005149364471435547,
+          "ci95": [
+            -0.0007429122924804688,
+            0.011041641235351562
+          ],
+          "ci90": [
+            -0.0007429122924804688,
+            0.011041641235351562
+          ],
+          "se": 0.003940990360716749,
+          "p_one_sided": 0.2549019607843137,
+          "p_two_sided": 0.5098039215686274,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "E_harm^(mis)": {
+          "estimate": 0.004915714263916016,
+          "ci95": [
+            -0.002330780029296875,
+            0.012162208557128906
+          ],
+          "ci90": [
+            -0.002330780029296875,
+            0.012162208557128906
+          ],
+          "se": 0.004846745206102811,
+          "p_one_sided": 0.2549019607843137,
+          "p_two_sided": 0.5098039215686274,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "S_Q^(mis)": {
+          "estimate": 0.005753993988037109,
+          "ci95": [
+            -0.00015926361083984375,
+            0.011667251586914062
+          ],
+          "ci90": [
+            -0.00015926361083984375,
+            0.011667251586914062
+          ],
+          "se": 0.003955023182264984,
+          "p_one_sided": 0.2549019607843137,
+          "p_two_sided": 0.5098039215686274,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "T_match": {
+          "estimate": 0.0006303787231445312,
+          "ci95": [
+            0.0006303787231445312,
+            0.0006303787231445312
+          ],
+          "ci90": [
+            0.0006303787231445312,
+            0.0006303787231445312
+          ],
+          "se": 0.0,
+          "p_one_sided": 0.0196078431372549,
+          "p_two_sided": 0.0392156862745098,
+          "items": 1,
+          "images": 1,
+          "reading": "positive, practically small"
+        },
+        "T_irr": {
+          "estimate": 0.0006856918334960938,
+          "ci95": [
+            0.0006856918334960938,
+            0.0006856918334960938
+          ],
+          "ci90": [
+            0.0006856918334960938,
+            0.0006856918334960938
+          ],
+          "se": 0.0,
+          "p_one_sided": 0.0196078431372549,
+          "p_two_sided": 0.0392156862745098,
+          "items": 1,
+          "images": 1,
+          "reading": "positive, practically small"
+        }
+      },
+      "exploratory": {
+        "S_H^(match)": {
+          "estimate": 0.010411262512207031,
+          "ci95": [
+            0.010411262512207031,
+            0.010411262512207031
+          ],
+          "ci90": [
+            0.010411262512207031,
+            0.010411262512207031
+          ],
+          "se": 0.0,
+          "p_one_sided": 0.0196078431372549,
+          "p_two_sided": 0.0392156862745098,
+          "items": 1,
+          "images": 1,
+          "reading": "positive, practically small"
+        },
+        "S_H^(irr)": {
+          "estimate": 0.010355949401855469,
+          "ci95": [
+            0.010355949401855469,
+            0.010355949401855469
+          ],
+          "ci90": [
+            0.010355949401855469,
+            0.010355949401855469
+          ],
+          "se": 0.0,
+          "p_one_sided": 0.0196078431372549,
+          "p_two_sided": 0.0392156862745098,
+          "items": 1,
+          "images": 1,
+          "reading": "positive, practically small"
+        },
+        "I^(mis)": {
+          "estimate": -0.0006046295166015625,
+          "ci95": [
+            -0.0006256103515625,
+            -0.000583648681640625
+          ],
+          "ci90": [
+            -0.0006256103515625,
+            -0.000583648681640625
+          ],
+          "se": 1.4032821548234765e-05,
+          "p_one_sided": 1.0,
+          "p_two_sided": 0.0392156862745098,
+          "items": 2,
+          "images": 2,
+          "reading": "opposite direction, practically small"
+        },
+        "S_H^(mis), question-span": {
+          "estimate": 0.00027179718017578125,
+          "ci95": [
+            -0.0036001205444335938,
+            0.004143714904785156
+          ],
+          "ci90": [
+            -0.0036001205444335938,
+            0.004143714904785156
+          ],
+          "se": 0.002589693431174233,
+          "p_one_sided": 0.2549019607843137,
+          "p_two_sided": 0.5098039215686274,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        }
+      },
+      "equivalence": {
+        "delta": 0.1,
+        "ci90": [
+          -0.0007429122924804688,
+          0.011041641235351562
+        ],
+        "equivalent": true
+      },
+      "sensitivity": {
+        "logsum": {
+          "estimate": 0.0013359638518455341,
+          "ci95": [
+            0.0005640227476852999,
+            0.0021079049560057683
+          ],
+          "ci90": [
+            0.0005640227476852999,
+            0.0021079049560057683
+          ],
+          "se": 0.0005163050841682915,
+          "p_one_sided": 0.0196078431372549,
+          "p_two_sided": 0.0392156862745098,
+          "items": 2,
+          "images": 2,
+          "reading": "positive, practically small"
+        },
+        "content_only": {
+          "estimate": 0.0003571510314941406,
+          "ci95": [
+            -0.004817008972167969,
+            0.00553131103515625
+          ],
+          "ci90": [
+            -0.004817008972167969,
+            0.00553131103515625
+          ],
+          "se": 0.0034606851504521683,
+          "p_one_sided": 0.2549019607843137,
+          "p_two_sided": 0.5098039215686274,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "length_normalised": {
+          "estimate": 0.0025746822357177734,
+          "ci95": [
+            -0.0003714561462402344,
+            0.005520820617675781
+          ],
+          "ci90": [
+            -0.0003714561462402344,
+            0.005520820617675781
+          ],
+          "se": 0.0019704951803583746,
+          "p_one_sided": 0.2549019607843137,
+          "p_two_sided": 0.5098039215686274,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        }
+      },
+      "behaviour_rates": {
+        "blind|Q": {
+          "correct": 0.0,
+          "alt": 0.0,
+          "other": 1.0
+        },
+        "full|Q": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        },
+        "full|irr": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        },
+        "full|match": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        },
+        "full|mis": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        },
+        "pw+r|A": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        },
+        "pw+r|B_match": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        },
+        "pw+r|B_mis": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        },
+        "pw+r|C_match": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        },
+        "pw+r|C_mis": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        },
+        "pw|A": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        },
+        "pw|B_irr": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        },
+        "pw|B_match": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        },
+        "pw|B_mis": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        },
+        "pw|C_irr": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        },
+        "pw|C_match": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        },
+        "pw|C_mis": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        },
+        "pw|D_irr": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        },
+        "pw|D_match": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        },
+        "pw|D_mis": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        },
+        "qspan|A": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        },
+        "qspan|B_irr": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        },
+        "qspan|B_match": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        },
+        "qspan|B_mis": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        },
+        "qspan|C_irr": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        },
+        "qspan|C_match": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        },
+        "qspan|C_mis": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        },
+        "qspan|D_irr": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        },
+        "qspan|D_match": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        },
+        "qspan|D_mis": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        },
+        "uniform|Q": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        },
+        "uniform|irr": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        },
+        "uniform|match": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        },
+        "uniform|mis": {
+          "correct": 1.0,
+          "alt": 0.0,
+          "other": 0.0
+        }
+      },
+      "behaviour_paired": {
+        "correct: C_mis - B_mis": {
+          "estimate": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci90": [
+            0.0,
+            0.0
+          ],
+          "se": 0.0,
+          "p_one_sided": 1.0,
+          "p_two_sided": 1.0,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "alt: C_mis - B_mis": {
+          "estimate": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci90": [
+            0.0,
+            0.0
+          ],
+          "se": 0.0,
+          "p_one_sided": 1.0,
+          "p_two_sided": 1.0,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        }
+      },
+      "overlap": {
+        "mis": {
+          "mean_jaccard": 0.7834355828220859,
+          "share_changed": 1.0
+        },
+        "match": {
+          "mean_jaccard": 0.7668711656441718,
+          "share_changed": 1.0
+        },
+        "irr": {
+          "mean_jaccard": 0.7668711656441718,
+          "share_changed": 1.0
+        }
+      },
+      "H5": {
+        "slope": null,
+        "items": 2
+      },
+      "H6": {
+        "primary": {
+          "estimate": 0.01488095238095238,
+          "ci95": [
+            0.01488095238095238,
+            0.01488095238095238
+          ],
+          "ci90": [
+            0.01488095238095238,
+            0.01488095238095238
+          ],
+          "se": 1.7523353333524276e-18,
+          "p_one_sided": 0.0196078431372549,
+          "p_two_sided": 0.0392156862745098,
+          "items": 1,
+          "images": 1,
+          "reading": "positive, practically small"
+        },
+        "fallback": {
+          "estimate": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "ci90": [
+            0.0,
+            0.0
+          ],
+          "se": 0.0,
+          "p_one_sided": 1.0,
+          "p_two_sided": 1.0,
+          "items": 1,
+          "images": 1,
+          "reading": "practically small"
+        },
+        "center": {
+          "estimate": 0.01488095238095238,
+          "ci95": [
+            0.01488095238095238,
+            0.01488095238095238
+          ],
+          "ci90": [
+            0.01488095238095238,
+            0.01488095238095238
+          ],
+          "se": 1.7523353333524276e-18,
+          "p_one_sided": 0.0196078431372549,
+          "p_two_sided": 0.0392156862745098,
+          "items": 1,
+          "images": 1,
+          "reading": "positive, practically small"
+        },
+        "expanded": {
+          "estimate": 0.015625,
+          "ci95": [
+            0.015625,
+            0.015625
+          ],
+          "ci90": [
+            0.015625,
+            0.015625
+          ],
+          "se": 0.0,
+          "p_one_sided": 0.0196078431372549,
+          "p_two_sided": 0.0392156862745098,
+          "items": 1,
+          "images": 1,
+          "reading": "positive, practically small"
+        }
+      },
+      "grounding_items": 1,
+      "mitigation": {
+        "isolation (C_mis)": {
+          "estimate": 0.005149364471435547,
+          "ci95": [
+            -0.0007429122924804688,
+            0.011041641235351562
+          ],
+          "ci90": [
+            -0.0007429122924804688,
+            0.011041641235351562
+          ],
+          "se": 0.003940990360716749,
+          "p_one_sided": 0.2549019607843137,
+          "p_two_sided": 0.5098039215686274,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "reserve (B_mis + r)": {
+          "estimate": 0.005635261535644531,
+          "ci95": [
+            0.0039081573486328125,
+            0.00736236572265625
+          ],
+          "ci90": [
+            0.0039081573486328125,
+            0.00736236572265625
+          ],
+          "se": 0.001155156355629689,
+          "p_one_sided": 0.0196078431372549,
+          "p_two_sided": 0.0392156862745098,
+          "items": 2,
+          "images": 2,
+          "reading": "positive, practically small"
+        },
+        "both (C_mis + r)": {
+          "estimate": 0.005753993988037109,
+          "ci95": [
+            -0.0024280548095703125,
+            0.013936042785644531
+          ],
+          "ci90": [
+            -0.0024280548095703125,
+            0.013936042785644531
+          ],
+          "se": 0.005472481476049098,
+          "p_one_sided": 0.2549019607843137,
+          "p_two_sided": 0.5098039215686274,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "reserve cost, neutral (A + r \u2212 A)": {
+          "estimate": 0.0003757476806640625,
+          "ci95": [
+            -0.0021152496337890625,
+            0.0028667449951171875
+          ],
+          "ci90": [
+            -0.0021152496337890625,
+            0.0028667449951171875
+          ],
+          "se": 0.0016660786310904183,
+          "p_one_sided": 0.2549019607843137,
+          "p_two_sided": 0.5098039215686274,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        },
+        "reserve cost, matching (B_match + r \u2212 B_match)": {
+          "estimate": 0.00670623779296875,
+          "ci95": [
+            0.00670623779296875,
+            0.00670623779296875
+          ],
+          "ci90": [
+            0.00670623779296875,
+            0.00670623779296875
+          ],
+          "se": 0.0,
+          "p_one_sided": 0.0196078431372549,
+          "p_two_sided": 0.0392156862745098,
+          "items": 1,
+          "images": 1,
+          "reading": "positive, practically small"
+        },
+        "isolation cost, matching (C_match \u2212 B_match)": {
+          "estimate": 0.010411262512207031,
+          "ci95": [
+            0.010411262512207031,
+            0.010411262512207031
+          ],
+          "ci90": [
+            0.010411262512207031,
+            0.010411262512207031
+          ],
+          "se": 0.0,
+          "p_one_sided": 0.0196078431372549,
+          "p_two_sided": 0.0392156862745098,
+          "items": 1,
+          "images": 1,
+          "reading": "positive, practically small"
+        },
+        "uniform (mis)": {
+          "estimate": 0.009295463562011719,
+          "ci95": [
+            -0.006344795227050781,
+            0.02493572235107422
+          ],
+          "ci90": [
+            -0.006344795227050781,
+            0.02493572235107422
+          ],
+          "se": 0.010460830608684095,
+          "p_one_sided": 0.21568627450980393,
+          "p_two_sided": 0.43137254901960786,
+          "items": 2,
+          "images": 2,
+          "reading": "practically small"
+        }
+      },
+      "mean_margins": {
+        "blind|Q": 0.587012767791748,
+        "full|Q": 0.5623760223388672,
+        "full|irr": 0.5628957748413086,
+        "full|match": 0.5638790130615234,
+        "full|mis": 0.5634522438049316,
+        "pw+r|A": 0.565159797668457,
+        "pw+r|B_match": 0.5762157440185547,
+        "pw+r|B_mis": 0.5665798187255859,
+        "pw+r|C_match": 0.5827913284301758,
+        "pw+r|C_mis": 0.5666985511779785,
+        "pw|A": 0.564784049987793,
+        "pw|B_irr": 0.5670804977416992,
+        "pw|B_match": 0.5695095062255859,
+        "pw|B_mis": 0.5609445571899414,
+        "pw|C_irr": 0.5774364471435547,
+        "pw|C_match": 0.579920768737793,
+        "pw|C_mis": 0.566093921661377,
+        "pw|D_irr": 0.5695610046386719,
+        "pw|D_match": 0.5695610046386719,
+        "pw|D_mis": 0.5590300559997559,
+        "qspan|A": 0.5601925849914551,
+        "qspan|B_irr": 0.565521240234375,
+        "qspan|B_match": 0.5679388046264648,
+        "qspan|B_mis": 0.5614705085754395,
+        "qspan|C_irr": 0.5696401596069336,
+        "qspan|C_match": 0.5720863342285156,
+        "qspan|C_mis": 0.5617423057556152,
+        "qspan|D_irr": 0.5674581527709961,
+        "qspan|D_match": 0.5674581527709961,
+        "qspan|D_mis": 0.5596685409545898,
+        "uniform|Q": 0.5675139427185059,
+        "uniform|irr": 0.5601081848144531,
+        "uniform|match": 0.5626115798950195,
+        "uniform|mis": 0.5702400207519531
+      }
+    }
+  },
+  "families": {
+    "H1": {
+      "complete": false,
+      "p_values": {
+        "S_H^(mis) [gqa]": 0.5098039215686274
+      },
+      "reject": null
+    },
+    "H2": {
+      "complete": false,
+      "p_values": {
+        "T_match [gqa]": 0.0392156862745098,
+        "T_irr [gqa]": 0.0392156862745098
+      },
+      "reject": null
+    },
+    "H3_H4": {
+      "complete": false,
+      "p_values": {
+        "E_harm^(mis) [gqa]": 0.5098039215686274,
+        "S_Q^(mis) [gqa]": 0.5098039215686274
+      },
+      "reject": null
+    }
+  }
+}

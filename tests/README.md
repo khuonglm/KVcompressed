@@ -239,6 +239,11 @@ the CPU-held prefix itself is never given to the engine. The fp32 head is upcast
 instead of kept as an fp32 copy: each logit is the same fp32 dot product, though on CUDA a different matrix shape
 may move its last bits. Prefill, probe and unit times now include moving entries between CPU and GPU, as the run
 does, so they are not comparable with earlier attempts.)
+(Note, 18 November 2026, codebase reorganization: the shared engine now does this gathering and moving itself, so
+compact replays receive the CPU-held prefix itself. E4 hashes the shared prefix before and after each probe and
+replay, as the table says, and also the GPU copy that probes and dense replays still receive; a compact replay's
+gathered copy is made inside the engine and is not hashed (the same step code's input is, in dense replays). `tests/test_next.py` checks that a device-held and a CPU-held prefix give identical rows, and the
+Level-1 invariants run for both residencies when an accelerator is present. The checks and limits are unchanged.)
 GO only if every check passes. Peak GPU memory, the visual-token range and time per item are reported,
 not judged. The memory that counts is the run peak (prefill, then a Full unit on the cache), not validate's
 own full forward passes; a run peak above 20 GB means an AnyRes cap in PREREG 4.1 before stage 1.

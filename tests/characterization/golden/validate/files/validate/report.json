@@ -1,0 +1,78 @@
+{
+  "model": "llava",
+  "head_precision": "fp32",
+  "surface": "capitalized",
+  "E1": {
+    "pass": true,
+    "items": 4,
+    "failures": [],
+    "window_composition": {
+      "Q: q=0.000 d=0.000": 4,
+      "irr: q=0.000 d=0.000": 4,
+      "match: q=0.000 d=0.000": 4,
+      "mis: q=0.000 d=0.000": 4
+    }
+  },
+  "noise_floor": {
+    "items": 2,
+    "logit_p99": 0.0,
+    "logit_max": 0.0,
+    "margin_mean_abs": 0.0,
+    "margin_max_abs": 0.0
+  },
+  "noise_floor_native_head": {
+    "items": 2,
+    "logit_p99": 0.0,
+    "logit_max": 0.0,
+    "margin_mean_abs": 0.0,
+    "margin_max_abs": 0.0
+  },
+  "noise_floor_mis": {
+    "items": 2,
+    "logit_p99": 0.0,
+    "logit_max": 0.0,
+    "margin_mean_abs": 0.0,
+    "margin_max_abs": 0.0
+  },
+  "E2": {
+    "pass": true,
+    "by_suffix": {
+      "Q": {
+        "pass": true,
+        "max_logit_diff": 0.0,
+        "limit": 0.0,
+        "compact_vs_dense_max": 0.0
+      },
+      "mis": {
+        "pass": true,
+        "max_logit_diff": 0.0,
+        "limit": 0.0,
+        "compact_vs_dense_max": 0.0
+      }
+    }
+  },
+  "E3": {
+    "pass": false,
+    "logit_p99": 3.91155481338501e-08,
+    "p99_limit": 0.0,
+    "margin_mean_abs": 5.2981906467013886e-08,
+    "margin_limit": 0.01,
+    "greedy_mismatches": [],
+    "greedy_mismatches_not_near_tie": 0,
+    "comparisons": 18
+  },
+  "E4": {
+    "pass": true,
+    "failures": []
+  },
+  "E5": {
+    "pass": true,
+    "max_logit_diff": 0.0,
+    "different_answers": 0
+  },
+  "E7": {
+    "pass": true,
+    "different_items": []
+  },
+  "all_pass": false
+}

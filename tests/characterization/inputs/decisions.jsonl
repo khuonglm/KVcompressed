@@ -1,0 +1,11 @@
+{"builder": "fixture", "decision": "pass", "digest": "5637c890c756734f7244c5ee9fe9b62530092b4bbaa11a8809f1c16c645e325a", "item_id": "c0", "note": "", "time": "2026-11-01T00:00:00+0000", "verifier": "tester"}
+{"builder": "fixture", "decision": "wording", "digest": "6d3e2503d4617a892b8981707e6bc8cb2a2dd3f05a8cf1d94a7f542fd7797fce", "item_id": "c1", "note": "", "time": "2026-11-01T00:01:00+0000", "verifier": "tester"}
+{"builder": "fixture", "decision": "pass", "digest": "8569ed1000d071b7452fb42659bff4643de3528208a70c1a824736486a18f382", "item_id": "c2", "note": "", "time": "2026-11-01T00:02:00+0000", "verifier": "tester"}
+{"builder": "fixture", "decision": "wording", "digest": "f4137f82aa8a50381e65db9dd7f0a2dbb659f06fceedb38a5cbcee60d178e4fd", "item_id": "c3", "note": "", "time": "2026-11-01T00:03:00+0000", "verifier": "tester"}
+{"builder": "fixture", "decision": "pass", "digest": "f4137f82aa8a50381e65db9dd7f0a2dbb659f06fceedb38a5cbcee60d178e4fd", "item_id": "c3", "note": "", "time": "2026-11-01T00:04:00+0000", "verifier": "tester"}
+{"builder": "fixture", "decision": "pass", "digest": "ed7b88e58b7846e216a40202ee8c461d5a2bcfc51d45b577d9e9488ad404a431", "item_id": "c4", "note": "", "time": "2026-11-01T00:05:00+0000", "verifier": "tester"}
+{"builder": "fixture", "decision": "pass", "digest": "8332886f9d96518fc2322c08810a7ae4b855e6b7093d93e66fcecd80432a2c0a", "item_id": "c5", "note": "", "time": "2026-11-01T00:06:00+0000", "verifier": "tester"}
+{"builder": "fixture", "decision": "bad_box", "digest": "b718767022488588575064b61f25de89f3b116e53bb3c62dfd3afbf3b3bcb6d6", "item_id": "c6", "note": "", "time": "2026-11-01T00:07:00+0000", "verifier": "tester"}
+{"builder": "fixture", "decision": "pass", "digest": "8a8f9a5f60d72820925b37fa9a3baa1b7b48b7fa29852d316a380f55f13c0a81", "item_id": "c7", "note": "", "time": "2026-11-01T00:08:00+0000", "verifier": "tester"}
+{"builder": "fixture", "decision": "pass", "digest": "f0bbe589f532d70ea575ecd455ee1e13f1764c532d2e05e1b974ed1ebd274911", "item_id": "c8", "note": "", "time": "2026-11-01T00:09:00+0000", "verifier": "tester"}
+{"builder": "fixture", "decision": "pass", "digest": "0000000000000000000000000000000000000000000000000000000000000000", "item_id": "c9", "note": "", "time": "2026-11-01T00:10:00+0000", "verifier": "tester"}

@@ -360,13 +360,13 @@ uv run kvsel fetch-images manifests/textvqa_dev.jsonl --out data/textvqa/images 
 | `src/kvsel/cache.py` | Compaction and masks; the only code touching the cache API |
 | `src/kvsel/engine.py` | Probe, replay, candidate scoring, greedy decoding |
 | `src/kvsel/selectors.py` | PW-attn, question-span, uniform, coverage reserve |
-| `src/kvsel/prompts.py` | Template v3.0, prefix/suffix split, candidate tokenization |
-| `src/kvsel/gqa.py`, `textvqa.py` | Dataset builders |
-| `src/kvsel/geometry.py` | Image transform and box-to-grid mapping rules |
-| `src/kvsel/verify.py` | Hand-verification tool |
+| `src/kvsel/models/` | Model families (LLaVA-1.5, LLaVA-NeXT): files, prompts and tokens, candidate tokens, the layout of an image's visual span, prefill, numerics; LLaVA-1.5's image transform and box-to-grid mapping rules |
+| `src/kvsel/prompts.py` | Surface forms and the PW-attn window's composition |
+| `src/kvsel/items/` | GQA and TextVQA builders, their shared rules, manifest reading, image fetching |
+| `src/kvsel/verification/` | Hand-verification tool, decision log, item digest; the page is `page.html` |
 | `src/kvsel/runner.py` | Work units; one result file per item |
 | `src/kvsel/validate.py` | Level 2 acceptance tests |
 | `src/kvsel/analysis.py` | Estimands, clustered bootstrap, development report |
 | `manifests/` | Built items and the funnel. Rebuild with `kvsel build-gqa` |
-| `src/kvsel_next/` | LLaVA-NeXT: prompt and layout, selection by share, validate, both NeXT freezes, run and report |
+| `src/kvsel_next/` | LLaVA-NeXT: selection by share, validate, both NeXT freezes, run and report |
 | `tests/README.md` | Acceptance policy |

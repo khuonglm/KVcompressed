@@ -4,14 +4,16 @@ import numpy as np
 import pytest
 
 from kvsel.selectors import pool_3x3
-from kvsel_next.layout import Layout
+from kvsel.models.llava15 import LAYOUT as SINGLE_MAP
+from kvsel.models.llava_next import anyres_layout
 from kvsel_next.selection import SHARES, kept_set, kept_sets, pooled_scores
 
-WIDE, TALL = Layout(24, (24, 44)), Layout(24, (44, 24))
+WIDE, TALL = anyres_layout(24, 24, 44), anyres_layout(24, 44, 24)
+MAPS = {"base": 0, "high": 1}
 
 
 def index(layout, map_, row, col):
-    return layout.positions().index((map_, row, col))
+    return int(layout.positions(MAPS[map_])[row, col])
 
 
 def spiked(layout, at, value=100.0):
@@ -26,13 +28,13 @@ def test_shares():
 
 def test_single_24x24_map_pools_as_kvsel():
     values = np.random.default_rng(0).random(576)
-    assert np.allclose(pooled_scores(Layout(24, (0, 0)), values), pool_3x3(values))
+    assert np.allclose(pooled_scores(SINGLE_MAP, values), pool_3x3(values))
 
 
 def test_a_24x24_high_resolution_map_pools_as_kvsel():
-    layout = Layout(24, (24, 24))
+    layout = anyres_layout(24, 24, 24)
     values = np.random.default_rng(1).random(layout.total)
-    high = np.array([i for i, (m, _, _) in enumerate(layout.positions()) if m == "high"])
+    high = layout.positions(1).ravel()
     assert np.allclose(pooled_scores(layout, values)[high], pool_3x3(values[high]))
 
 
@@ -53,7 +55,7 @@ def test_spike_at_the_start_of_the_high_resolution_map_stays_in_it(layout):
 
 @pytest.mark.parametrize("layout", [WIDE, TALL])
 def test_spike_before_a_newline_does_not_reach_the_next_row_start(layout):
-    rows, cols = layout.grid
+    rows, cols = layout.maps[1].rows, layout.maps[1].cols
     spike = index(layout, "high", 3, cols - 1)
     pooled = pooled_scores(layout, spiked(layout, spike))
     assert pooled[index(layout, "high", 4, 0)] == 0  # flat index spike + 2, across the newline
@@ -71,8 +73,8 @@ def test_newline_scores_reach_nothing(layout):
 BUDGETS = [
     (WIDE, (204, 408, 816)),  # 1632 features
     (TALL, (204, 408, 816)),  # 1632
-    (Layout(24, (48, 48)), (360, 720, 1440)),  # 2880
-    (Layout(24, (24, 70)), (282, 564, 1128)),  # 2256
+    (anyres_layout(24, 48, 48), (360, 720, 1440)),  # 2880
+    (anyres_layout(24, 24, 70), (282, 564, 1128)),  # 2256
 ]
 
 
@@ -91,7 +93,7 @@ def test_budget_newlines_and_nesting(layout, expected):
 
 def test_a_share_that_is_not_a_whole_k_is_refused():
     with pytest.raises(ValueError, match="not whole"):
-        kept_set(Layout(24, (2, 2)), np.zeros(582), 0.125)  # 580 features: 72.5; no real image has this
+        kept_set(anyres_layout(24, 2, 2), np.zeros(582), 0.125)  # 580 features: 72.5; no real image has this
 
 
 @pytest.mark.parametrize("layout", [WIDE, TALL])
@@ -118,5 +120,5 @@ def test_non_finite_feature_scores_are_refused():
 
 
 def test_ties_go_to_the_lower_index():
-    kept = kept_set(Layout(24, (0, 0)), np.zeros(576), 0.125)
+    kept = kept_set(SINGLE_MAP, np.zeros(576), 0.125)
     assert kept.tolist() == list(range(72))

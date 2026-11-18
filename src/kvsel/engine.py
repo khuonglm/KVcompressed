@@ -9,7 +9,6 @@ from __future__ import annotations
 import copy
 from dataclasses import dataclass
 
-import numpy as np
 import torch
 from torch import nn
 
@@ -37,12 +36,10 @@ class Decoder:
     the model's dtype (in bf16, steps of 0.125 for logits between 16 and 32). Log-probabilities are
     computed in fp32 either way. Neither repairs rounding already present in the hidden states.
 
-    ``fp32_head_copy``: keep an fp32 copy of the head (fast, but 4 bytes per weight), or upcast the
-    head a slice of rows at a time on every call (no copy; same arithmetic, since fp16 and bf16
-    weights are exact in fp32).
+    ``head_slice_rows``: None keeps an fp32 copy of the head (fast, but 4 bytes per weight); a number
+    upcasts the head that many rows at a time on every call (no copy; same arithmetic, since fp16 and
+    bf16 weights are exact in fp32).
     """
-
-    HEAD_ROWS_PER_SLICE = 16384
 
     def __init__(
         self,
@@ -50,7 +47,7 @@ class Decoder:
         lm_head: nn.Module,
         head_precision: str = "fp32",
         stop_ids: tuple[int, ...] = (EOS_ID,),
-        fp32_head_copy: bool = True,
+        head_slice_rows: int | None = None,
     ):
         if head_precision not in {"fp32", "native"}:
             raise ValueError(f"unknown head_precision {head_precision!r}")
@@ -58,8 +55,8 @@ class Decoder:
         self.lm_head = lm_head
         self.head_precision = head_precision
         self.stop_ids = tuple(stop_ids)
-        self.fp32_head_copy = fp32_head_copy
-        copy_head = head_precision == "fp32" and fp32_head_copy
+        self.head_slice_rows = head_slice_rows
+        copy_head = head_precision == "fp32" and head_slice_rows is None
         self.fp32_head = copy.deepcopy(lm_head).float() if copy_head else None
         self.dtype = next(language_model.parameters()).dtype
         self.device = next(language_model.parameters()).device
@@ -73,8 +70,8 @@ class Decoder:
         hidden = hidden.float()
         weight, bias = self.lm_head.weight, self.lm_head.bias
         slices = []
-        for start in range(0, weight.shape[0], self.HEAD_ROWS_PER_SLICE):
-            stop = start + self.HEAD_ROWS_PER_SLICE
+        for start in range(0, weight.shape[0], self.head_slice_rows):
+            stop = start + self.head_slice_rows
             slices.append(nn.functional.linear(
                 hidden, weight[start:stop].float(), None if bias is None else bias[start:stop].float()
             ))
@@ -107,42 +104,54 @@ class Decoder:
 
 @dataclass(frozen=True)
 class Prefix:
-    """The shared prefix cache.
+    """The shared prefix cache. Its length is both the physical and the rotary position of the first suffix token.
 
-    ``length`` counts physical entries. ``logical_length`` is the rotary position of the first suffix
-    token. They are equal for LLaVA. Qwen2.5-VL's M-RoPE gives the whole image grid only 24
-    positions, so its text continues from far less than the number of entries.
+    Its residency is where its entries live: on the decoder's device, replayed in place, or in CPU memory between
+    units (a family's ``prefix_residency``), when probe and replay copy what they need to the device per call.
     """
 
     entries: Entries
     num_nonvisual: int
     num_visual: int
-    logical_length: int | None = None
 
     @property
     def length(self) -> int:
         return self.num_nonvisual + self.num_visual
 
-    @property
-    def logical_start(self) -> int:
-        return self.length if self.logical_length is None else self.logical_length
+
+def _to_device(entries: Entries, device) -> Entries:
+    """``entries`` on ``device``: the same tensors if already there, else copies (moving copies values exactly)."""
+    return tuple((k.to(device), v.to(device)) for k, v in entries)
 
 
-def probe(decoder: Decoder, prefix: Prefix, suffix_ids: torch.Tensor) -> np.ndarray:
+def on_device(prefix: Prefix, device) -> Prefix:
+    """The same prefix with its entries on ``device``: a copy, or the prefix itself if already there."""
+    target = torch.empty(0, device=device).device  # "cuda" -> cuda:0, so the comparison below is exact
+    if prefix.entries[0][0].device == target:
+        return prefix
+    return Prefix(_to_device(prefix.entries, target), prefix.num_nonvisual, prefix.num_visual)
+
+
+def probe(decoder: Decoder, prefix: Prefix, suffix_ids: torch.Tensor, layer2_last: bool = False):
     """Attention from each suffix token to each visual entry, averaged over heads and layers 2 up.
 
     Returns float32 of shape (suffix_tokens, num_visual). Probabilities are over all available
-    keys and are not renormalised. The probe's cache is discarded on return.
+    keys and are not renormalised. The probe's cache is discarded on return. With ``layer2_last``,
+    returns (that array, layer 2's attention from the last suffix token, mean over heads, shape (num_visual,)):
+    LT-early's input.
     """
     _, _, attentions = decoder.step(
-        suffix_ids, prefix.entries, prefix.logical_start, prefix.length, output_attentions=True
+        suffix_ids, _to_device(prefix.entries, decoder.device), prefix.length, prefix.length, output_attentions=True
     )
     start, stop = prefix.num_nonvisual, prefix.length
     total = None
     for attention in attentions[2:]:
         layer = attention[0, :, :, start:stop].float().mean(dim=0)
         total = layer if total is None else total + layer
-    return (total / (len(attentions) - 2)).float().cpu().numpy()
+    late = (total / (len(attentions) - 2)).float().cpu().numpy()
+    if not layer2_last:
+        return late
+    return late, attentions[2][0, :, -1, start:stop].float().mean(dim=0).cpu().numpy()
 
 
 def replay(
@@ -152,21 +161,26 @@ def replay(
     suffix_ids: torch.Tensor,
     mode: str = "compact",
 ) -> tuple[State, torch.Tensor]:
-    """Process the answering suffix against the kept entries. Returns (state, suffix logits)."""
-    kept_visual = kept_visual.to(decoder.device)
+    """Process the answering suffix against the kept entries. Returns (state, suffix logits).
+
+    A CPU-held prefix is compacted on the CPU and only the kept entries move (dense moves them all); the moved copy
+    is freed on return, so the device holds at most two cache copies at once.
+    """
     if mode == "compact":
-        entries = compact(prefix.entries, kept_visual, prefix.num_nonvisual)
+        entries = compact(prefix.entries, kept_visual, prefix.num_nonvisual)  # where the prefix lives
         dropped = None
     elif mode == "dense":
         entries = prefix.entries
-        dropped = dropped_columns(kept_visual, prefix.num_nonvisual, prefix.num_visual)
+        dropped = dropped_columns(kept_visual.to(decoder.device), prefix.num_nonvisual, prefix.num_visual)
     else:
         raise ValueError(f"unknown mode {mode!r}")
+    entries = _to_device(entries, decoder.device)
     physical = entries[0][0].shape[2]
-    hidden, new_entries, _ = decoder.step(suffix_ids, entries, prefix.logical_start, physical, dropped)
+    hidden, new_entries, _ = decoder.step(suffix_ids, entries, prefix.length, physical, dropped)
+    del entries
     logits = decoder.logits(hidden)
     tokens = suffix_ids.shape[1]
-    state = State(new_entries, prefix.logical_start + tokens, physical + tokens, dropped, logits[0, -1])
+    state = State(new_entries, prefix.length + tokens, physical + tokens, dropped, logits[0, -1])
     return state, logits
 
 

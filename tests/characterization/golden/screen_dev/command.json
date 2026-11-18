@@ -1,0 +1,11 @@
+{
+ "exit_code": 0,
+ "stdout": [
+  "4/4 items",
+  "eligible under `lower`: 1 of 4",
+  "eligible under `capitalized`: 3 of 4",
+  "eligible under `upper`: 3 of 4",
+  "sample greedy answers: ['Von', 'Von', 'Von', 'среди']"
+ ],
+ "stderr": []
+}

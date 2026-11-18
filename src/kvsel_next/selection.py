@@ -8,10 +8,9 @@ from __future__ import annotations
 
 import numpy as np
 
+from kvsel.models.layout import Layout
 from kvsel.prompts import WINDOW_SIZE  # last suffix tokens averaged, as LLaVA-1.5's PW-attn
 from kvsel.selectors import top_k
-
-from .layout import Layout
 
 SHARES = (0.125, 0.25, 0.5)
 
@@ -33,17 +32,15 @@ def pool(grid: np.ndarray) -> np.ndarray:
 def pooled_scores(layout: Layout, scores: np.ndarray) -> np.ndarray:
     """Pooled scores over the visual span; newline entries are NaN."""
     scores = np.asarray(scores, dtype=np.float64)
-    base_tokens = layout.base * layout.base
-    rows, cols = layout.grid
-    high_rows = scores[base_tokens:].reshape(rows, cols + 1).copy()  # each row ends with its newline
-    high_rows[:, :cols] = pool(high_rows[:, :cols])
-    high_rows[:, cols] = np.nan
-    base = pool(scores[:base_tokens].reshape(layout.base, layout.base))
-    return np.concatenate([base.ravel(), high_rows.ravel()])
+    pooled = np.full(layout.total, np.nan)
+    for index in range(len(layout.maps)):
+        at = layout.positions(index)
+        pooled[at] = pool(scores[at])
+    return pooled
 
 
 def budget(layout: Layout, share: float) -> int:
-    """share x feature tokens, which must be whole: one map axis is never unpadded, so features are multiples of 24."""
+    """share x feature tokens, which must be whole: one map axis is never unpadded, so features are multiples of the base map's side."""
     k = share * (layout.total - len(layout.newlines))
     if k != int(k):
         raise ValueError(f"share {share} of {layout.total - len(layout.newlines)} feature tokens is not whole")

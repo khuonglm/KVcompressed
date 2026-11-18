@@ -1,0 +1,27 @@
+{
+ "exit_code": 0,
+ "stdout": [
+  "{",
+  "  \"stage\": \"screening\",",
+  "  \"frozen_at\": \"<timestamp>\",",
+  "  \"prereg_screening_sha256\": \"c35e11877bec9ab690b44af9b117196c2697101dde90261816fab3e3240faa63\",",
+  "  \"manifests\": {",
+  "    \"gqa_confirm.jsonl\": \"547e392ba1e4b330b4f9503f4c0714b0a3e95a415bd9241513788e71195b9a03\"",
+  "  },",
+  "  \"code_sha256\": \"<code hash>\",",
+  "  \"settings\": {",
+  "    \"model\": \"llava\",",
+  "    \"model_id\": \"llava-hf/llava-1.5-7b-hf\",",
+  "    \"template\": \"v3.1\",",
+  "    \"head_precision\": \"fp32\",",
+  "    \"surface\": \"capitalized\",",
+  "    \"eligibility\": \"Full_Q greedy answer correct and margin(true - alt) > 0\",",
+  "    \"blind_filter\": \"not eligible if the same rule passes on a blank 336 x 336 image of the padding colour\",",
+  "    \"amendment\": 1,",
+  "    \"max_new_tokens\": 16,",
+  "    \"batch_size\": 1",
+  "  }",
+  "}"
+ ],
+ "stderr": []
+}

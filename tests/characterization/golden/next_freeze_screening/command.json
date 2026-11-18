@@ -1,0 +1,11 @@
+{
+ "exit_code": 0,
+ "stdout": [
+  "{",
+  "  \"frozen_at\": \"<timestamp>\",",
+  "  \"prereg_section_sha256\": \"ffa2ec60b6da560aef2418f67550a0d76a05d09a3d2aef295382ba2e223c1811\",",
+  "  \"code_sha256\": \"<code hash>\"",
+  "}"
+ ],
+ "stderr": []
+}

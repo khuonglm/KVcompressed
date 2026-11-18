@@ -16,13 +16,13 @@ from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
 
-from .. import NUM_VISUAL
+from ..models.llava15 import NUM_VISUAL
 from ..analysis import DELTA
 from ..confirm import load_flags, main_set
 from ..confirm_analysis import CODE_AMENDMENTS, SURFACE, code_accepted
 from ..freeze import check_screening, sha256_file
 from ..runner import NO_CONTEXT, Q, Unit, load_items
-from ..verify import load_decisions
+from ..verification import load_decisions
 from . import select
 
 SECTION = "## 3. GQA replication"

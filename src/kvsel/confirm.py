@@ -16,10 +16,10 @@ from pathlib import Path
 
 import numpy as np
 
-from . import NUM_VISUAL
 from .confirm_analysis import checks, load_run
 from .freeze import SCREENING, check_screening, sha256_file
 from .model import Bundle
+from .models.llava15 import NUM_VISUAL
 from .runner import (
     Q,
     Unit,
@@ -28,8 +28,7 @@ from .runner import (
     run_item,
     write_json_atomic,
 )
-from .screening import blank_image
-from .verify import PASS, load_decisions
+from .verification import PASS, load_decisions
 
 MAIN_SIZE = 1000
 CONTROL_SIZE = 300
@@ -152,7 +151,7 @@ def run_confirm(bundle: Bundle, items: list[dict], images_dir: Path, out_dir: Pa
     (out_dir / "items").mkdir(parents=True, exist_ok=True)
     (out_dir / "attention").mkdir(exist_ok=True)
     main_units, control_units = pilot_units(("mis",), K), pilot_units(k=K)
-    blank = blank_image(bundle)
+    blank = bundle.family.blank_image()
     for position, item_id in enumerate(selection["main"], 1):
         target = out_dir / "items" / f"{item_id}.json"
         if target.exists():

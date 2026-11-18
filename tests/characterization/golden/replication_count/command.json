@@ -1,0 +1,18 @@
+{
+ "exit_code": 0,
+ "stdout": [
+  "{",
+  "  \"main_set\": 2,",
+  "  \"replication\": 2,",
+  "  \"control\": 1,",
+  "  \"failed_before_cutoff\": 1,",
+  "  \"excluded\": {",
+  "    \"image in the main set\": 1,",
+  "    \"has a file in an earlier run\": 1",
+  "  },",
+  "  \"stale_decisions\": 1,",
+  "  \"next_unverified\": null",
+  "}"
+ ],
+ "stderr": []
+}

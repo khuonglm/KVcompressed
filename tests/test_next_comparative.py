@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from kvsel.verify import append_decision
+from kvsel.verification import append_decision
 from kvsel_next import __main__ as cli
 from kvsel.runner import Unit, cell_name
 from kvsel_next import comparative, screen
@@ -209,11 +209,11 @@ def plant(run, effect):
 
 @pytest.mark.network
 def test_freeze_run_resume_and_report_on_the_tiny_model(world, monkeypatch, capsys, tiny_llava_next):
-    from kvsel_next.family import NEXT
-    from kvsel_next.model import load_processor, make_bundle
+    from kvsel.model import bundle_from_model
+    from kvsel.models.llava_next import NEXT
 
-    processor = load_processor()
-    bundle = make_bundle(tiny_llava_next, processor)
+    processor = NEXT.load_processor()
+    bundle = bundle_from_model(tiny_llava_next, processor.tokenizer, processor, family=NEXT)
     monkeypatch.setattr(cli, "load_bundle", lambda device, model_dir: bundle)
     cli.main(["freeze", *common(world)])
 

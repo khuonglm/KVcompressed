@@ -1,0 +1,12 @@
+{
+ "exit_code": 0,
+ "stdout": [
+  "10/10 items screened",
+  "{",
+  "  \"screened\": 10,",
+  "  \"eligible\": 8,",
+  "  \"not_eligible\": 2",
+  "}"
+ ],
+ "stderr": []
+}

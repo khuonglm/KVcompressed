@@ -1,0 +1,14 @@
+{
+ "exit_code": 0,
+ "stdout": [
+  "{",
+  "  \"pool\": 5,",
+  "  \"screened\": 4,",
+  "  \"full_q_eligible\": 2,",
+  "  \"removed_image_independent\": 0,",
+  "  \"eligible\": 2,",
+  "  \"unscreened\": 1",
+  "}"
+ ],
+ "stderr": []
+}

@@ -1,0 +1,26 @@
+{
+  "stage": "next_screening",
+  "frozen_at": "<timestamp>",
+  "prereg_section_sha256": "ffa2ec60b6da560aef2418f67550a0d76a05d09a3d2aef295382ba2e223c1811",
+  "manifest": {
+    "next_confirm.jsonl": "4ff1801743830fe4bb448d7291ada25129b0da03e6d227f00d6c89cb970fb92b"
+  },
+  "code_sha256": "<code hash>",
+  "settings": {
+    "model": "llava_next",
+    "model_id": "llava-hf/llava-v1.6-vicuna-7b-hf",
+    "revision": "c916e6cdcd760b4cecd1dd4907f84ac649f93b23",
+    "anyres_cap": null,
+    "template": "v3.1",
+    "head_precision": "fp32",
+    "surface": "capitalized",
+    "eligibility": "Full_Q greedy answer correct and margin(true - alt) > 0",
+    "blind_filter": "not eligible if the same rule passes on a blank of the padding colour at the real image's size",
+    "pool": "manifest items whose latest current-digest decision is pass, in manifest order",
+    "main_size": 2,
+    "control_size": 1,
+    "shortfall": "fewer than main_size eligible after the whole pool is screened: the main set is every eligible item, the control subset its first control_size, and the shortfall is reported",
+    "max_new_tokens": 16,
+    "batch_size": 1
+  }
+}

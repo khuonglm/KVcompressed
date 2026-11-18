@@ -1,0 +1,22 @@
+{
+ "exit_code": 0,
+ "stdout": [
+  "2/2 items",
+  "{",
+  "  \"confirm_code_unchanged\": true,",
+  "  \"items\": 2,",
+  "  \"files_per_part\": {",
+  "    \"budgets\": 2,",
+  "    \"lt\": 2,",
+  "    \"random\": 2,",
+  "    \"restore\": 1",
+  "  },",
+  "  \"grounding_items\": 1,",
+  "  \"restore_qualifying\": {",
+  "    \"4\": 1,",
+  "    \"8\": 1",
+  "  }",
+  "}"
+ ],
+ "stderr": []
+}

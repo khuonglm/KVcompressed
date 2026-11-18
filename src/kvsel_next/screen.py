@@ -2,7 +2,7 @@
 
 The screen writes each item's id and flags only, never answers or margins, so no NeXT outcome can steer
 the stage-3 freeze. It mirrors `kvsel.freeze` and `kvsel.screening` instead of calling them: their
-section reader, settings and 576-token Full_Q are LLaVA-1.5's.
+section reader, settings and fixed-grid Full_Q are LLaVA-1.5's.
 """
 
 from __future__ import annotations
@@ -20,15 +20,12 @@ import kvsel
 import kvsel_next
 from kvsel.confirm_analysis import CODE_AMENDMENTS, code_accepted
 from kvsel.freeze import sha256_file
-from kvsel.geometry import PAD_COLOR
 from kvsel.model import Bundle
+from kvsel.models.llava_next import NEXT
 from kvsel.runner import NO_CONTEXT, Q, Unit, eligible, open_image, write_json_atomic
-from kvsel.verify import PASS, load_decisions
+from kvsel.verification import PASS, load_decisions
 
-from .family import NEXT
-from .model import prefill, run_unit
-from .model_files import REVISION
-from .prompts import tokenize_prompt
+from .model import run_unit
 
 RECORD = Path("freeze/next_screening.json")
 SECTION = "## 4."
@@ -36,7 +33,7 @@ SUBSECTION = "### 4.1"
 SCREENING = {
     "model": NEXT.name,
     "model_id": NEXT.model_id,
-    "revision": REVISION,
+    "revision": NEXT.revision,
     "anyres_cap": None,  # none implemented; a cap set in 4.1 needs code, which changes this hash
     "template": NEXT.template_version,
     "head_precision": NEXT.default_head_precision,
@@ -149,15 +146,10 @@ def pool(items: list[dict], decisions: Path) -> list[dict]:
     return [item for item in items if current.get(item["item_id"], {}).get("decision") == PASS]
 
 
-def blank_like(image: Image.Image) -> Image.Image:
-    """Blind_Q's image: the padding colour at the real image's size, so it gets the same AnyRes layout."""
-    return Image.new("RGB", image.size, PAD_COLOR)
-
-
 def passes(bundle: Bundle, item: dict, image: Image.Image) -> bool:
     """Full_Q on this image passes the eligibility rule."""
-    tokens, inputs = tokenize_prompt(bundle.image_processor, image, item["question"])
-    prefix, layout = prefill(bundle, tokens.prefix_ids, inputs)
+    tokens, inputs = NEXT.tokenize(bundle.image_processor, image, item["question"])
+    prefix, layout = NEXT.prefill(bundle, tokens.prefix_ids, inputs)
     unit = Unit("full", layout.total, False, NO_CONTEXT, Q)
     return eligible(run_unit(bundle, item, unit, prefix, np.arange(layout.total), {Q: tokens}), SCREENING["surface"])
 
@@ -165,7 +157,7 @@ def passes(bundle: Bundle, item: dict, image: Image.Image) -> bool:
 def screen_item(bundle: Bundle, item: dict, image: Image.Image) -> dict:
     """Flags only. Blind_Q runs only if Full_Q passes."""
     full_q = passes(bundle, item, image)
-    blind = passes(bundle, item, blank_like(image)) if full_q else None
+    blind = passes(bundle, item, NEXT.blank_image(image)) if full_q else None
     return {"item_id": item["item_id"], "full_q_eligible": full_q, "blind_eligible": blind,
             "eligible": full_q and not blind}
 

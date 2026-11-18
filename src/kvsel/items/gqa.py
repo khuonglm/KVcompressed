@@ -1,0 +1,199 @@
+"""GQA direct-attribute items (setting 1). A pure function of the raw files, version and seed."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import random
+import re
+from collections import Counter
+from pathlib import Path
+
+from ..normalize import normalize
+from .shared import descriptions_within_spread, split_by_image, split_development, write_jsonl
+
+BUILDER_VERSION = "gqa-3"  # gqa-3: val_all source, one item per object and attribute, frozen dev manifest
+# Closed vocabulary for a_true, a_alt and irrelevant values, so a wrong value is clearly wrong. Raw
+# dataset answers also include activities ("brushing teeth"), vague values ("dark") and near
+# neighbours ("tan", "beige", "light blue"), which would make a_alt arguably acceptable.
+VOCABULARY = {
+    "color": ("black", "blue", "brown", "gray", "green", "orange", "pink", "purple", "red", "white", "yellow"),
+    "material": ("brick", "concrete", "glass", "leather", "metal", "plastic", "porcelain", "wood"),
+}
+ATTRIBUTE_KINDS = tuple(VOCABULARY)
+_SELECT = re.compile(r"^(?P<name>.+) \((?P<id>\d+)\)$")
+
+
+def iter_json_object(text: str):
+    """Yields (key, value) pairs of a top-level JSON object one at a time, so a 1.7 GB file
+    needs memory for its text and the kept values only, not for every parsed question."""
+    decoder = json.JSONDecoder()
+    skip = re.compile(r"[\s,:]*")
+    position = skip.match(text, text.index("{") + 1).end()
+    while text[position] != "}":
+        key, position = decoder.raw_decode(text, position)
+        position = skip.match(text, position).end()
+        value, position = decoder.raw_decode(text, position)
+        position = skip.match(text, position).end()
+        yield key, value
+
+
+def load_questions(path: Path) -> tuple[dict, int]:
+    """Questions whose program can produce an item, and the total count for the funnel."""
+    kept, total = {}, 0
+    for item_id, question in iter_json_object(Path(path).read_text()):
+        total += 1
+        if parse_program(question) is not None:
+            kept[item_id] = question
+    return kept, total
+
+
+def item_rng(item_id: str) -> random.Random:
+    """Choices for an item do not depend on which other items exist or on build order."""
+    return random.Random(hashlib.sha256(f"{item_id}|{BUILDER_VERSION}".encode()).hexdigest())
+
+
+def parse_program(question: dict) -> tuple[str, str, str] | None:
+    """Returns (object name, object id, attribute kind) for exactly select -> query(color|material)."""
+    semantic = question["semantic"]
+    if [step["operation"] for step in semantic] != ["select", "query"]:
+        return None
+    kind = semantic[1]["argument"]
+    match = _SELECT.match(semantic[0]["argument"])
+    if kind not in ATTRIBUTE_KINDS or match is None:
+        return None
+    return match["name"], match["id"], kind
+
+
+def looks_plural(name: str) -> bool:
+    return name.endswith("s") and not name.endswith(("ss", "us", "is"))
+
+
+def verb_for(question: dict) -> str:
+    """The dataset's own wording settles agreement for the queried object."""
+    text = f" {question['question']} {question['fullAnswer']} ".lower()
+    return "are" if " are " in text else "is"
+
+
+def boxes_overlap(a: dict, b: dict) -> bool:
+    return a["x"] < b["x"] + b["w"] and b["x"] < a["x"] + a["w"] and a["y"] < b["y"] + b["h"] and b["y"] < a["y"] + a["h"]
+
+
+def choose_alternative(item_id: str, a_true: str, attributes: list[str], question_text: str, values) -> str | None:
+    """Not the true value, not any attribute of this object, not a word in the question."""
+    excluded = {normalize(a_true), *(normalize(attribute) for attribute in attributes)}
+    question_words = set(normalize(question_text).split())
+    options = [v for v in values if normalize(v) not in excluded and not set(normalize(v).split()) & question_words]
+    return item_rng(item_id).choice(options) if options else None
+
+
+def choose_irrelevant(item_id: str, object_id: str, graph: dict, values, avoid: set[str]) -> tuple[str, str] | None:
+    """Another uniquely named singular object with a known value of the same kind, not overlapping."""
+    target = graph["objects"][object_id]
+    names = Counter(obj["name"] for obj in graph["objects"].values())
+    allowed = {normalize(v): v for v in values}
+    options = []
+    for other_id in sorted(graph["objects"]):
+        other = graph["objects"][other_id]
+        if other_id == object_id or names[other["name"]] != 1 or other["name"] == target["name"] or looks_plural(other["name"]):
+            continue
+        if boxes_overlap(target, other):
+            continue
+        for attribute in sorted(other["attributes"]):
+            key = normalize(attribute)
+            if key in allowed and key not in avoid:
+                options.append((other["name"], attribute))
+    return item_rng(f"{item_id}|irr").choice(options) if options else None
+
+
+def build_items(questions: dict, graphs: dict, tokenizer=None) -> tuple[list[dict], dict[str, int]]:
+    funnel: Counter[str] = Counter()
+    funnel["questions"] = len(questions)
+    items = []
+    seen: set[tuple[str, str, str]] = set()
+    for item_id in sorted(questions):
+        question = questions[item_id]
+        parsed = parse_program(question)
+        if parsed is None:
+            continue
+        funnel["program_select_query_color_or_material"] += 1
+        name, object_id, kind = parsed
+        graph = graphs.get(question["imageId"])
+        if graph is None or object_id not in graph["objects"]:
+            continue
+        funnel["object_in_scene_graph"] += 1
+        target = graph["objects"][object_id]
+        if sum(obj["name"] == target["name"] for obj in graph["objects"].values()) != 1:
+            continue
+        funnel["unique_referent_in_scene_graph"] += 1
+        a_true = question["answer"]
+        if a_true not in VOCABULARY[kind]:
+            continue
+        funnel["answer_in_closed_vocabulary"] += 1
+        if normalize(a_true) not in {normalize(attribute) for attribute in target["attributes"]}:
+            continue
+        funnel["answer_is_attribute_of_object"] += 1
+        a_alt = choose_alternative(item_id, a_true, target["attributes"], question["question"], VOCABULARY[kind])
+        if a_alt is None:
+            continue
+        funnel["alternative_found"] += 1
+        irrelevant = choose_irrelevant(item_id, object_id, graph, VOCABULARY[kind], {normalize(a_true), normalize(a_alt)})
+        if irrelevant is None:
+            continue
+        funnel["irrelevant_object_found"] += 1
+        verb = verb_for(question)
+        descriptions = {
+            "mis": f"The {target['name']} in this image {verb} {a_alt}.",
+            "match": f"The {target['name']} in this image {verb} {a_true}.",
+            "irr": f"The {irrelevant[0]} in this image is {irrelevant[1]}.",
+        }
+        if tokenizer is not None and not descriptions_within_spread(tokenizer, question["question"], descriptions):
+            continue
+        funnel["description_lengths_within_3_tokens"] += 1
+        key = (question["imageId"], object_id, kind)
+        if key in seen:  # val_all asks about the same object in several wordings; the lowest id wins
+            continue
+        seen.add(key)
+        funnel["one_item_per_object_and_attribute"] += 1
+        items.append({
+            "item_id": item_id,
+            "image_id": question["imageId"],
+            "image_file": f"{question['imageId']}.jpg",
+            "dataset": "gqa",
+            "conflict_type": "same_object_attribute",
+            "builder": BUILDER_VERSION,
+            "attribute_kind": kind,
+            "question": question["question"],
+            "object": target["name"],
+            "object_id": object_id,
+            "a_true": a_true,
+            "a_alt": a_alt,
+            "descriptions": descriptions,
+            "evidence_box": {key: target[key] for key in ("x", "y", "w", "h")},
+            "image_size": {"width": graph["width"], "height": graph["height"]},
+        })
+    return items, dict(funnel)
+
+
+def build(questions_path: Path, graphs_path: Path, out_dir: Path, tokenizer, dev_items: int,
+          dev_manifest: Path | None = None) -> dict:
+    questions, total = load_questions(questions_path)
+    graphs = json.loads(Path(graphs_path).read_text())
+    items, funnel = build_items(questions, graphs, tokenizer)
+    funnel["questions"] = total
+    out_dir.mkdir(parents=True, exist_ok=True)
+    development, confirmatory, dev_sha = split_development(items, dev_items, dev_manifest, out_dir / "gqa_dev.jsonl", funnel)
+    funnel.update({
+        "unique_images": len({item["image_id"] for item in items}),
+        "dev_candidates": len(development),
+        "dev_images": len({item["image_id"] for item in development}),
+        "confirm_pool": len(confirmatory),
+        "confirm_images": len({item["image_id"] for item in confirmatory}),
+        "by_kind": dict(Counter(item["attribute_kind"] for item in items)),
+        "builder": BUILDER_VERSION,
+        "source": Path(questions_path).name,
+        "dev_sha256": dev_sha,
+        "confirm_sha256": write_jsonl(out_dir / "gqa_confirm.jsonl", confirmatory),
+    })
+    (out_dir / "gqa_funnel.json").write_text(json.dumps(funnel, indent=2) + "\n")
+    return funnel

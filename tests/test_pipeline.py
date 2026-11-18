@@ -7,9 +7,8 @@ import pytest
 from PIL import Image
 
 from kvsel.confirm_analysis import load_run, wide_margins
-from kvsel.geometry import pad_to_square, PAD_COLOR
-from kvsel.model import bundle_from_model, load_image_processor, load_tokenizer, pixel_values, prefill
-from kvsel.prompts import tokenize_prompt
+from kvsel.model import bundle_from_model
+from kvsel.models.llava15 import LLAVA, PAD_COLOR, pad_to_square
 from kvsel.runner import Unit, cell_name, pilot_units, require_development, run_item, run_items, run_screen
 from kvsel.selectors import uniform_grid
 from kvsel.validate import noise_floor, run_e2 as e2, run_e3_e4 as e3_e4, run_e5 as e5, run_e7 as e7, validate
@@ -30,7 +29,7 @@ def make_item(index):
 
 @pytest.fixture(scope="module")
 def bundle(tiny_llava):
-    return bundle_from_model(tiny_llava, load_tokenizer(), load_image_processor())
+    return bundle_from_model(tiny_llava, LLAVA.load_tokenizer(), LLAVA.load_processor())
 
 
 @pytest.fixture(scope="module")
@@ -51,8 +50,9 @@ def loaded(dataset):
 
 
 def test_prefix_through_real_classes_has_expected_shape(bundle, loaded):
-    tokens = tokenize_prompt(bundle.tokenizer, "What color is the bus?")
-    prefix = prefill(bundle, tokens.prefix_ids, pixel_values(bundle, loaded[0][1]))
+    tokens = LLAVA.tokenize(bundle.tokenizer, "What color is the bus?")
+    prefix, layout = LLAVA.prefill(bundle, tokens.prefix_ids, LLAVA.pixel_values(bundle, loaded[0][1]))
+    assert layout.total == 576 and layout.newlines == ()
     assert prefix.num_nonvisual == 5 and prefix.num_visual == 576
     assert prefix.entries[0][0].shape[2] == 581 and len(prefix.entries) == 4
 

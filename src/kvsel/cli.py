@@ -7,50 +7,44 @@ import getpass
 import json
 from pathlib import Path
 
-from .families import FAMILIES, LLAVA, get_family
 from .freeze import DEFAULT_RECORD
-
-
-def _family(args):
-    return get_family(getattr(args, "model", LLAVA.name))
+from .models import FAMILIES
+from .models.llava15 import LLAVA
 
 
 def _bundle(args):
     from .model import load_bundle
 
-    return load_bundle(device=args.device, head_precision=args.head_precision, model_dir=args.model_dir, family=_family(args))
+    return load_bundle(device=args.device, head_precision=args.head_precision, model_dir=args.model_dir)
 
 
 def cmd_build_gqa(args) -> None:
-    from .gqa import build
-    from .model import load_tokenizer
+    from .items.gqa import build
 
-    funnel = build(args.questions, args.scene_graphs, args.out_dir, load_tokenizer(args.model_dir), args.dev_items,
+    funnel = build(args.questions, args.scene_graphs, args.out_dir, LLAVA.load_tokenizer(args.model_dir), args.dev_items,
                    args.dev_manifest)
     print(json.dumps(funnel, indent=2))
 
 
 def cmd_build_textvqa(args) -> None:
-    from .model import load_tokenizer
-    from .textvqa import build
+    from .items.textvqa import build
 
-    funnel = build(args.questions, args.ocr, args.out_dir, load_tokenizer(args.model_dir), args.dev_items, args.dev_manifest)
+    funnel = build(args.questions, args.ocr, args.out_dir, LLAVA.load_tokenizer(args.model_dir), args.dev_items,
+                   args.dev_manifest)
     print(json.dumps(funnel, indent=2))
 
 
 def cmd_fetch_model(args) -> None:
-    from .model_files import fetch_model
-
-    family = _family(args)
+    family = FAMILIES[args.model]
     out = args.out or family.default_dir
-    missing = fetch_model(out, args.workers, family.model_id)
+    missing = family.fetch(out, args.workers)
     if missing:
         raise SystemExit(f"still missing {', '.join(missing)}; rerun the command to resume")
     print(f"model complete at {out}")
 
 
 def cmd_fetch_images(args) -> None:
-    from .fetch_images import fetch
+    from .items.images import fetch
 
     summary = fetch(args.manifests, args.out, args.url, args.workers, args.limit)
     print(json.dumps(summary, indent=2))
@@ -171,7 +165,7 @@ def _is_confirm_screen(screen: Path) -> bool:
 
 def cmd_verify(args) -> None:
     from .runner import eligible, load_items
-    from .verify import build_queue, load_decisions, make_server, summarize
+    from .verification import build_queue, load_decisions, make_server, summarize
 
     items = load_items(args.items)
     eligible_ids = None
@@ -200,9 +194,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(prog="kvsel", description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
 
-    def add_model_dir(sub, choose_model: bool = True) -> None:
-        if choose_model:
-            sub.add_argument("--model", default=LLAVA.name, choices=sorted(FAMILIES), help="model family (default: %(default)s)")
+    def add_model_dir(sub) -> None:
         sub.add_argument(
             "--model-dir", type=Path, default=None,
             help="local model copy, used if present; otherwise the Hugging Face Hub "
@@ -226,7 +218,7 @@ def main() -> None:
     sub.add_argument("--dev-items", type=int, default=600, help="candidates before eligibility and verification")
     sub.add_argument("--dev-manifest", type=Path, default=None,
                      help="keep these development items unchanged; confirmatory items avoid their images")
-    add_model_dir(sub, choose_model=False)
+    add_model_dir(sub)
     sub.set_defaults(handler=cmd_build_gqa)
 
     sub = commands.add_parser("build-textvqa", help="build TextVQA item manifests and print the funnel")
@@ -236,11 +228,11 @@ def main() -> None:
     sub.add_argument("--dev-items", type=int, default=1500, help="candidates before eligibility and verification")
     sub.add_argument("--dev-manifest", type=Path, default=None,
                      help="keep these development items unchanged; confirmatory items avoid their images")
-    add_model_dir(sub, choose_model=False)
+    add_model_dir(sub)
     sub.set_defaults(handler=cmd_build_textvqa)
 
     sub = commands.add_parser("fetch-model", help="download the model for local use; resumes if rerun")
-    sub.add_argument("--model", default=LLAVA.name, choices=sorted(FAMILIES))
+    sub.add_argument("--model", default=LLAVA.name, choices=sorted(FAMILIES), help="model family (default: %(default)s)")
     sub.add_argument("--out", type=Path, default=None, help="default: the family's models/ directory")
     sub.add_argument("--workers", type=int, default=8)
     sub.set_defaults(handler=cmd_fetch_model)
@@ -282,7 +274,7 @@ def main() -> None:
     sub = commands.add_parser("screen-confirm", help="eligibility screen on confirmatory items; writes flags only (GPU)")
     sub.add_argument("--items", type=Path, required=True, help="confirmatory manifest (JSONL)")
     sub.add_argument("--images", type=Path, required=True, help="directory holding the image files")
-    add_model_dir(sub, choose_model=False)
+    add_model_dir(sub)
     sub.add_argument("--device", default="cuda")
     sub.add_argument("--prereg", type=Path, default=Path("PREREG.md"))
     sub.add_argument("--record", type=Path, default=DEFAULT_RECORD)
@@ -305,7 +297,7 @@ def main() -> None:
     sub = commands.add_parser("confirm", help="the confirmatory run, once, on the frozen main set (GPU)")
     add_confirm_paths(sub)
     sub.add_argument("--images", type=Path, required=True, help="directory holding the image files")
-    add_model_dir(sub, choose_model=False)
+    add_model_dir(sub)
     sub.add_argument("--device", default="cuda")
     sub.add_argument("--out", type=Path, required=True)
     sub.set_defaults(handler=cmd_confirm, head_precision=None)

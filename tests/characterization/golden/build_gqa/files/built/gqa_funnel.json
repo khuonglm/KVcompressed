@@ -1,0 +1,24 @@
+{
+  "questions": 7,
+  "program_select_query_color_or_material": 6,
+  "object_in_scene_graph": 6,
+  "unique_referent_in_scene_graph": 6,
+  "answer_in_closed_vocabulary": 5,
+  "answer_is_attribute_of_object": 5,
+  "alternative_found": 5,
+  "irrelevant_object_found": 5,
+  "description_lengths_within_3_tokens": 5,
+  "one_item_per_object_and_attribute": 5,
+  "unique_images": 5,
+  "dev_candidates": 2,
+  "dev_images": 2,
+  "confirm_pool": 3,
+  "confirm_images": 3,
+  "by_kind": {
+    "color": 5
+  },
+  "builder": "gqa-3",
+  "source": "gqa_questions.json",
+  "dev_sha256": "28883d3268f6d3237459a3f7028f613e0f05c4602b518112b07975124eccbe00",
+  "confirm_sha256": "22f84e1b9c8f38b5c793493d7ff992e7899aa65bc3194e5ee4235de2e3a6efeb"
+}

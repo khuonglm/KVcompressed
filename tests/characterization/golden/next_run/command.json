@@ -1,0 +1,11 @@
+{
+ "exit_code": 0,
+ "stdout": [
+  "2/2 items",
+  "{",
+  "  \"full_q_no_longer_eligible\": 0,",
+  "  \"blind_now_eligible\": 0",
+  "}"
+ ],
+ "stderr": []
+}

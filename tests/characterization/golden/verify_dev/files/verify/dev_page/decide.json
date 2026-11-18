@@ -1,0 +1,1 @@
+{"summary": {"queue": 3, "decided": 1, "remaining": 2, "passed": 1, "failed": 0, "failure_reasons": {}}, "stale": 0, "decisions": {"d0": {"builder": "fixture", "decision": "pass", "digest": "f48cbd6663e991f6436039de12c733364393823168b6ea309b82431a6d1ac9fa", "item_id": "d0", "note": "seen", "time": "<timestamp>", "verifier": "tester"}}}

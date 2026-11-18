@@ -1,0 +1,16 @@
+{
+ "exit_code": 0,
+ "stdout": [
+  "3 items queued; decisions go to verify/dev.jsonl",
+  "open http://127.0.0.1:<port>  (Ctrl-C to stop)",
+  "{",
+  "  \"queue\": 3,",
+  "  \"decided\": 1,",
+  "  \"remaining\": 2,",
+  "  \"passed\": 1,",
+  "  \"failed\": 0,",
+  "  \"failure_reasons\": {}",
+  "}"
+ ],
+ "stderr": []
+}

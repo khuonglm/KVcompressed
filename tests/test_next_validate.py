@@ -6,10 +6,9 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from kvsel.model_files import WEIGHT_INDEX
+from kvsel.models.family import REVISION_FILE, WEIGHT_INDEX
+from kvsel.models.llava_next import NEXT, REVISION, anyres_layout
 from kvsel_next import __main__ as cli
-from kvsel_next.layout import Layout
-from kvsel_next.model_files import REQUIRED_FILES, REVISION, REVISION_FILE, fetch_model, missing_files, resolve_model
 from kvsel_next.selection import SHARES
 from kvsel_next.validate import _projection_sizes, sparse_set
 
@@ -18,7 +17,7 @@ SHARDS = ["model-00001-of-00003.safetensors", "model-00002-of-00003.safetensors"
 
 def populate(directory, shards=SHARDS):
     directory.mkdir(parents=True, exist_ok=True)
-    for name in REQUIRED_FILES:
+    for name in NEXT.required_files:
         (directory / name).write_text("{}")
     (directory / WEIGHT_INDEX).write_text(json.dumps({"weight_map": {str(i): s for i, s in enumerate(SHARDS)}}))
     for name in shards:
@@ -36,31 +35,31 @@ def test_fetch_pins_the_revision_and_records_it(tmp_path, monkeypatch):
         populate(tmp_path)
 
     monkeypatch.setattr("huggingface_hub.snapshot_download", fake_download)
-    assert fetch_model(tmp_path, 4) == []
+    assert NEXT.fetch(tmp_path, 4) == []
     assert calls["repo_id"] == "llava-hf/llava-v1.6-vicuna-7b-hf" and calls["revision"] == REVISION
     assert (tmp_path / REVISION_FILE).read_text().strip() == REVISION
-    assert resolve_model(tmp_path) == str(tmp_path)
+    assert NEXT.resolve(tmp_path) == str(tmp_path)
 
 
 def test_fetch_reports_a_missing_shard(tmp_path, monkeypatch):
     monkeypatch.setattr("huggingface_hub.snapshot_download", lambda repo_id, **_: populate(tmp_path, SHARDS[:2]))
-    assert fetch_model(tmp_path, 4) == [SHARDS[2]]
+    assert NEXT.fetch(tmp_path, 4) == [SHARDS[2]]
     with pytest.raises(SystemExit, match=SHARDS[2]):
-        resolve_model(tmp_path)
+        NEXT.resolve(tmp_path)
 
 
 def test_copy_at_another_revision_or_without_a_record_is_refused(tmp_path):
     populate(tmp_path)
     with pytest.raises(SystemExit, match=REVISION_FILE):
-        resolve_model(tmp_path)
+        NEXT.resolve(tmp_path)
     (tmp_path / REVISION_FILE).write_text("0" * 40)
-    assert any("expected" in name for name in missing_files(tmp_path))
+    assert any("expected" in name for name in NEXT.missing_files(tmp_path))
     with pytest.raises(SystemExit, match="another revision"):
-        resolve_model(tmp_path)
+        NEXT.resolve(tmp_path)
 
 
 def test_absent_copy_falls_back_to_the_hub(tmp_path):
-    assert resolve_model(tmp_path / "nothing") == "llava-hf/llava-v1.6-vicuna-7b-hf"
+    assert NEXT.resolve(tmp_path / "nothing") == "llava-hf/llava-v1.6-vicuna-7b-hf"
 
 
 # --- kept sets -------------------------------------------------------------------------------------
@@ -68,7 +67,7 @@ def test_absent_copy_falls_back_to_the_hub(tmp_path):
 
 @pytest.mark.parametrize("kind", ["random", "concentrated"])
 def test_kept_sets_hold_k_features_and_every_newline(kind):
-    layout = Layout(24, (24, 44))
+    layout = anyres_layout(24, 24, 44)
     features = layout.total - len(layout.newlines)
     for share in SHARES:
         kept = sparse_set(layout, share, kind, 0)
@@ -115,11 +114,11 @@ def test_validate_refuses_items_that_are_not_development_items(tmp_path, monkeyp
 
 @pytest.mark.network
 def test_whole_validate_command_on_tiny_model(tmp_path, monkeypatch, capsys, tiny_llava_next):
-    from kvsel_next.family import NEXT
-    from kvsel_next.model import load_processor, make_bundle
+    from kvsel.model import bundle_from_model
+    from kvsel.models.llava_next import NEXT
 
-    processor = load_processor()
-    bundle = make_bundle(tiny_llava_next, processor)
+    processor = NEXT.load_processor()
+    bundle = bundle_from_model(tiny_llava_next, processor.tokenizer, processor, family=NEXT)
     monkeypatch.setattr(cli, "load_bundle", lambda device, model_dir: bundle)
     items = [make_item(i) for i in range(3)]
     manifest = write_dataset(tmp_path, items, [(560, 300), (300, 560), (560, 300)])
@@ -149,15 +148,17 @@ def test_whole_validate_command_on_tiny_model(tmp_path, monkeypatch, capsys, tin
 
 
 @pytest.mark.network
-@pytest.mark.parametrize("culprit", ["probe", "replay_gathered", "replay"])
-def test_e4_catches_an_engine_call_that_changes_its_input(culprit, tmp_path, monkeypatch, tiny_llava_next):
-    """E4 hashes the copy each probe and replay receives, so changing it in place is reported."""
+@pytest.mark.parametrize(("culprit", "expected"), [("probe", "probe"), ("replay", "compact"), ("replay", "dense")])
+def test_e4_catches_an_engine_call_that_changes_its_input(culprit, expected, tmp_path, monkeypatch, tiny_llava_next):
+    """E4 hashes the shared prefix each probe and replay receives, so changing it in place is reported."""
     from collections import defaultdict
 
     from kvsel_next import validate
-    from kvsel_next.model import load_processor, make_bundle
+    from kvsel.model import bundle_from_model
+    from kvsel.models.llava_next import NEXT
 
-    bundle = make_bundle(tiny_llava_next, load_processor())
+    processor = NEXT.load_processor()
+    bundle = bundle_from_model(tiny_llava_next, processor.tokenizer, processor, family=NEXT)
     real = getattr(validate, culprit)
 
     def tampering(decoder, prefix, *args, **kwargs):
@@ -172,5 +173,4 @@ def test_e4_catches_an_engine_call_that_changes_its_input(culprit, tmp_path, mon
     write_dataset(tmp_path, [item], [(560, 300)])
     found = defaultdict(list)
     validate.check_item(bundle, item, validate.open_image(tmp_path, item), 0, True, "capitalized", found)
-    expected = {"probe": "probe", "replay_gathered": "compact", "replay": "dense"}[culprit]
     assert any(f"changed by {expected}" in failure for failure in found["hash_failures"])

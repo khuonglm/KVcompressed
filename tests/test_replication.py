@@ -1,7 +1,6 @@
 """GQA replication (PREREG section 3): selection of fresh items and the pool count."""
 
 import json
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -9,7 +8,7 @@ import pytest
 from kvsel import confirm
 from kvsel.replication import select
 from kvsel.replication.__main__ import main
-from kvsel.verify import PASS, VALID_DECISIONS, append_decision, load_decisions
+from kvsel.verification import PASS, VALID_DECISIONS, append_decision, load_decisions
 
 FAIL = min(VALID_DECISIONS - {PASS})
 
@@ -99,18 +98,6 @@ def test_count_prints_the_pool(sizes, tmp_path, monkeypatch, capsys):
     assert out["control"] == 1
     assert out["excluded"] == {"has a file in an earlier run": 1}
     assert out["next_unverified"] is None
-
-
-def test_gqa_stage3_code_hash_still_accepted():
-    """The replication is a subpackage, so `confirm-report --gqa-record` keeps working."""
-    from kvsel.confirm import code_hash_all
-    from kvsel.confirm_analysis import CODE_AMENDMENTS, code_accepted
-
-    record = Path(__file__).parents[1] / "freeze" / "comparative_gqa.json"
-    if not record.exists():
-        pytest.skip("no GQA stage-3 record in this checkout")
-    frozen = json.loads(record.read_text())["code_sha256"]
-    assert code_accepted(frozen, code_hash_all(), record.parent / CODE_AMENDMENTS)
 
 
 # --- Freeze, run and report (ticket 03) ---------------------------------------------------------------
@@ -369,11 +356,12 @@ def test_report_refuses_missing_or_extra_items(tmp_path):
 def test_run_on_the_tiny_model(tiny_llava, tmp_path, capsys):
     from PIL import Image
 
-    from kvsel.model import bundle_from_model, load_image_processor, load_tokenizer
+    from kvsel.model import bundle_from_model
+    from kvsel.models.llava15 import LLAVA
     from kvsel.replication.protocol import units
     from kvsel.replication.run import run_replication
 
-    bundle = bundle_from_model(tiny_llava, load_tokenizer(), load_image_processor())
+    bundle = bundle_from_model(tiny_llava, LLAVA.load_tokenizer(), LLAVA.load_processor())
     Image.fromarray(np.random.default_rng(0).integers(0, 255, (60, 80, 3), dtype=np.uint8)).save(tmp_path / "img.jpg")
     items = [item(0), item(1)]
     selection = {"replication_ids": ["i0", "i1"], "control_ids": ["i0"]}

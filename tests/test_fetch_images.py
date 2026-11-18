@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from kvsel.fetch_images import RangeFile, extract_member, fetch_one, wanted_files
+from kvsel.items.images import RangeFile, extract_member, fetch_one, wanted_files
 
 
 def make_archive(compression):

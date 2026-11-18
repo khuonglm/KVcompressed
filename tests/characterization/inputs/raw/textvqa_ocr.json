@@ -1,0 +1,232 @@
+{
+ "data": [
+  {
+   "image_id": "t0",
+   "ocr_info": [
+    {
+     "bounding_box": {
+      "height": 0.1,
+      "pitch": 0,
+      "roll": 0,
+      "rotation": 0,
+      "top_left_x": 0.2,
+      "top_left_y": 0.1,
+      "width": 0.1,
+      "yaw": 0
+     },
+     "word": "Canon"
+    },
+    {
+     "bounding_box": {
+      "height": 0.1,
+      "pitch": 0,
+      "roll": 0,
+      "rotation": 0,
+      "top_left_x": 0.5,
+      "top_left_y": 0.1,
+      "width": 0.1,
+      "yaw": 0
+     },
+     "word": "Nikon"
+    },
+    {
+     "bounding_box": {
+      "height": 0.1,
+      "pitch": 0,
+      "roll": 0,
+      "rotation": 0,
+      "top_left_x": 0.7,
+      "top_left_y": 0.1,
+      "width": 0.1,
+      "yaw": 0
+     },
+     "word": "Sony"
+    },
+    {
+     "bounding_box": {
+      "height": 0.1,
+      "pitch": 0,
+      "roll": 0,
+      "rotation": 0,
+      "top_left_x": 0.8,
+      "top_left_y": 0.1,
+      "width": 0.1,
+      "yaw": 0
+     },
+     "word": "Fuji"
+    }
+   ]
+  },
+  {
+   "image_id": "t1",
+   "ocr_info": [
+    {
+     "bounding_box": {
+      "height": 0.1,
+      "pitch": 0,
+      "roll": 0,
+      "rotation": 0,
+      "top_left_x": 0.2,
+      "top_left_y": 0.1,
+      "width": 0.1,
+      "yaw": 0
+     },
+     "word": "Canon"
+    },
+    {
+     "bounding_box": {
+      "height": 0.1,
+      "pitch": 0,
+      "roll": 0,
+      "rotation": 0,
+      "top_left_x": 0.5,
+      "top_left_y": 0.1,
+      "width": 0.1,
+      "yaw": 0
+     },
+     "word": "Nikon"
+    },
+    {
+     "bounding_box": {
+      "height": 0.1,
+      "pitch": 0,
+      "roll": 0,
+      "rotation": 0,
+      "top_left_x": 0.7,
+      "top_left_y": 0.1,
+      "width": 0.1,
+      "yaw": 0
+     },
+     "word": "Sony"
+    },
+    {
+     "bounding_box": {
+      "height": 0.1,
+      "pitch": 0,
+      "roll": 0,
+      "rotation": 0,
+      "top_left_x": 0.8,
+      "top_left_y": 0.1,
+      "width": 0.1,
+      "yaw": 0
+     },
+     "word": "Fuji"
+    }
+   ]
+  },
+  {
+   "image_id": "t2",
+   "ocr_info": [
+    {
+     "bounding_box": {
+      "height": 0.1,
+      "pitch": 0,
+      "roll": 0,
+      "rotation": 0,
+      "top_left_x": 0.2,
+      "top_left_y": 0.1,
+      "width": 0.1,
+      "yaw": 0
+     },
+     "word": "Canon"
+    },
+    {
+     "bounding_box": {
+      "height": 0.1,
+      "pitch": 0,
+      "roll": 0,
+      "rotation": 0,
+      "top_left_x": 0.5,
+      "top_left_y": 0.1,
+      "width": 0.1,
+      "yaw": 0
+     },
+     "word": "Nikon"
+    },
+    {
+     "bounding_box": {
+      "height": 0.1,
+      "pitch": 0,
+      "roll": 0,
+      "rotation": 0,
+      "top_left_x": 0.7,
+      "top_left_y": 0.1,
+      "width": 0.1,
+      "yaw": 0
+     },
+     "word": "Sony"
+    },
+    {
+     "bounding_box": {
+      "height": 0.1,
+      "pitch": 0,
+      "roll": 0,
+      "rotation": 0,
+      "top_left_x": 0.8,
+      "top_left_y": 0.1,
+      "width": 0.1,
+      "yaw": 0
+     },
+     "word": "Fuji"
+    }
+   ]
+  },
+  {
+   "image_id": "t3",
+   "ocr_info": [
+    {
+     "bounding_box": {
+      "height": 0.1,
+      "pitch": 0,
+      "roll": 0,
+      "rotation": 0,
+      "top_left_x": 0.2,
+      "top_left_y": 0.1,
+      "width": 0.1,
+      "yaw": 0
+     },
+     "word": "Canon"
+    },
+    {
+     "bounding_box": {
+      "height": 0.1,
+      "pitch": 0,
+      "roll": 0,
+      "rotation": 0,
+      "top_left_x": 0.5,
+      "top_left_y": 0.1,
+      "width": 0.1,
+      "yaw": 0
+     },
+     "word": "Nikon"
+    },
+    {
+     "bounding_box": {
+      "height": 0.1,
+      "pitch": 0,
+      "roll": 0,
+      "rotation": 0,
+      "top_left_x": 0.7,
+      "top_left_y": 0.1,
+      "width": 0.1,
+      "yaw": 0
+     },
+     "word": "Sony"
+    },
+    {
+     "bounding_box": {
+      "height": 0.1,
+      "pitch": 0,
+      "roll": 0,
+      "rotation": 0,
+      "top_left_x": 0.8,
+      "top_left_y": 0.1,
+      "width": 0.1,
+      "yaw": 0
+     },
+     "word": "Fuji"
+    }
+   ]
+  }
+ ]
+}

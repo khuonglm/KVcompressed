@@ -7,7 +7,6 @@ from pathlib import Path
 from ..confirm_analysis import checks, load_run
 from ..model import Bundle
 from ..runner import open_image, run_item, write_json_atomic
-from ..screening import blank_image
 from .protocol import BLIND, units
 
 
@@ -20,7 +19,7 @@ def run_replication(bundle: Bundle, items: list[dict], images_dir: Path, out_dir
         raise SystemExit(f"{len(missing)} images are missing from {images_dir} (first: {missing[0]})")
     control = set(selection["control_ids"])
     (out_dir / "items").mkdir(parents=True, exist_ok=True)
-    blank = blank_image(bundle)
+    blank = bundle.family.blank_image()
     for position, item_id in enumerate(ids, 1):
         target = out_dir / "items" / f"{item_id}.json"
         if not target.exists():

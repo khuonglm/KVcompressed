@@ -6,25 +6,23 @@ import argparse
 import json
 from pathlib import Path
 
-from .family import NEXT
+from kvsel.models.llava_next import NEXT
 
 MEMORY_LIMIT_GB = 20  # the A100 slice; above it, PREREG 4.1's AnyRes cap is needed
 
 
 def cmd_fetch_model(args) -> None:
-    from .model_files import REVISION, fetch_model
-
-    missing = fetch_model(args.out, args.workers)
+    missing = NEXT.fetch(args.out, args.workers)
     if missing:
         raise SystemExit(f"still missing {', '.join(missing)}; rerun the command to resume")
-    print(f"model complete at {args.out}, revision {REVISION}")
+    print(f"model complete at {args.out}, revision {NEXT.revision}")
 
 
 def load_bundle(device: str, model_dir: Path | None):
     """The seam tests replace with the tiny model; importing torch models lazily keeps `--help` fast."""
-    from .model import load_bundle as load
+    from kvsel.model import load_bundle as load
 
-    return load(device, model_dir)
+    return load(device, model_dir=model_dir, family=NEXT)
 
 
 def cmd_validate(args) -> None:

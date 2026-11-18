@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from kvsel.textvqa import (
+from kvsel.items.textvqa import (
     build, build_items, character_class, choose_alternative, find_spans, modal_answer, normalize_text,
 )
 
@@ -98,7 +98,7 @@ def test_fragments_of_an_answer_are_not_alternatives():
 
 
 def test_irrelevant_string_does_not_overlap_the_alternative():
-    from kvsel.textvqa import choose_irrelevant
+    from kvsel.items.textvqa import choose_irrelevant
 
     assert choose_irrelevant("k", ["canon", "android", "andr"], {"canon", "android"}, {0}) is None
 

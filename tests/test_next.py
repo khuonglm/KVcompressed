@@ -5,13 +5,15 @@ import pytest
 import torch
 from PIL import Image
 
-from kvsel import IMAGE_TOKEN
+from conftest import ACCELERATOR
+
 from kvsel.cache import compact, dropped_columns, entries_hash
-from kvsel.engine import Prefix, advance, greedy, probe, replay
-from kvsel.families import LLAVA
-from kvsel_next.family import NEXT
-from kvsel_next.model import load_processor, prefill
-from kvsel_next.prompts import contexts_for, tokenize_prompt
+from kvsel.engine import Prefix, advance, greedy, on_device, probe, replay
+from kvsel.model import bundle_from_model
+from kvsel.models.family import visual_span
+from kvsel.models.layout import Map
+from kvsel.models.llava15 import IMAGE_TOKEN, LLAVA
+from kvsel.models.llava_next import NEXT
 from kvsel_next.selection import SHARES, kept_sets
 
 pytestmark = pytest.mark.network
@@ -27,8 +29,11 @@ ITEM = {
 # 560 x 300 picks the 336 x 672 canvas (h x w), a 24 x 48 map; scale 24 / 300 makes it 44.8 wide, which
 # transformers truncates (int(round(44.8, 7))) to 44, so padding is 2 a side: 576 + 24 * 45 = 1656.
 # 300 x 560 is the transpose: 576 + 44 * 25 = 1676.
+# 640 x 480 (4:3) fits the 672 x 672 canvas best, a 2 x 2 grid of tiles and a 48 x 48 map; scale 48 / 640 makes it
+# 36 tall, so 6 rows of padding go each side: 576 + 36 * 49 = 2340.
 # (Images smaller than every canvas tie and all take the first, 336 x 672, whatever their aspect.)
-ASPECTS = {"wide": ((560, 300), (24, 44), 1656), "tall": ((300, 560), (44, 24), 1676)}
+ASPECTS = {"wide": ((560, 300), (24, 44), 1656), "tall": ((300, 560), (44, 24), 1676),
+           "four_three": ((640, 480), (36, 48), 2340)}
 
 
 def image(size):
@@ -37,21 +42,19 @@ def image(size):
 
 @pytest.fixture(scope="module")
 def processor():
-    return load_processor()
+    return NEXT.load_processor()
 
 
 @pytest.fixture(scope="module")
 def bundle(tiny_llava_next, processor):
-    from kvsel_next.model import make_bundle
-
-    return make_bundle(tiny_llava_next, processor)
+    return bundle_from_model(tiny_llava_next, processor.tokenizer, processor, family=NEXT)
 
 
 @pytest.fixture(scope="module", params=sorted(ASPECTS))
 def aspect(request, bundle, processor):
     size, grid, total = ASPECTS[request.param]
-    tokens, inputs = contexts_for(processor, ITEM, image(size))
-    prefix, layout = prefill(bundle, tokens["Q"].prefix_ids, inputs)
+    tokens, inputs = NEXT.contexts(bundle, ITEM, image(size))
+    prefix, layout = NEXT.prefill(bundle, tokens["Q"].prefix_ids, inputs)
     return {"grid": grid, "total": total, "tokens": tokens, "inputs": inputs, "prefix": prefix, "layout": layout}
 
 
@@ -67,9 +70,9 @@ def test_prompt_text_is_llava_15_template_apart_from_the_image_expansion(descrip
     assert NEXT.template_version == "v3.1"
 
 
-def test_processor_text_after_the_image_span_is_llava_15s(processor):
+def test_processor_text_after_the_image_span_is_llava_15s(bundle, processor):
     """Decoded from the processor's own expansion, for Q and each description condition."""
-    tokens, _ = contexts_for(processor, ITEM, image((560, 300)))
+    tokens, _ = NEXT.contexts(bundle, ITEM, image((560, 300)))
     for name, description in (("Q", None), *ITEM["descriptions"].items()):
         after = LLAVA.build_prompt(ITEM["question"], description).split(IMAGE_TOKEN)[-1]
         assert processor.tokenizer.decode(tokens[name].suffix_ids) == after
@@ -77,7 +80,7 @@ def test_processor_text_after_the_image_span_is_llava_15s(processor):
 
 def test_next_tokenizer_drops_the_space_token_before_the_newline(processor):
     """The text matches LLaVA-1.5's; NeXT's own tokenizer starts the suffix at the newline, one token shorter."""
-    tokens, _ = tokenize_prompt(processor, image((560, 300)), ITEM["question"], ITEM["descriptions"]["mis"])
+    tokens, _ = NEXT.tokenize(processor, image((560, 300)), ITEM["question"], ITEM["descriptions"]["mis"])
     assert processor.tokenizer.convert_ids_to_tokens(tokens.suffix_ids[:2]) == ["<0x0A>", "Un"]
     assert processor.tokenizer.decode(tokens.suffix_ids[slice(*tokens.question_span)]).strip() == ITEM["question"]
 
@@ -102,13 +105,25 @@ def test_prefix_is_text_then_the_whole_visual_span(aspect):
 def test_layout_record(aspect):
     layout = aspect["layout"]
     rows, cols = aspect["grid"]
-    assert (layout.base, layout.grid, layout.total) == (24, aspect["grid"], aspect["total"])
+    assert layout.maps == (Map(0, 24, 24), Map(576, rows, cols)) and layout.total == aspect["total"]
     assert layout.newlines == tuple(576 + r * (cols + 1) + cols for r in range(rows))
-    positions = layout.positions()
-    assert len(positions) == aspect["total"]
-    assert positions[0] == ("base", 0, 0) and positions[575] == ("base", 23, 23)
-    assert positions[576] == ("high", 0, 0) and positions[576 + cols] == ("newline", 0, cols)
-    assert positions[-2] == ("high", rows - 1, cols - 1) and positions[-1] == ("newline", rows - 1, cols)
+    base, high = layout.positions(0), layout.positions(1)
+    assert base[0, 0] == 0 and base[23, 23] == 575
+    assert high[0, 0] == 576 and high[0, cols - 1] + 1 == layout.newlines[0] and high[1, 0] == layout.newlines[0] + 1
+    assert high[rows - 1, cols - 1] == aspect["total"] - 2 and layout.newlines[-1] == aspect["total"] - 1
+    assert len(layout.features) == 576 + rows * cols
+
+
+def test_derived_layout_equals_the_processors_span(aspect, bundle):
+    start, stop = visual_span(aspect["tokens"]["Q"].prefix_ids, NEXT.image_token_id)
+    assert NEXT.layout(bundle.model.config, aspect["inputs"]).total == stop - start == aspect["total"]
+
+
+def test_a_4_3_image_gets_the_2x2_grid(bundle):
+    from transformers.models.llava_next.modeling_llava_next import get_anyres_image_grid_shape
+
+    config = bundle.model.config
+    assert get_anyres_image_grid_shape([480, 640], config.image_grid_pinpoints, config.vision_config.image_size) == (2, 2)
 
 
 def test_newline_positions_hold_the_models_newline_embedding(aspect, bundle):
@@ -122,20 +137,20 @@ def test_newline_positions_hold_the_models_newline_embedding(aspect, bundle):
 
 
 def test_layout_that_disagrees_with_the_span_is_refused(bundle, processor):
-    tokens, inputs = tokenize_prompt(processor, image((560, 300)), ITEM["question"])
+    tokens, inputs = NEXT.tokenize(processor, image((560, 300)), ITEM["question"])
     inputs["image_sizes"] = torch.tensor([[560, 300]])  # the tall image's layout: 1676 tokens, span has 1656
     with pytest.raises(ValueError, match="1656.*1676"):
-        prefill(bundle, tokens.prefix_ids, inputs)
+        NEXT.prefill(bundle, tokens.prefix_ids, inputs)
 
 
 def test_non_contiguous_or_truncated_span_is_refused(bundle, processor):
-    tokens, inputs = tokenize_prompt(processor, image((560, 300)), ITEM["question"])
+    tokens, inputs = NEXT.tokenize(processor, image((560, 300)), ITEM["question"])
     ids = tokens.prefix_ids
     broken = ids[:-10] + [29871] + ids[-9:]
     with pytest.raises(ValueError, match="contiguous"):
-        prefill(bundle, broken, inputs)
+        NEXT.prefill(bundle, broken, inputs)
     with pytest.raises(ValueError, match="end with"):
-        prefill(bundle, ids + [29871], inputs)
+        NEXT.prefill(bundle, ids + [29871], inputs)
 
 
 # --- Level 1 on the NeXT layout (same controls as tests/test_level1.py) ----------------------------
@@ -243,6 +258,11 @@ def test_numerics_match_llava_15():
     assert NEXT.dtype == torch.float16 and NEXT.default_head_precision == "fp32"
 
 
+def test_numerics_and_residency_fit_the_20_gib_slice():
+    assert (NEXT.head_slice_rows, NEXT.prefix_residency) == (4096, "cpu")
+    assert (LLAVA.head_slice_rows, LLAVA.prefix_residency) == (None, "device")  # LLaVA-1.5's head path is unchanged
+
+
 def test_bundle_has_an_fp32_head(bundle, aspect):
     """fp32 logits from the fp32-cast hidden state, through the sliced head (no fp32 copy kept)."""
     assert bundle.decoder.head_precision == "fp32" and bundle.decoder.fp32_head is None
@@ -253,12 +273,10 @@ def test_bundle_has_an_fp32_head(bundle, aspect):
 def test_non_eager_attention_is_refused(tiny_llava_next, processor):
     import copy
 
-    from kvsel_next.model import make_bundle  # what load_bundle uses
-
     model = copy.deepcopy(tiny_llava_next)
     model.config.text_config._attn_implementation = "sdpa"
     with pytest.raises(RuntimeError, match="eager"):
-        make_bundle(model, processor)
+        bundle_from_model(model, processor.tokenizer, processor, family=NEXT)
 
 
 # --- memory: same outputs with fewer copies (20 GiB GPU) ------------------------------------------
@@ -280,15 +298,17 @@ def test_run_unit_rows_equal_kvsels(bundle, aspect):
 
 
 def test_logits_without_the_fp32_head_copy_are_identical(tiny_llava_next, processor):
-    """kvsel's bundle keeps an fp32 head copy; NeXT's upcasts 4,096-row slices on each call, never making the copy."""
-    from kvsel.model import bundle_from_model
-    from kvsel_next.model import make_bundle
+    """On an fp16 copy: with a head copy (LLaVA-1.5's path) and with NeXT's 4,096-row slices upcast on each call
+    (eight slices of the 32,064-row head), never making the copy."""
+    import copy
+    from dataclasses import replace
 
-    with_copy = bundle_from_model(tiny_llava_next, processor.tokenizer, processor, family=NEXT)
-    without = make_bundle(tiny_llava_next, processor)
+    model = copy.deepcopy(tiny_llava_next).half()
+    with_copy = bundle_from_model(model, processor.tokenizer, processor, family=replace(NEXT, head_slice_rows=None))
+    without = bundle_from_model(model, processor.tokenizer, processor, family=NEXT)
     assert without.decoder.fp32_head is None and with_copy.decoder.fp32_head is not None
-    assert without.decoder.HEAD_ROWS_PER_SLICE == 4096 and without.decoder.head_precision == "fp32"
-    hidden = torch.randn(1, 5, tiny_llava_next.config.text_config.hidden_size, dtype=without.decoder.dtype)
+    assert without.decoder.head_slice_rows == 4096 and without.decoder.head_precision == "fp32"
+    hidden = torch.randn(1, 5, model.config.text_config.hidden_size, dtype=torch.float16)
     assert torch.equal(with_copy.decoder.logits(hidden), without.decoder.logits(hidden))
 
 
@@ -296,16 +316,24 @@ def test_prefill_returns_the_prefix_in_cpu_memory(aspect):
     assert all(k.device.type == "cpu" and v.device.type == "cpu" for k, v in aspect["prefix"].entries)
 
 
-def test_replay_offloaded_equals_kvsels_compact_replay(bundle, aspect):
-    """Same logits, same state entries and positions as kvsel's compact replay, for full and sparse kept sets."""
-    from kvsel_next.model import on_device, replay_offloaded
+@pytest.mark.skipif(ACCELERATOR is None, reason="a CPU-held prefix needs a decoder on an accelerator")
+def test_device_and_cpu_held_prefixes_give_identical_rows(tiny_llava_next, processor, aspect):
+    """The decoder on an accelerator, the prefix held there or in CPU memory: Full and sparse rows, and the probe."""
+    import copy
 
-    prefix, suffix = aspect["prefix"], torch.tensor([aspect["tokens"]["mis"].suffix_ids])
+    from kvsel.runner import NO_CONTEXT, Unit
+    from kvsel_next.model import run_unit
+
+    model = copy.deepcopy(tiny_llava_next).to(ACCELERATOR)
+    accelerated = bundle_from_model(model, processor.tokenizer, processor, family=NEXT)
+    held = {"cpu": aspect["prefix"], "device": on_device(aspect["prefix"], ACCELERATOR)}
+    assert held["device"].entries[0][0].device.type == ACCELERATOR
+    item = {**ITEM, "a_true": "red", "a_alt": "blue"}
     total = aspect["layout"].total
-    for kept in (torch.arange(total), torch.from_numpy(np.sort(np.random.default_rng(1).choice(total, total // 8, replace=False)))):
-        state_e, logits_e = replay(bundle.decoder, on_device(prefix, bundle.device), kept, suffix, "compact")
-        state_o, logits_o = replay_offloaded(bundle.decoder, prefix, kept, suffix)
-        assert torch.equal(logits_e, logits_o)
-        assert (state_e.logical_next, state_e.physical_next, state_e.dropped) == (state_o.logical_next, state_o.physical_next, None)
-        assert all(torch.equal(a, b) for layer_e, layer_o in zip(state_e.entries, state_o.entries) for a, b in zip(layer_e, layer_o))
-        assert torch.equal(state_e.last_logits, state_o.last_logits)
+    kept = np.sort(np.random.default_rng(1).choice(total, total // 8, replace=False))
+    for unit, keep in ((Unit("full", total, False, NO_CONTEXT, "Q"), np.arange(total)),
+                       (Unit("pw", len(kept), False, "mis", "mis"), kept)):
+        rows = {where: run_unit(accelerated, item, unit, prefix, keep, aspect["tokens"]) for where, prefix in held.items()}
+        assert rows["cpu"] == rows["device"]
+    suffix = torch.tensor([aspect["tokens"]["mis"].suffix_ids])
+    assert np.array_equal(*(probe(accelerated.decoder, prefix, suffix) for prefix in held.values()))

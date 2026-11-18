@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from kvsel.verify import append_decision
+from kvsel.verification import append_decision
 from kvsel_next import __main__ as cli
 from kvsel_next import screen
 
@@ -84,7 +84,7 @@ def test_section_hash_runs_from_the_41_heading_to_the_next_heading(world):
 
 
 def test_record_holds_manifest_code_and_settings_with_the_revision(world):
-    from kvsel_next.model_files import REVISION
+    from kvsel.models.llava_next import REVISION
 
     undraft(world)
     record = freeze(world)
@@ -123,7 +123,7 @@ POOL = ["q0", "q2", "q3", "q5", "q7"]  # q1 and q4 failed verification; q6's dec
 def fake_bundle():
     from types import SimpleNamespace
 
-    from kvsel_next.family import NEXT
+    from kvsel.models.llava_next import NEXT
 
     return SimpleNamespace(family=NEXT, decoder=SimpleNamespace(head_precision=NEXT.default_head_precision))
 
@@ -229,9 +229,10 @@ def test_count_works_mid_screen_and_never_loads_the_model(frozen_world, monkeypa
 def test_blank_has_the_real_images_size_and_the_padding_colour():
     from PIL import Image
 
-    from kvsel.geometry import PAD_COLOR
+    from kvsel.models.llava15 import PAD_COLOR
+    from kvsel.models.llava_next import NEXT
 
-    blank = screen.blank_like(Image.new("RGB", (560, 300), (1, 2, 3)))
+    blank = NEXT.blank_image(Image.new("RGB", (560, 300), (1, 2, 3)))
     assert blank.size == (560, 300) and blank.getcolors() == [(560 * 300, PAD_COLOR)]
 
 
@@ -240,11 +241,11 @@ def test_end_to_end_on_the_tiny_model_with_a_resume(frozen_world, monkeypatch, t
     import numpy as np
     from PIL import Image
 
-    from kvsel_next.family import NEXT
-    from kvsel_next.model import load_processor, make_bundle
+    from kvsel.model import bundle_from_model
+    from kvsel.models.llava_next import NEXT
 
-    processor = load_processor()
-    bundle = make_bundle(tiny_llava_next, processor)
+    processor = NEXT.load_processor()
+    bundle = bundle_from_model(tiny_llava_next, processor.tokenizer, processor, family=NEXT)
     monkeypatch.setattr(cli, "load_bundle", lambda device, model_dir: bundle)
     generator = np.random.default_rng(0)
     for i in range(8):

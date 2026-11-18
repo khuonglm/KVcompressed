@@ -17,19 +17,17 @@ import numpy as np
 import torch
 
 from kvsel.cache import entries_hash
-from kvsel.engine import probe, replay
+from kvsel.engine import on_device, probe, replay
 from kvsel.model import Bundle, full_forward_logits
-from kvsel.prompts import candidate_ids, surface_forms
+from kvsel.models.family import visual_span
+from kvsel.models.layout import Layout
+from kvsel.models.llava_next import NEXT, high_grid, release_cached_memory
+from kvsel.prompts import surface_forms
 from kvsel.runner import NO_CONTEXT, Q, Unit, open_image
 from kvsel.validate import SURFACE, margin_full_forward, margin_incremental, sample_differences
 
 from .comparative import units
-from .family import NEXT
-from .layout import Layout, derive_layout, visual_span
-from .model import (gather, greedy_releasing, on_device, prefill, release_cached_memory, replay_gathered,
-                    replay_offloaded, run_unit)
-from .model_files import REVISION
-from .prompts import contexts_for
+from .model import greedy_releasing, run_unit
 from .screen import SCREENING
 from .selection import SHARES
 
@@ -89,9 +87,9 @@ def check_serialization(bundle: Bundle, items: list[dict], images_dir: Path) -> 
     failures, totals, grids = [], [], Counter()
     for item in items:
         try:
-            tokens, inputs = contexts_for(bundle.image_processor, item, open_image(images_dir, item))
+            tokens, inputs = NEXT.contexts(bundle, item, open_image(images_dir, item))
             start, stop = visual_span(tokens[Q].prefix_ids, NEXT.image_token_id)
-            layout = derive_layout(bundle.model.config, inputs["image_sizes"][0].tolist())
+            layout = NEXT.layout(bundle.model.config, inputs)
             if stop - start != layout.total:
                 raise ValueError(f"span has {stop - start} tokens, layout {layout.total}")
             if len({tuple(t.suffix_ids[slice(*t.question_span)]) for t in tokens.values()}) != 1:
@@ -99,12 +97,13 @@ def check_serialization(bundle: Bundle, items: list[dict], images_dir: Path) -> 
             for answer in (item["a_true"], item["a_alt"]):
                 for surface in surface_forms(answer).values():
                     for t in tokens.values():
-                        candidate_ids(bundle.tokenizer, t.prompt, surface, bundle.family)
+                        bundle.family.candidate_ids(bundle.tokenizer, t.prompt, surface)
         except ValueError as error:
             failures.append(f"{item['item_id']}: {error}")
             continue
         totals.append(layout.total)
-        grids[f"{layout.grid[0]}x{layout.grid[1]}"] += 1
+        rows, cols = high_grid(layout)
+        grids[f"{rows}x{cols}"] += 1
     layouts = {"visual_tokens_min": min(totals, default=None), "visual_tokens_max": max(totals, default=None),
                "grids": dict(grids.most_common())}
     return {"pass": not failures, "items": len(items), "failures": failures[:50]}, layouts
@@ -113,17 +112,13 @@ def check_serialization(bundle: Bundle, items: list[dict], images_dir: Path) -> 
 def replayed(bundle: Bundle, prefix, kept: torch.Tensor, suffix: torch.Tensor, mode: str, prompt: str, item: dict,
              surface: str, greedy_steps: int = 0, changed: list | None = None):
     """(suffix logits, incremental margin, greedy or None) for one replay of the CPU-held prefix, holding at most
-    two cache copies on the GPU, as a run unit. Compact replays gather the kept entries as the run does; dense
-    replays go through kvsel's own replay on a GPU copy of the prefix. Either input copy is dropped once the step
-    has concatenated it into the state, before scoring. With ``changed`` (E4), the input copy the step received is
-    hashed before and after, and the mode is appended if it differs."""
-    given = gather(bundle.decoder, prefix, kept) if mode == "compact" else on_device(prefix, bundle.device)
-    before = entries_hash(given.entries) if changed is not None else None
-    if mode == "compact":
-        state, logits = replay_gathered(bundle.decoder, given, suffix)
-    else:
-        state, logits = replay(bundle.decoder, given, kept, suffix, mode)
-    if changed is not None and entries_hash(given.entries) != before:
+    two cache copies on the GPU, as a run unit. Compact replays gather the kept entries inside the engine, as the
+    run does; dense replays get a GPU copy of the prefix, dropped before scoring. With ``changed`` (E4), the shared
+    prefix and the copy the replay received are hashed before and after, and the mode is appended if either differs."""
+    given = prefix if mode == "compact" else on_device(prefix, bundle.device)
+    before = _hashes(prefix, given) if changed is not None else None
+    state, logits = replay(bundle.decoder, given, kept, suffix, mode)
+    if changed is not None and _hashes(prefix, given) != before:
         changed.append(mode)
     del given
     margin = margin_incremental(bundle, state, prompt, item["a_true"], item["a_alt"], surface)
@@ -133,16 +128,22 @@ def replayed(bundle: Bundle, prefix, kept: torch.Tensor, suffix: torch.Tensor, m
     return logits, margin, decoded
 
 
+def _hashes(prefix, given) -> list[str]:
+    """E4's hashes: the shared prefix, and the GPU copy given to the engine if it is another object."""
+    return [entries_hash(p.entries) for p in ((prefix,) if given is prefix else (prefix, given))]
+
+
 def check_item(bundle: Bundle, item: dict, image, position: int, sparse: bool, surface: str, found: dict) -> dict:
     """Noise floor and E2 on Q and mis; on sparse items also E3 and E4. Raw numbers go into ``found``."""
     decoder, device = bundle.decoder, bundle.device
     generator = np.random.default_rng(position)
     _reset_peak(device)
-    tokens, inputs = contexts_for(bundle.image_processor, item, image)
-    (prefix, layout), prefill_seconds = _timed(device, lambda: prefill(bundle, tokens[Q].prefix_ids, inputs))
-    record = {"item_id": item["item_id"], "visual_tokens": layout.total, "grid": list(layout.grid),
+    tokens, inputs = NEXT.contexts(bundle, item, image)
+    (prefix, layout), prefill_seconds = _timed(device, lambda: NEXT.prefill(bundle, tokens[Q].prefix_ids, inputs))
+    rows, cols = high_grid(layout)
+    record = {"item_id": item["item_id"], "visual_tokens": layout.total, "grid": [rows, cols],
               "prefill_peak_gb": _peak_gb(device), "prefill_seconds": prefill_seconds}
-    print(f"  {layout.total} visual tokens, grid {layout.grid[0]}x{layout.grid[1]}", flush=True)  # before any OOM
+    print(f"  {layout.total} visual tokens, grid {rows}x{cols}", flush=True)  # before any OOM
     vision = {"pixel_values": inputs["pixel_values"].to(device, next(bundle.model.parameters()).dtype),
               "image_sizes": inputs["image_sizes"].to(device)}
     keep_all = torch.arange(layout.total)
@@ -151,7 +152,7 @@ def check_item(bundle: Bundle, item: dict, image, position: int, sparse: bool, s
         release_cached_memory(device)  # before each uncached full pass, as before prefill
         full = full_forward_logits(bundle, t.prefix_ids + t.suffix_ids, vision, len(t.prefix_ids))
         dense, margin_dense, _ = replayed(bundle, prefix, keep_all, suffix, "dense", t.prompt, item, surface)
-        compact = replay_offloaded(decoder, prefix, keep_all, suffix)[1]  # the state is dropped at once
+        compact = replay(decoder, prefix, keep_all, suffix, "compact")[1]  # the state is dropped at once
         found[f"floor_samples_{name}"].append(sample_differences(full - dense, generator))
         found[f"floor_max_{name}"].append(float((full - dense).abs().max()))
         release_cached_memory(device)
@@ -162,12 +163,12 @@ def check_item(bundle: Bundle, item: dict, image, position: int, sparse: bool, s
         found[f"compact_vs_dense_{name}"].append(float((compact - dense).abs().max()))
         if not sparse:
             continue
-        changed: list[str] = []  # E4, on the copies the engine received; hashing is outside the timed probe
+        changed: list[str] = []  # E4, on the shared prefix and the copy the engine received; hashing is outside the timed probe
         given = on_device(prefix, device)
-        before = entries_hash(given.entries)
+        before = _hashes(prefix, given)
         _, seconds = _timed(device, lambda: probe(decoder, given, suffix))
         found["probe_seconds"].append(seconds)
-        if entries_hash(given.entries) != before:
+        if _hashes(prefix, given) != before:
             changed.append("probe")
         del given
         for share in SHARES:
@@ -201,9 +202,9 @@ def check_item(bundle: Bundle, item: dict, image, position: int, sparse: bool, s
 
 def fingerprint(bundle: Bundle, item: dict, image) -> str:
     """Everything a run would store for a few units, plus the prefix and probe, for the determinism check."""
-    tokens, inputs = contexts_for(bundle.image_processor, item, image)
-    prefix, layout = prefill(bundle, tokens[Q].prefix_ids, inputs)
-    attention = probe(bundle.decoder, on_device(prefix, bundle.device), torch.tensor([tokens["mis"].suffix_ids]))
+    tokens, inputs = NEXT.contexts(bundle, item, image)
+    prefix, layout = NEXT.prefill(bundle, tokens[Q].prefix_ids, inputs)
+    attention = probe(bundle.decoder, prefix, torch.tensor([tokens["mis"].suffix_ids]))
     kept = sparse_set(layout, 0.25, "random", 0)
     rows = [run_unit(bundle, item, Unit("full", layout.total, False, NO_CONTEXT, Q), prefix, np.arange(layout.total), tokens),
             run_unit(bundle, item, Unit("random", len(kept), False, NO_CONTEXT, "mis"), prefix, kept, tokens)]
@@ -238,7 +239,7 @@ def validate(bundle: Bundle, items: list[dict], images_dir: Path, noise_items: i
     def stage(name: str) -> None:
         print(f"[{(time.time() - start) / 60:5.1f} min] {name}", flush=True)
 
-    report: dict = {"model": NEXT.model_id, "revision": REVISION, "head_precision": bundle.decoder.head_precision,
+    report: dict = {"model": NEXT.model_id, "revision": NEXT.revision, "head_precision": bundle.decoder.head_precision,
                     "surface": surface, "device": str(bundle.device)}
     if bundle.device.type == "cuda":  # what the GPU leaves for caches; memory held by other processes shows here
         free, total = torch.cuda.mem_get_info(bundle.device)

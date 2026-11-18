@@ -8,8 +8,8 @@ import urllib.request
 import pytest
 from PIL import Image
 
-from kvsel.geometry import box_to_square, evidence_patches, pad_to_square
-from kvsel.verify import (
+from kvsel.models.llava15 import box_to_square, evidence_patches, pad_to_square
+from kvsel.verification import (
     FAILURE_REASONS, append_decision, build_queue, load_decisions, make_server, passed_items, summarize, view_of,
 )
 

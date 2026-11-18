@@ -1,0 +1,142 @@
+{
+ "q0": {
+  "answer": "red",
+  "fullAnswer": "The bus is red.",
+  "imageId": "g0",
+  "question": "What color is the bus?",
+  "semantic": [
+   {
+    "argument": "bus (1)",
+    "dependencies": [],
+    "operation": "select"
+   },
+   {
+    "argument": "color",
+    "dependencies": [
+     0
+    ],
+    "operation": "query"
+   }
+  ]
+ },
+ "q1": {
+  "answer": "white",
+  "fullAnswer": "The bus is white.",
+  "imageId": "g1",
+  "question": "What color is the bus?",
+  "semantic": [
+   {
+    "argument": "bus (1)",
+    "dependencies": [],
+    "operation": "select"
+   },
+   {
+    "argument": "color",
+    "dependencies": [
+     0
+    ],
+    "operation": "query"
+   }
+  ]
+ },
+ "q2": {
+  "answer": "yellow",
+  "fullAnswer": "The bus is yellow.",
+  "imageId": "g2",
+  "question": "What color is the bus?",
+  "semantic": [
+   {
+    "argument": "bus (1)",
+    "dependencies": [],
+    "operation": "select"
+   },
+   {
+    "argument": "color",
+    "dependencies": [
+     0
+    ],
+    "operation": "query"
+   }
+  ]
+ },
+ "q3": {
+  "answer": "black",
+  "fullAnswer": "The bus is black.",
+  "imageId": "g3",
+  "question": "What color is the bus?",
+  "semantic": [
+   {
+    "argument": "bus (1)",
+    "dependencies": [],
+    "operation": "select"
+   },
+   {
+    "argument": "color",
+    "dependencies": [
+     0
+    ],
+    "operation": "query"
+   }
+  ]
+ },
+ "q4": {
+  "answer": "red",
+  "fullAnswer": "The bus is red.",
+  "imageId": "g4",
+  "question": "What color is the bus?",
+  "semantic": [
+   {
+    "argument": "bus (1)",
+    "dependencies": [],
+    "operation": "select"
+   },
+   {
+    "argument": "color",
+    "dependencies": [
+     0
+    ],
+    "operation": "query"
+   }
+  ]
+ },
+ "q5": {
+  "answer": "wooden",
+  "fullAnswer": "The bus is wooden.",
+  "imageId": "g0",
+  "question": "What material is the table?",
+  "semantic": [
+   {
+    "argument": "table (4)",
+    "dependencies": [],
+    "operation": "select"
+   },
+   {
+    "argument": "material",
+    "dependencies": [
+     0
+    ],
+    "operation": "query"
+   }
+  ]
+ },
+ "q6": {
+  "answer": "car",
+  "fullAnswer": "The bus is car.",
+  "imageId": "g1",
+  "question": "What color is the bus?",
+  "semantic": [
+   {
+    "argument": "bus (1)",
+    "dependencies": [],
+    "operation": "select"
+   },
+   {
+    "argument": "name",
+    "dependencies": [
+     0
+    ],
+    "operation": "query"
+   }
+  ]
+ }
+}

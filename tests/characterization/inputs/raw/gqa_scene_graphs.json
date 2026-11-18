@@ -1,0 +1,257 @@
+{
+ "g0": {
+  "height": 150,
+  "objects": {
+   "1": {
+    "attributes": [
+     "red",
+     "large"
+    ],
+    "h": 20,
+    "name": "bus",
+    "relations": [],
+    "w": 20,
+    "x": 10,
+    "y": 10
+   },
+   "2": {
+    "attributes": [
+     "gray"
+    ],
+    "h": 20,
+    "name": "road",
+    "relations": [],
+    "w": 20,
+    "x": 100,
+    "y": 100
+   },
+   "3": {
+    "attributes": [
+     "green"
+    ],
+    "h": 20,
+    "name": "door",
+    "relations": [],
+    "w": 20,
+    "x": 150,
+    "y": 20
+   },
+   "4": {
+    "attributes": [
+     "wooden"
+    ],
+    "h": 20,
+    "name": "table",
+    "relations": [],
+    "w": 20,
+    "x": 60,
+    "y": 60
+   }
+  },
+  "width": 200
+ },
+ "g1": {
+  "height": 150,
+  "objects": {
+   "1": {
+    "attributes": [
+     "white",
+     "large"
+    ],
+    "h": 20,
+    "name": "bus",
+    "relations": [],
+    "w": 20,
+    "x": 10,
+    "y": 10
+   },
+   "2": {
+    "attributes": [
+     "gray"
+    ],
+    "h": 20,
+    "name": "road",
+    "relations": [],
+    "w": 20,
+    "x": 100,
+    "y": 100
+   },
+   "3": {
+    "attributes": [
+     "green"
+    ],
+    "h": 20,
+    "name": "door",
+    "relations": [],
+    "w": 20,
+    "x": 150,
+    "y": 20
+   },
+   "4": {
+    "attributes": [
+     "wooden"
+    ],
+    "h": 20,
+    "name": "table",
+    "relations": [],
+    "w": 20,
+    "x": 60,
+    "y": 60
+   }
+  },
+  "width": 200
+ },
+ "g2": {
+  "height": 150,
+  "objects": {
+   "1": {
+    "attributes": [
+     "yellow",
+     "large"
+    ],
+    "h": 20,
+    "name": "bus",
+    "relations": [],
+    "w": 20,
+    "x": 10,
+    "y": 10
+   },
+   "2": {
+    "attributes": [
+     "gray"
+    ],
+    "h": 20,
+    "name": "road",
+    "relations": [],
+    "w": 20,
+    "x": 100,
+    "y": 100
+   },
+   "3": {
+    "attributes": [
+     "green"
+    ],
+    "h": 20,
+    "name": "door",
+    "relations": [],
+    "w": 20,
+    "x": 150,
+    "y": 20
+   },
+   "4": {
+    "attributes": [
+     "wooden"
+    ],
+    "h": 20,
+    "name": "table",
+    "relations": [],
+    "w": 20,
+    "x": 60,
+    "y": 60
+   }
+  },
+  "width": 200
+ },
+ "g3": {
+  "height": 150,
+  "objects": {
+   "1": {
+    "attributes": [
+     "black",
+     "large"
+    ],
+    "h": 20,
+    "name": "bus",
+    "relations": [],
+    "w": 20,
+    "x": 10,
+    "y": 10
+   },
+   "2": {
+    "attributes": [
+     "gray"
+    ],
+    "h": 20,
+    "name": "road",
+    "relations": [],
+    "w": 20,
+    "x": 100,
+    "y": 100
+   },
+   "3": {
+    "attributes": [
+     "green"
+    ],
+    "h": 20,
+    "name": "door",
+    "relations": [],
+    "w": 20,
+    "x": 150,
+    "y": 20
+   },
+   "4": {
+    "attributes": [
+     "wooden"
+    ],
+    "h": 20,
+    "name": "table",
+    "relations": [],
+    "w": 20,
+    "x": 60,
+    "y": 60
+   }
+  },
+  "width": 200
+ },
+ "g4": {
+  "height": 150,
+  "objects": {
+   "1": {
+    "attributes": [
+     "red",
+     "large"
+    ],
+    "h": 20,
+    "name": "bus",
+    "relations": [],
+    "w": 20,
+    "x": 10,
+    "y": 10
+   },
+   "2": {
+    "attributes": [
+     "gray"
+    ],
+    "h": 20,
+    "name": "road",
+    "relations": [],
+    "w": 20,
+    "x": 100,
+    "y": 100
+   },
+   "3": {
+    "attributes": [
+     "green"
+    ],
+    "h": 20,
+    "name": "door",
+    "relations": [],
+    "w": 20,
+    "x": 150,
+    "y": 20
+   },
+   "4": {
+    "attributes": [
+     "wooden"
+    ],
+    "h": 20,
+    "name": "table",
+    "relations": [],
+    "w": 20,
+    "x": 60,
+    "y": 60
+   }
+  },
+  "width": 200
+ }
+}

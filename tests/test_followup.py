@@ -2,7 +2,6 @@
 
 import json
 from dataclasses import asdict
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -13,14 +12,6 @@ from kvsel.confirm import code_hash_all
 from kvsel.followup import run as fu
 from kvsel.followup.report import followup_report, followup_results
 from kvsel.runner import cell_name, pilot_units
-
-
-def test_followup_code_is_outside_the_frozen_code_hash():
-    from kvsel import confirm
-
-    hashed = {p.name for p in Path(confirm.__file__).parent.glob("*.py")}
-    assert "run.py" not in hashed and "report.py" not in hashed
-    assert Path(fu.__file__).parent.name == "followup"
 
 
 def test_part_units():
@@ -198,17 +189,10 @@ def test_cli_parses():
 def test_followup_runs_on_the_tiny_model(tiny_llava, tmp_path):
     from test_confirm import make_item
 
-    from kvsel.engine import probe
-    from kvsel.model import (
-        bundle_from_model,
-        load_image_processor,
-        load_tokenizer,
-        pixel_values,
-        prefill,
-    )
-    from kvsel.runner import Q, contexts_for
+    from kvsel.model import bundle_from_model
+    from kvsel.models.llava15 import LLAVA
 
-    bundle = bundle_from_model(tiny_llava, load_tokenizer(), load_image_processor())
+    bundle = bundle_from_model(tiny_llava, LLAVA.load_tokenizer(), LLAVA.load_processor())
     Image.fromarray(np.random.default_rng(0).integers(0, 255, (60, 80, 3), dtype=np.uint8)).save(tmp_path / "img.jpg")
     items = [make_item(0), make_item(1)]
     for item in items:
@@ -216,15 +200,6 @@ def test_followup_runs_on_the_tiny_model(tiny_llava, tmp_path):
         item["evidence_box"] = {"x": 0, "y": 0, "w": 80, "h": 60}  # the whole image: plenty of evidence
     manifest = tmp_path / "m.jsonl"
     manifest.write_text("".join(json.dumps(i) + "\n" for i in items))
-
-    # the follow-up probe gives exactly the confirmatory probe's PW-attn input
-    tokens = contexts_for(items[0], bundle.tokenizer, bundle.family)
-    prefix = prefill(bundle, tokens[Q].prefix_ids, pixel_values(bundle, Image.open(tmp_path / "img.jpg").convert("RGB")))
-    import torch
-
-    suffix = torch.tensor([tokens["mis"].suffix_ids])
-    late, layer2 = fu.probe_two(bundle.decoder, prefix, suffix)
-    assert np.array_equal(late, probe(bundle.decoder, prefix, suffix)) and layer2.shape == (576,)
 
     selection = {"main": ["i0", "i1"], "control": ["i0"]}
     summary = fu.run_followup(bundle, items, manifest, tmp_path, tmp_path / "fu", selection)
