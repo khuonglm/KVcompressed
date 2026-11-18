@@ -4,92 +4,91 @@
   "head_precision": "fp32",
   "surface": "capitalized",
   "device": "cpu",
-  "E1": {
-    "pass": true,
-    "items": 4,
-    "failures": []
-  },
-  "layouts": {
-    "visual_tokens_min": 936,
-    "visual_tokens_max": 1560,
-    "grids": {
-      "24x14": 1,
-      "24x20": 1,
-      "24x40": 1,
-      "24x36": 1
-    }
-  },
   "noise_floor": {
+    "items": 2,
     "logit_p99": 0.0,
     "logit_max": 0.0,
-    "margin_mean_abs": 0.0,
-    "margin_max_abs": 0.0
+    "margin_mean_abs": 4.76837158203125e-07,
+    "margin_max_abs": 9.5367431640625e-07
   },
   "noise_floor_mis": {
+    "items": 2,
     "logit_p99": 0.0,
     "logit_max": 0.0,
     "margin_mean_abs": 0.0,
     "margin_max_abs": 0.0
   },
-  "E2": {
-    "pass": true,
-    "by_suffix": {
-      "Q": {
-        "pass": true,
-        "max_logit_diff": 0.0,
-        "limit": 0.0,
-        "compact_vs_dense_max": 0.0
+  "noise_floor_fp32_head": {
+    "items": 2,
+    "logit_p99": 0.0,
+    "logit_max": 0.0,
+    "margin_mean_abs": 4.76837158203125e-07,
+    "margin_max_abs": 9.5367431640625e-07
+  },
+  "noise_floor_native_head": {
+    "items": 2,
+    "logit_p99": 0.0,
+    "logit_max": 0.0,
+    "margin_mean_abs": 4.76837158203125e-07,
+    "margin_max_abs": 9.5367431640625e-07
+  },
+  "checks": {
+    "E1": {
+      "passed": true,
+      "items": 4,
+      "failures": [],
+      "window_composition": {
+        "Q: q=0.000 d=0.000": 4,
+        "irr: q=0.000 d=0.000": 4,
+        "match: q=0.000 d=0.000": 4,
+        "mis: q=0.000 d=0.000": 4
       },
-      "mis": {
-        "pass": true,
-        "max_logit_diff": 0.0,
-        "limit": 0.0,
-        "compact_vs_dense_max": 0.0
+      "visual_tokens_min": 936,
+      "visual_tokens_max": 1560,
+      "grids": {
+        "24x14": 1,
+        "24x20": 1,
+        "24x40": 1,
+        "24x36": 1
       }
+    },
+    "E2": {
+      "passed": true,
+      "by_suffix": {
+        "Q": {
+          "passed": true,
+          "max_logit_diff": 0.0,
+          "limit": 0.0,
+          "compact_vs_dense_max": 0.0
+        },
+        "mis": {
+          "passed": true,
+          "max_logit_diff": 0.0,
+          "limit": 0.0,
+          "compact_vs_dense_max": 0.0
+        }
+      }
+    },
+    "E3": {
+      "passed": false,
+      "logit_p99": 4.470348358154297e-08,
+      "p99_limit": 0.0,
+      "margin_mean_abs": 1.0596381293402777e-07,
+      "margin_limit": 0.01,
+      "greedy_mismatches": [],
+      "greedy_mismatches_not_near_tie": 0,
+      "comparisons": 18
+    },
+    "E4": {
+      "passed": true,
+      "failures": []
+    },
+    "E7": {
+      "passed": true,
+      "different_items": []
     }
   },
-  "E3": {
-    "pass": false,
-    "logit_p99": 4.470348358154297e-08,
-    "p99_limit": 0.0,
-    "margin_mean_abs": 1.5894571940104166e-07,
-    "margin_limit": 0.01,
-    "greedy_mismatches": [],
-    "greedy_mismatches_not_near_tie": 0,
-    "comparisons": 12,
-    "shares": [
-      0.125,
-      0.25,
-      0.5
-    ],
-    "kinds": [
-      "random",
-      "concentrated"
-    ]
-  },
-  "E4": {
-    "pass": true,
-    "failures": []
-  },
-  "E7": {
-    "pass": true,
-    "different_items": []
-  },
-  "memory": {
-    "run_peak_gb": null,
-    "prefill_peak_gb": null,
-    "validate_peak_gb": null,
-    "at_visual_tokens": 936
-  },
-  "time": {
-    "seconds": 0.0,
-    "prefill_seconds": 0.0,
-    "unit_seconds": 0.0,
-    "probe_seconds": 0.0,
-    "screen_hours_upper": 0.0,
-    "comparative_hours_upper": 0.0
-  },
-  "items": [
+  "costs": [
     {
       "item_id": "d0",
       "visual_tokens": 936,
@@ -98,11 +97,10 @@
         14
       ],
       "prefill_peak_gb": null,
-      "prefill_seconds": 0.0,
-      "peak_gb": null,
-      "unit_seconds": 0.0,
       "run_peak_gb": null,
-      "seconds": 0.0
+      "prefill_seconds": 0.0,
+      "probe_seconds": 0.0,
+      "unit_seconds": 0.0
     },
     {
       "item_id": "d1",
@@ -112,12 +110,15 @@
         20
       ],
       "prefill_peak_gb": null,
-      "prefill_seconds": 0.0,
-      "peak_gb": null,
-      "unit_seconds": 0.0,
       "run_peak_gb": null,
-      "seconds": 0.0
+      "prefill_seconds": 0.0,
+      "probe_seconds": 0.0,
+      "unit_seconds": 0.0
     }
   ],
+  "hours": {
+    "screen_hours_upper": 0.0,
+    "run_hours_upper": 0.0
+  },
   "go": false
 }

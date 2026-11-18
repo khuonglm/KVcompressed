@@ -274,6 +274,15 @@ amendments.
 header). Steps 1-4 stay by hand. It checks its inputs first, logs everything to `results/next/overnight.log`,
 and is safe to rerun; step 10 needs the replication's report and is skipped once `report.md` exists.
 
+0. Re-freeze (PREREG 4.6, 19 November 2026): the first NeXT records are in `freeze/superseded/next-first-freeze/`.
+   On the server, move the first outputs aside, not deleting them, before anything else. Skip any that don't exist:
+   ```
+   mkdir -p results/next/superseded/first-freeze
+   mv results/next/screen results/next/gqa_run results/validate_llava_next.json results/next/superseded/first-freeze/
+   ```
+   Send me `ls results/next/superseded/first-freeze`, plus how far the first screen got and whether a run had
+   started (PREREG 4.6 asks for both). Step 4's settling is already done (section 4 has no DRAFT line), so after a GO at
+   step 3, go straight to step 5.
 1. Get the model (about 14 GB, in `tmux`; rerun to resume). It downloads the pinned revision into
    `models/llava-v1.6-vicuna-7b-hf`; a partial copy, or one at another revision, stops every NeXT command.
    ```

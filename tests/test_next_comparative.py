@@ -1,13 +1,15 @@
 """NeXT stage 3: freeze, run and the pre-registered report (PREREG 4.2-4.4)."""
 
+import hashlib
 import json
+from pathlib import Path
 
 import numpy as np
 import pytest
 from PIL import Image
 
 from kvsel import cli, runner, runs
-from kvsel.protocol import FrozenInputs
+from kvsel.protocol import FrozenInputs, Refusal
 from kvsel.runner import Unit, cell_name
 from kvsel.studies.next import comparative
 from kvsel.studies.next import screening as screen
@@ -254,7 +256,7 @@ def test_freeze_run_resume_and_report_on_the_tiny_model(world, monkeypatch, caps
         assert [(r["selector"], r["share"], r["selection"], r["answering"]) for r in data[item_id]["rows"]] == [
             ("blind" if n == len(planned) - 1 else u.selector, u.share, u.selection, u.answering)
             for n, u in enumerate(planned)]
-    layout = {"base": 24, "grid": [24, 44], "total": 1656}  # 560 x 300, worked in test_next.ASPECTS
+    layout = {"base": 24, "grid": [24, 44], "total": 1656, "newlines": 24}  # 560 x 300, worked in test_next.ASPECTS
     kept = {}
     for row in data["q3"]["rows"]:
         assert row["layout"] == layout
@@ -262,7 +264,7 @@ def test_freeze_run_resume_and_report_on_the_tiny_model(world, monkeypatch, caps
             assert row["k"] == row["share"] * (1656 - 24) and len(row["kept"]) == row["k"] + 24
             kept[(row["share"], row["selection"])] = set(row["kept"])
         else:
-            assert row["share"] == 1.0 and row["k"] == 1656
+            assert row["share"] == 1.0 and row["k"] == 1656 - 24  # PREREG 4.6: k counts feature tokens only
     for context in ("Q", "mis", "irr"):  # one probe gives nested kept sets
         assert kept[(0.125, context)] <= kept[(0.25, context)] <= kept[(0.5, context)]
 
@@ -336,7 +338,8 @@ def synthetic_run(run, ids, control, noise=0.05, seed=0):
                          "selection": u.selection, "answering": u.answering, "cell": cell,
                          "kept": [0, 1] if u.selection == "Q" else [0, 2], "scores": scores(value),
                          "outcome": "other" if blind else "correct", "truncated": False,
-                         "layout": {"base": 24, "total": total, "grid": [24, 44] if n % 2 else [44, 24]}})
+                         "layout": {"base": 24, "total": total, "grid": [24, 44] if n % 2 else [44, 24],
+                                    "newlines": 24 if n % 2 else 44}})
         (run / "items" / f"{item_id}.json").write_text(json.dumps({
             "item_id": item_id, "image_id": f"img{n // 2}", "subset": "control" if item_id in control else "main",
             "rows": rows}))
@@ -414,3 +417,39 @@ def test_report_states_a_shortfall(planted):
     found, _ = planted
     text = report.render({**found, "main_size_frozen_at_stage1": 1000})
     assert "**Shortfall:** 80 eligible items, not 1000" in text
+
+
+def test_report_records_its_comparison_file_and_resamples(planted):
+    found, out = planted
+    source = found["llava15_source"]
+    assert source["path"].endswith("replication_results.json")
+    assert source["sha256"] == hashlib.sha256(Path(source["path"]).read_bytes()).hexdigest()
+    assert found["resamples"] == 1000
+    assert source["sha256"] in (out / "report.md").read_text()
+
+
+@pytest.mark.parametrize("k", ["72", "144", "288"])
+def test_report_refuses_a_comparison_file_missing_a_budget(tmp_path, k):
+    from kvsel.studies.next import report
+
+    llava15 = tmp_path / "replication_results.json"
+    llava15.write_text(json.dumps({"budgets": {key: v for key, v in LLAVA15["budgets"].items() if key != k}}))
+    with pytest.raises(Refusal, match=f"no budget K = {k}"):
+        report.llava15_beside(llava15)
+
+
+def test_overlap_is_on_feature_positions_without_newlines():
+    """Base 2 x 2 (0-3), then a 2 x 2 high-resolution map with a newline after each row: 4 5 [6] 7 8 [9]."""
+    from kvsel.studies.next import report
+
+    layout = {"base": 2, "grid": [2, 2], "total": 10, "newlines": 2}
+
+    def row(item, selection, kept):
+        return {"item_id": item, "selector": "pw", "reserve": False, "selection": selection, "kept": kept,
+                "layout": layout}
+
+    rows = [row("a", "Q", [0, 4, 6, 9]), row("a", "mis", [0, 5, 6, 9]),  # features {0, 4} vs {0, 5}: 1/3
+            row("b", "Q", [1, 2, 6, 9]), row("b", "mis", [1, 2, 6, 9])]  # identical: 1
+    found = report.feature_overlap(rows, ("mis",))
+    assert found["mis"]["mean_jaccard"] == pytest.approx((1 / 3 + 1) / 2)  # with newlines it would be (3/5 + 1) / 2
+    assert found["mis"]["share_changed"] == 0.5

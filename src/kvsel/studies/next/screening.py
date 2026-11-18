@@ -10,7 +10,7 @@ from pathlib import Path
 
 from ...items.manifest import require_confirmatory
 from ...model import Bundle
-from ...models.llava_next import NEXT
+from ...models.llava_next import IMAGE_PROCESSOR, NEXT, TOKENIZER_OPTIONS
 from ...protocol import Prereg, Stage, check, freeze, manifests
 from ...runner import (
     FLAGS,
@@ -36,6 +36,8 @@ SCREENING = {  # PREREG 4.1
     "revision": NEXT.revision,
     "anyres_cap": None,  # none implemented; a cap set in 4.1 needs code, which changes this hash
     "template": NEXT.template_version,
+    "tokenizer_options": TOKENIZER_OPTIONS,  # PREREG 4.6: ids outside the image span equal LLaVA-1.5's
+    "image_processor": IMAGE_PROCESSOR,  # PREREG 4.6: the slow class, pinned
     "head_precision": NEXT.default_head_precision,
     "surface": "capitalized",
     "eligibility": "Full_Q greedy answer correct and margin(true - alt) > 0",
@@ -49,8 +51,6 @@ SCREENING = {  # PREREG 4.1
     "max_new_tokens": 16,
     "batch_size": 1,
 }
-
-
 
 
 def section(prereg: Path) -> Prereg:

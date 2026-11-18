@@ -254,6 +254,24 @@ Level-1 invariants run for both residencies when an accelerator is present. The 
 shared prefix before and after each probe and each compact and dense replay of E3's kept sets; the engine makes
 every device copy itself. The noise floor under the native head is now reported for NeXT too. The checks and limits
 are unchanged; on the tiny models every verdict and measured value equals the earlier module's.)
+**Stricter checks for the re-freeze (PREREG 4.6, written 19 November 2026, before any GPU run under it).** These
+replace the rows above where they differ. The pass rules and limits are unchanged.
+
+| ID | Test | Pass |
+| --- | --- | --- |
+| E1 | As above, but the ids outside the span are compared with LLaVA-1.5's own tokenizer (`llava-hf/llava-1.5-7b-hf`) for Q and every QH_c, not with NeXT's. NeXT's tokenizer loads with `legacy=True`, which keeps the space token before the newline, and the slow `LlavaNextImageProcessor` is loaded by name | Exact, on all given items |
+| E3 | Random, concentrated (first k) and tail (last k) feature sets plus every newline; shares 12.5%, 25%, 50%; Q and QH_mis; 10 generated tokens; first 20 items. The tail set covers the high-resolution map at shares where the concentrated set lies in the base map | Level 2's E3 criteria |
+| E4 | Hash the prefix as held (CPU memory) and a GPU copy that probes and replays read in place, each before and after every probe and every compact and dense replay of E3's kept sets | Both unchanged |
+| E7 | Prefill, every probe and every unit of the control list (the probe-scored PW-attn cells included), run twice on 5 items; rows and probe attention compared | Identical |
+
+Both noise floors (fp32 and native head) are reported whichever head runs, as since ticket 15.
+
+On the CPU: `tests/test_next.py` checks that NeXT's ids outside the span equal LLaVA-1.5's for Q and every condition,
+and that on a 4:3 image the tail set at 12.5% lies wholly in the high-resolution map. `tests/test_validation.py`
+checks that E1 fails with the tokenizer as published. `tests/test_next_comparative.py` checks the overlap on
+feature positions against hand-computed Jaccards, the report's comparison-file record and resample count, and its
+refusal of a file missing K = 72, 144 or 288. E4's GPU copy only differs from the held prefix on an accelerator.
+
 GO only if every check passes. Peak GPU memory, the visual-token range and time per item are reported,
 not judged. The memory that counts is the run peak (prefill, the probe, then a Full unit on the cache), not validate's
 own full forward passes; a run peak above 20 GB means an AnyRes cap in PREREG 4.1 before stage 1.

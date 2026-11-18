@@ -27,6 +27,8 @@ from ...analysis.blocks import (
 from ...analysis.statistics import RESAMPLES, SURFACE
 from ...analysis.tables import behaviour_rates, consistency_counts, load_run, overlap
 from ...models.llava15 import NUM_VISUAL
+from ...models.llava_next import anyres_layout
+from ...protocol import Refusal
 from .comparative import CONDITIONS, CONTROL_CONDITIONS, SHARES
 
 ALL_CONDITIONS = CONDITIONS + CONTROL_CONDITIONS
@@ -40,25 +42,52 @@ def share_label(share: float) -> str:
 K_OF = {share_label(share): str(round(share * NUM_VISUAL)) for share in SHARES}  # 72, 144, 288
 
 
+def feature_overlap(rows: list[dict], conditions: tuple[str, ...]) -> dict[str, dict]:
+    """PREREG 4.6: overlap on feature positions. Newlines are in every kept set, so they are removed first, using the
+    layout each row records."""
+    features_only = []
+    for r in rows:
+        if r["kept"] is not None:
+            newlines = anyres_layout(r["layout"]["base"], *r["layout"]["grid"]).newlines
+            if len(newlines) != r["layout"]["newlines"]:
+                raise Refusal(f"item {r['item_id']}: its layout record has {r['layout']['newlines']} newlines, "
+                                 f"its grid {len(newlines)}")
+            r = {**r, "kept": sorted(set(r["kept"]) - set(newlines))}
+        features_only.append(r)
+    return overlap(features_only, conditions)
+
+
+def llava15_beside(path: Path) -> tuple[dict, dict]:
+    """(the comparison file's path and sha256, its margins at each NeXT share). Refuses a file without K = 72, 144
+    and 288."""
+    source = source_file(path)
+    by_k = source["data"].get("budgets", {})
+    missing = [k for k in K_OF.values() if k not in by_k]
+    if missing:
+        raise Refusal(f"{path} has no budget K = {', '.join(missing)}: pass the replication's results.json (section 3)")
+    return ({"path": source["path"], "sha256": source["sha256"]},
+            {label: by_k[k].get("margins", {}) for label, k in K_OF.items()})
+
+
 def results(run_dir: Path, record_path: Path, llava15: Path, resamples: int = RESAMPLES) -> dict:
     """PREREG 4.3: N1-N4 as one Holm family, every other estimand by share, and LLaVA-1.5's beside them."""
     record = json.loads(Path(record_path).read_text())
     settings = record["settings"]
     rows, items = load_run(run_dir)
+    source, beside = llava15_beside(llava15)  # before the bootstrap
     check_complete(run_dir, set(items), set(record["main_ids"]), "main-set items", "the NeXT run")
     shares, rates, overlaps = {}, {}, {}
     for share in settings["shares"]:
         at_share = [r for r in rows if r["share"] == share or r["selector"] in ("full", "blind")]
         shares[share_label(share)] = budget_results(at_share, ALL_CONDITIONS, resamples)
         rates[share_label(share)] = behaviour_rates(at_share)
-        overlaps[share_label(share)] = overlap(at_share, ALL_CONDITIONS)
+        overlaps[share_label(share)] = feature_overlap(at_share, ALL_CONDITIONS)
     tests = {f"{h}: {name}, {share_label(share)}": shares[share_label(share)]["margins"][name]
              for h, name, share in settings["family"]}
     layouts = [r["layout"] for r in rows if r["selector"] == "full" and r["cell"] == "Q"]
-    by_k = source_file(llava15)["data"]["budgets"]
-    beside = {label: by_k.get(k, {}).get("margins", {}) for label, k in K_OF.items()}
     return {
-        "run": str(run_dir), "surface": SURFACE, "items": len(items), "images": len({r["image_id"] for r in rows}),
+        "run": str(run_dir), "surface": SURFACE, "resamples": resamples, "llava15_source": source,
+        "items": len(items), "images": len({r["image_id"] for r in rows}),
         "control_items": len(record["control_ids"]),
         "main_size_frozen_at_stage1": record["main_size_frozen_at_stage1"],
         "checks": {**consistency_counts(rows), "visual_tokens_min": min(x["total"] for x in layouts),
@@ -72,7 +101,7 @@ def results(run_dir: Path, record_path: Path, llava15: Path, resamples: int = RE
 def render(found: dict) -> str:
     family = found["family"]
     lines = ["# LLaVA-NeXT-7B on GQA: report", "",
-             (f"Surface rule `{found['surface']}`; PW-attn; image-clustered bootstrap, two-sided tests. "
+             (f"Surface rule `{found['surface']}`; PW-attn; image-clustered bootstrap ({found['resamples']:,} resamples), two-sided tests. "
               f"{found['items']} items on {found['images']} images; {found['control_items']} control items. "
               "LLaVA-1.5's comparative outcomes on many of these items were seen before NeXT's hypotheses were chosen (PREREG 4)."), "",
              *([f"**Shortfall:** {found['items']} eligible items, not {found['main_size_frozen_at_stage1']}: the whole pool was "
@@ -96,6 +125,7 @@ def render(found: dict) -> str:
         lines += ["Mean Jaccard with S_Q: " + ", ".join(f"{c} {v['mean_jaccard']:.3f}" for c, v in found["overlap"][share].items()), ""]
     lines += ["## LLaVA-1.5 (replication, section 3) beside NeXT: descriptive, never pooled", "",
               "The item sets and absolute budgets differ; sign agreement is reported, not tested.", "",
+              f"From `{found['llava15_source']['path']}`, sha256 `{found['llava15_source']['sha256']}`.", "",
               "| Estimand | NeXT share | LLaVA-1.5 K | LLaVA-1.5 | NeXT | Same sign |", "| --- | ---: | ---: | --- | --- | --- |"]
     for share, block in found["shares"].items():
         for name, result in block["margins"].items():

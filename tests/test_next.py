@@ -83,11 +83,22 @@ def test_processor_text_after_the_image_span_is_llava_15s(bundle, processor):
         assert processor.tokenizer.decode(tokens[name].suffix_ids) == after
 
 
-def test_next_tokenizer_drops_the_space_token_before_the_newline(processor):
-    """The text matches LLaVA-1.5's; NeXT's own tokenizer starts the suffix at the newline, one token shorter."""
-    tokens, _ = NEXT.tokenize(processor, image((560, 300)), ITEM["question"], ITEM["descriptions"]["mis"])
-    assert processor.tokenizer.convert_ids_to_tokens(tokens.suffix_ids[:2]) == ["<0x0A>", "Un"]
-    assert processor.tokenizer.decode(tokens.suffix_ids[slice(*tokens.question_span)]).strip() == ITEM["question"]
+@pytest.mark.parametrize("description", [None, *ITEM["descriptions"].values()])
+def test_ids_outside_the_span_equal_llava_15s_own_tokenizers(processor, description):
+    """PREREG 4.6: for Q and every condition, including the space token before the newline that NeXT's tokenizer
+    drops unless loaded with legacy=True."""
+    from kvsel.validation import outside_span
+
+    tokens, _ = NEXT.tokenize(processor, image((560, 300)), ITEM["question"], description)
+    reference = LLAVA.tokenize(LLAVA.load_tokenizer(), ITEM["question"], description)
+    assert outside_span(tokens, NEXT.image_token_id) == outside_span(reference, LLAVA.image_token_id)
+    assert processor.tokenizer.convert_ids_to_tokens(tokens.suffix_ids[:2]) == ["▁", "<0x0A>"]
+
+
+def test_the_slow_image_processor_is_pinned(processor):
+    from transformers import LlavaNextImageProcessor
+
+    assert type(processor.image_processor) is LlavaNextImageProcessor and processor.tokenizer.legacy
 
 
 def test_every_context_shares_the_question_only_prefix(aspect):
@@ -129,6 +140,24 @@ def test_a_4_3_image_gets_the_2x2_grid(bundle):
 
     config = bundle.model.config
     assert get_anyres_image_grid_shape([480, 640], config.image_grid_pinpoints, config.vision_config.image_size) == (2, 2)
+
+
+def test_on_a_4_3_image_the_tail_set_lies_in_the_high_resolution_map(bundle):
+    """PREREG 4.6: E3's concentrated set at 12.5% and 25% lies in the base map; the tail set covers the other."""
+    from kvsel.models.llava_next import derive_layout
+    from kvsel.validation import validation_set
+
+    layout = derive_layout(bundle.model.config, [480, 640])
+    assert layout.total == ASPECTS["four_three"][2]
+    base, high = set(layout.positions(0).flat), set(layout.positions(1).flat)
+    for share in SHARES:
+        k = int(share * len(layout.features))
+        tail = set(validation_set(layout, Budget(share=share), "tail", 0).tolist()) - set(layout.newlines)
+        assert len(tail) == k
+        if share == 0.125:
+            assert tail <= high
+        concentrated = set(validation_set(layout, Budget(share=share), "concentrated", 0).tolist()) - set(layout.newlines)
+        assert (concentrated <= base) == (share <= 0.25)
 
 
 def test_newline_positions_hold_the_models_newline_embedding(aspect, bundle):

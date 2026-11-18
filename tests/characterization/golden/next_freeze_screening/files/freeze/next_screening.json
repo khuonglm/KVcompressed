@@ -12,6 +12,10 @@
     "revision": "c916e6cdcd760b4cecd1dd4907f84ac649f93b23",
     "anyres_cap": null,
     "template": "v3.1",
+    "tokenizer_options": {
+      "legacy": true
+    },
+    "image_processor": "LlavaNextImageProcessor",
     "head_precision": "fp32",
     "surface": "capitalized",
     "eligibility": "Full_Q greedy answer correct and margin(true - alt) > 0",

@@ -119,8 +119,10 @@ def cmd_validate(args) -> None:
     items = load_items(args.items)
     pilot.require_development(items)  # before loading the model
     out = args.out or Path(f"results/validate_{args.model}.json")
-    found = validate(bundle(args, FAMILIES[args.model]), items, args.images, PLANS[args.model], args.noise_items,
-                     args.sparse_items, args.repeat_items, args.surface, progress=stage_printer())
+    loaded = bundle(args, FAMILIES[args.model])
+    reference = loaded.tokenizer if loaded.family is LLAVA else LLAVA.load_tokenizer()  # E1: LLaVA-1.5's own
+    found = validate(loaded, items, args.images, PLANS[args.model], args.noise_items, args.sparse_items,
+                     args.repeat_items, args.surface, progress=stage_printer(), reference_tokenizer=reference)
     write(found, out)
     print("\n".join(summary(found, out)))
     if not found.go:

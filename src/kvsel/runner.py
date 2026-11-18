@@ -141,10 +141,11 @@ def _rows(bundle: Bundle, item: dict, image: Image.Image, units: list[Unit]) -> 
         if unit.share is None:
             rows.append(run_unit(bundle, item, unit, prefix, kept, tokens))
             continue
-        k = layout.total if unit.selector == "full" else unit.budget.resolve(layout)
+        k = len(layout.features) if unit.selector == "full" else unit.budget.resolve(layout)  # PREREG 4.6: k counts no newline
         row = run_unit(bundle, item, replace(unit, k=k, share=None), prefix, kept, tokens)
         rows.append({**row, "share": unit.share,
-                     "layout": {"base": layout.maps[0].rows, "grid": list(layout.grid), "total": layout.total}})
+                     "layout": {"base": layout.maps[0].rows, "grid": list(layout.grid), "total": layout.total,
+                                "newlines": len(layout.newlines)}})
     return tokens, rows, attention
 
 

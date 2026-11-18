@@ -1,7 +1,8 @@
 """Characterization suite: every command on hand-built inputs and the tiny models, compared with golden files.
 
 The golden files under `characterization/golden/` were captured from the code before the reorganization
-("Codebase reorganization spec", Testing Decisions), so moving code can't change an output unnoticed. Recapture
+("Codebase reorganization spec", Testing Decisions), so moving code can't change an output unnoticed. The NeXT
+steps' files were recaptured on 19 November 2026 for PREREG 4.6, which changes NeXT's outputs and no LLaVA-1.5 one. Recapture
 only on purpose, and check that the diff is what you meant:
 
     UPDATE_GOLDEN=1 uv run pytest tests/test_characterization.py
@@ -505,7 +506,7 @@ def test_first_difference_names_the_file_and_the_place(tmp_path):
 
 # --- Validation values (ticket 09) -----------------------------------------------------------------------------
 
-BEFORE = HERE / "validation_before"  # both validate reports as the two separate modules wrote them
+BEFORE = HERE / "validation_before"  # LLaVA-1.5's validate report as its separate module wrote it
 
 
 def _old_values(report: dict, family: str) -> dict[tuple, object]:
@@ -546,7 +547,9 @@ def _new_value(report: dict, family: str, section: str, key: str):
     return value
 
 
-@pytest.mark.parametrize(("family", "step"), [("llava15", "validate"), ("next", "next_validate")])
+# LLaVA-1.5 only: PREREG 4.6 changed NeXT's validation on purpose (E1's reference tokenizer, E3's tail set, E4's
+# device copy), so NeXT's report from before the merge is no longer a baseline.
+@pytest.mark.parametrize(("family", "step"), [("llava15", "validate")])
 def test_validation_gives_the_same_verdicts_and_values_as_before_the_merge(captures, family, step):
     before = _old_values(json.loads((BEFORE / f"{family}.json").read_text()), family)
     after = json.loads((captures / step / "files" / step / "report.json").read_text())

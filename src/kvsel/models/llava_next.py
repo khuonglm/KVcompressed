@@ -17,6 +17,11 @@ from .llava15 import LLAVA, PAD_COLOR
 
 # The Hub's main for llava-hf/llava-v1.6-vicuna-7b-hf (last changed 27 January 2025), checked 16 November 2026.
 REVISION = "c916e6cdcd760b4cecd1dd4907f84ac649f93b23"
+# PREREG 4.6. legacy=True: NeXT's tokenizer otherwise drops the space token (29871) between the image token and the
+# newline, which LLaVA-1.5's keeps. The image processor is the slow class the model was saved with, loaded by name,
+# since transformers' default is moving to the fast one, whose outputs differ slightly.
+TOKENIZER_OPTIONS = {"legacy": True}
+IMAGE_PROCESSOR = "LlavaNextImageProcessor"
 
 
 def anyres_layout(side: int, rows: int, cols: int) -> Layout:
@@ -98,9 +103,12 @@ class LlavaNext(Family):
         return self.load_processor(model_dir).tokenizer
 
     def load_processor(self, model_dir: Path | None = None):
-        from transformers import LlavaNextProcessor
+        import transformers
 
-        return LlavaNextProcessor.from_pretrained(self.resolve(model_dir, weights=False), revision=self.revision)
+        path = self.resolve(model_dir, weights=False)
+        image_processor = getattr(transformers, IMAGE_PROCESSOR).from_pretrained(path, revision=self.revision)
+        return transformers.LlavaNextProcessor.from_pretrained(path, revision=self.revision,
+                                                               image_processor=image_processor, **TOKENIZER_OPTIONS)
 
     def load_model(self, model_dir: Path | None = None):
         # No PYTORCH_CUDA_ALLOC_CONF=expandable_segments: its virtual-memory API is unsupported on the 20 GiB GPU slice.

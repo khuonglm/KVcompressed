@@ -32,7 +32,7 @@ from kvsel.validation import (
 # --- Kept-set kinds and the projection (pure) -----------------------------------------------------------------
 
 
-@pytest.mark.parametrize("kind", ["random", "concentrated"])
+@pytest.mark.parametrize("kind", ["random", "concentrated", "tail"])
 def test_share_sets_hold_round_k_features_and_every_newline(kind):
     layout = anyres_layout(24, 24, 44)
     for share in SHARES:
@@ -157,6 +157,22 @@ def test_e4_catches_an_engine_call_that_changes_the_prefix(family, culprit, expe
     assert not hashes.passed and any(f"changed by {expected}" in failure for failure in hashes.failures)
 
 
+@pytest.mark.network
+def test_e1_compares_ids_outside_the_span_with_llava_15s_own_tokenizer(llava_next, tiny_llava_next, dataset):
+    """NeXT's tokenizer as published drops the space token before the newline; E1 must catch it (PREREG 4.6)."""
+    from transformers import LlavaNextProcessor
+
+    from kvsel.validation import serialization
+
+    items, directory, _ = dataset
+    reference = LLAVA.load_tokenizer()
+    assert serialization(llava_next, items, directory, reference).passed
+    unpinned = LlavaNextProcessor.from_pretrained(NEXT.model_id, revision=NEXT.revision)
+    as_published = bundle_from_model(tiny_llava_next, unpinned.tokenizer, unpinned, family=NEXT)
+    failed = serialization(as_published, items, directory, reference)
+    assert not failed.passed and "ids outside the image span differ from LLaVA-1.5's" in failed.failures[0]
+
+
 # --- The command: GO or NO-GO ---------------------------------------------------------------------------------
 
 
@@ -207,7 +223,7 @@ def test_a_native_head_run_still_reports_the_fp32_floor(llava, dataset):
     items, directory, _ = dataset
     native = validation.with_head(llava, "native")
     report = validation.validate(native, items[:1], directory, LLAVA15_PLAN, noise_items=1, sparse_items=0,
-                                 repeat_items=0)
+                                 repeat_items=0, reference_tokenizer=llava.tokenizer)
     assert report.head_precision == "native" and report.noise_floor_native_head == report.noise_floor
     assert report.noise_floor_fp32_head.items == 1
     assert validation.with_head(llava, "fp32") is llava

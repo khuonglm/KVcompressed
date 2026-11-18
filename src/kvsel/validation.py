@@ -21,10 +21,11 @@ import torch
 
 from .analysis.statistics import SURFACE
 from .cache import entries_hash
-from .engine import Decoder, greedy, greedy_releasing, probe, release_cached_memory, replay, score_sequence
+from .engine import Decoder, greedy, greedy_releasing, on_device, probe, release_cached_memory, replay, score_sequence
 from .model import Bundle, full_forward_logits
 from .models.family import Tokens, visual_span
 from .models.layout import Layout
+from .models.llava15 import LLAVA
 from .prompts import surface_forms, window_composition
 from .runner import NO_CONTEXT, Q, Unit, open_image, run_item, run_unit
 from .selectors import Budget, kept_set
@@ -33,7 +34,7 @@ SAMPLE_PER_COMPARISON = 20_000  # logit differences sampled per comparison for t
 MIS = "mis"  # QH_mis: every check pairs its suffix with Q's
 GREEDY_STEPS = 10  # E3: tokens generated per kept set
 MEMORY_LIMIT_GB = 20  # the A100 slice
-KINDS = ("random", "concentrated", "scored")  # E3's kept-set kinds
+KINDS = ("random", "concentrated", "scored")  # LLaVA-1.5's E3 kept-set kinds; NeXT's plan adds "tail"
 
 # --- What a family runs ---------------------------------------------------------------------------------------
 
@@ -231,12 +232,21 @@ def concentrated_set(layout: Layout, k: int) -> np.ndarray:
     return np.union1d(layout.features[:k], np.array(layout.newlines, dtype=np.int64))
 
 
+def tail_set(layout: Layout, k: int) -> np.ndarray:
+    """PREREG 4.6, E3's tail kind: the last k feature tokens, plus every newline. On NeXT it lies in the
+    high-resolution map wherever the concentrated set lies in the base map."""
+    features = layout.features
+    return np.union1d(features[len(features) - k:], np.array(layout.newlines, dtype=np.int64))
+
+
 def validation_set(layout: Layout, budget: Budget, kind: str, seed: int, attention: np.ndarray | None = None) -> np.ndarray:
-    """One of E3's kept sets: random, concentrated or probe-scored, with k = round(share x feature tokens) for a
+    """One of E3's kept sets: random, concentrated, tail or probe-scored, with k = round(share x feature tokens) for a
     share (validation sets need not be a whole share), plus every newline."""
     k = budget.k if budget.k is not None else round(budget.share * len(layout.features))
     if kind == "concentrated":
         return concentrated_set(layout, k)
+    if kind == "tail":
+        return tail_set(layout, k)
     if kind == "random":
         return kept_set(layout, "random", Budget(k=k), rng=np.random.default_rng(seed))
     if kind == "scored":
@@ -278,12 +288,23 @@ def with_head(bundle: Bundle, precision: str) -> Bundle:
 # --- The checks -----------------------------------------------------------------------------------------------
 
 
-def serialization(bundle: Bundle, items: list[dict], images_dir: Path) -> Serialization:
-    """E1 on every item."""
+def outside_span(tokens: Tokens, image_token_id: int) -> list[int]:
+    """The prompt's ids without its visual span."""
+    start, _ = visual_span(tokens.prefix_ids, image_token_id)
+    return tokens.prefix_ids[:start] + tokens.suffix_ids
+
+
+def serialization(bundle: Bundle, items: list[dict], images_dir: Path, reference_tokenizer) -> Serialization:
+    """E1 on every item. ``reference_tokenizer`` is LLaVA-1.5's own: every family's ids outside the visual span must
+    equal LLaVA-1.5's for the same text (PREREG 4.6)."""
     family, failures, compositions, totals, grids = bundle.family, [], Counter(), [], Counter()
     for item in items:
         try:
             tokens, inputs = family.contexts(bundle, item, open_image(images_dir, item))
+            for name, description in (("Q", None), *item["descriptions"].items()):
+                reference = LLAVA.tokenize(reference_tokenizer, item["question"], description)
+                if outside_span(tokens[name], family.image_token_id) != outside_span(reference, LLAVA.image_token_id):
+                    raise ValueError(f"{name}: ids outside the image span differ from LLaVA-1.5's")
             if len({tuple(t.prefix_ids) for t in tokens.values()}) != 1:
                 raise ValueError("prefix differs between contexts")
             if len({tuple(t.suffix_ids[slice(*t.question_span)]) for t in tokens.values()}) != 1:
@@ -384,23 +405,31 @@ def sparse_equivalence(bundle: Bundle, loaded, floor: Floor, plan: Plan, surface
 
 
 def cache_hashes(bundle: Bundle, loaded, plan: Plan) -> Hashes:
-    """E4: the prefix hashed before and after each probe and each compact and dense replay of E3's kept sets."""
+    """E4: the prefix hashed before and after each probe and each compact and dense replay of E3's kept sets. Both
+    the prefix as the family holds it (CPU memory for NeXT) and a copy on the decoder's device, which probes and
+    replays then read in place, are checked; for a device-held prefix the two are one."""
     failures = []
     for position, (item, image) in enumerate(loaded):
-        tokens, _, prefix, layout = _prefilled(bundle, item, image)
-        before = entries_hash(prefix.entries)
-        for name in (Q, MIS):
-            suffix = torch.tensor([tokens[name].suffix_ids])
-            attention = probe(bundle.decoder, prefix, suffix)
-            if entries_hash(prefix.entries) != before:
-                failures.append(f"{item['item_id']}: changed by probe ({name})")
-            for budget in plan.budgets:
-                for kind in plan.kinds:
-                    kept = torch.from_numpy(validation_set(layout, budget, kind, position, attention))
-                    for mode in ("compact", "dense"):
-                        replay(bundle.decoder, prefix, kept, suffix, mode)
-                        if entries_hash(prefix.entries) != before:
-                            failures.append(f"{item['item_id']}: changed by {mode} replay ({name})")
+        tokens, _, held, layout = _prefilled(bundle, item, image)
+        copies = {"held prefix": held, "device copy": on_device(held, bundle.decoder.device)}
+        for where, prefix in copies.items():
+            if where == "device copy" and prefix is held:
+                continue
+            before = entries_hash(prefix.entries)
+            for name in (Q, MIS):
+                suffix = torch.tensor([tokens[name].suffix_ids])
+                attention = probe(bundle.decoder, prefix, suffix)
+                if entries_hash(prefix.entries) != before:
+                    failures.append(f"{item['item_id']}: {where} changed by probe ({name})")
+                for budget in plan.budgets:
+                    for kind in plan.kinds:
+                        kept = torch.from_numpy(validation_set(layout, budget, kind, position, attention))
+                        for mode in ("compact", "dense"):
+                            replay(bundle.decoder, prefix, kept, suffix, mode)
+                            if entries_hash(prefix.entries) != before:
+                                failures.append(f"{item['item_id']}: {where} changed by {mode} replay ({name})")
+        del copies, held
+        release_cached_memory(bundle.device)
     return Hashes(not failures, failures[:20])
 
 
@@ -494,15 +523,15 @@ def projected_hours(costs: list[ItemCost], projection: Projection) -> dict[str, 
 
 def validate(bundle: Bundle, items: list[dict], images_dir: Path, plan: Plan, noise_items: int = 50,
              sparse_items: int = 20, repeat_items: int = 5, surface: str = SURFACE,
-             progress: Callable[[str], None] = lambda line: None) -> Report:
-    """E1 on every item; the noise floors, E2 and costs on the first ``noise_items``; E3-E5 on the first
-    ``sparse_items``; E7 on the first ``repeat_items``."""
+             progress: Callable[[str], None] = lambda line: None, *, reference_tokenizer) -> Report:
+    """E1 on every item, against ``reference_tokenizer``, LLaVA-1.5's own (PREREG 4.6); the noise floors, E2 and
+    costs on the first ``noise_items``; E3-E5 on the first ``sparse_items``; E7 on the first ``repeat_items``."""
     loaded = [(item, open_image(images_dir, item)) for item in items[:noise_items]]
     sparse = loaded[:sparse_items]
     head = bundle.decoder.head_precision
     checks: dict = {}
     progress(f"E1: serialization and layouts, {len(items)} items")
-    checks["E1"] = serialization(bundle, items, images_dir)
+    checks["E1"] = serialization(bundle, items, images_dir, reference_tokenizer)
     progress(f"noise floor, {head} head, Q suffix, {len(loaded)} items")
     floor = noise_floor(bundle, loaded, Q, surface)
     progress(f"noise floor, {head} head, QH_mis suffix, {len(loaded)} items")

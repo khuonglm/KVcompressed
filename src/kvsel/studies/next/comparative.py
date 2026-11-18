@@ -128,7 +128,7 @@ POOL = 2335  # passed GQA confirmatory items, 16 November 2026 (PREREG 4.5(d)); 
 
 VALIDATION = Plan(  # tests/README.md, "LLaVA-NeXT-7B, Level 2"
     budgets=tuple(Budget(share=share) for share in SHARES),
-    kinds=("random", "concentrated"),  # E3 compares compact and dense on any sparse sets; scored sets add nothing
+    kinds=("random", "concentrated", "tail"),  # E3 compares compact and dense on any sparse sets; tail: PREREG 4.6
     units=tuple(units(control=True)),
     projection=Projection(POOL, screen.SCREENING["main_size"], screen.SCREENING["control_size"],
                           tuple(units(control=False)), tuple(units(control=True))),

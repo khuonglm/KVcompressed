@@ -269,7 +269,7 @@ def test_end_to_end_on_the_tiny_model_with_a_resume(frozen_world, monkeypatch, t
     cli.main(screen_args(frozen_world))
     assert len(rows) == 2 * len(POOL)  # Full_Q and Blind_Q per item, none redone after the stop
     # 560 x 300 gives 1656 visual tokens (worked in test_next.ASPECTS); the 336 x 336 blank would give another count.
-    assert all(row["k"] == 1656 for row in rows)
+    assert all(row["k"] == 1656 - 24 and row["layout"]["total"] == 1656 for row in rows)  # k: feature tokens only
     for path in (frozen_world["out"] / "items").glob("*.json"):
         record = json.loads(path.read_text())
         assert set(record) == FLAG_KEYS
