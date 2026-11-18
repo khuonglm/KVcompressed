@@ -266,6 +266,11 @@ replace the rows above where they differ. The pass rules and limits are unchange
 
 Both noise floors (fp32 and native head) are reported whichever head runs, as since ticket 15.
 
+(Note, 19 November 2026: the first validate run under these checks ran out of GPU memory in a prefill at the
+QH_mis noise floor, before any check had a result, with 2.1 GiB reserved but fragmented. NeXT now loads with
+`PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512` (unless already set), which changes where tensors are placed in GPU
+memory, not any computed number. The checks and limits are unchanged.)
+
 On the CPU: `tests/test_next.py` checks that NeXT's ids outside the span equal LLaVA-1.5's for Q and every condition,
 and that on a 4:3 image the tail set at 12.5% lies wholly in the high-resolution map. `tests/test_validation.py`
 checks that E1 fails with the tokenizer as published. `tests/test_next_comparative.py` checks the overlap on

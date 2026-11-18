@@ -3,6 +3,7 @@ ending each row. LLaVA-1.5's template v3.1 with a single image token, which the 
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -111,7 +112,10 @@ class LlavaNext(Family):
                                                                image_processor=image_processor, **TOKENIZER_OPTIONS)
 
     def load_model(self, model_dir: Path | None = None):
-        # No PYTORCH_CUDA_ALLOC_CONF=expandable_segments: its virtual-memory API is unsupported on the 20 GiB GPU slice.
+        # No expandable_segments: its virtual-memory API is unsupported on the 20 GiB GPU slice. Instead, blocks of
+        # 512 MiB and up are never split, so each layer's 1 GiB softmax reuses the last one's block (an OOM on
+        # 19 November 2026 left 2.1 GiB fragmented). Placement only; no number changes. Must precede CUDA's start.
+        os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "max_split_size_mb:512")
         from transformers import LlavaNextForConditionalGeneration
 
         return LlavaNextForConditionalGeneration.from_pretrained(
