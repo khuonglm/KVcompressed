@@ -194,7 +194,7 @@ def _restore_rows(bundle, item, prefix, layout, tokens, late, evidence: set[int]
     item_id = item["item_id"]
     scores_q, scores_mis = pw_attn(layout, late[Q]), pw_attn(layout, late[CONDITION])
     reference = FUnit("restore", K, False, CONDITION, CONDITION, arm="reference")
-    rows = [run_unit(bundle, item, reference, prefix, top_k(scores_mis, K), tokens)]
+    rows = [run_unit(bundle, item, reference, prefix, kept_set(layout, "pw", Budget(k=K), attention=late[CONDITION]), tokens)]
     qualifying = {}
     for m in RESTORE_M:
         sets = restoration_sets(item_id, scores_q, scores_mis, evidence, m)

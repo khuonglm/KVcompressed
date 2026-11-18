@@ -27,6 +27,7 @@ from .analysis import (
 )
 from .models.llava15 import MAPPING_RULES, box_to_square, evidence_patches
 from .runner import eligible
+from .selectors import jaccard
 
 SURFACE = "capitalized"
 PRIMARY = "pw"

@@ -8,7 +8,7 @@ from PIL import Image
 
 from kvsel.confirm_analysis import load_run, wide_margins
 from kvsel.model import bundle_from_model
-from kvsel.models.llava15 import LLAVA, PAD_COLOR, pad_to_square
+from kvsel.models.llava15 import LAYOUT, LLAVA, PAD_COLOR, pad_to_square
 from kvsel.runner import Unit, cell_name, pilot_units, require_development, run_item, run_items, run_screen
 from kvsel.selectors import uniform_grid
 from kvsel.validate import noise_floor, run_e2 as e2, run_e3_e4 as e3_e4, run_e5 as e5, run_e7 as e7, validate
@@ -94,7 +94,7 @@ def test_b_and_c_share_answering_text_and_differ_only_in_selection(bundle, loade
     # D_mis uses the same kept set as B_mis; C_mis the same as A.
     assert rows[("pw", False, "B_mis")]["kept"] == rows[("pw", False, "D_mis")]["kept"]
     assert rows[("pw", False, "C_mis")]["kept"] == rows[("pw", False, "A")]["kept"]
-    assert rows[("uniform", False, "mis")]["kept"] == uniform_grid(144).tolist()
+    assert rows[("uniform", False, "mis")]["kept"] == uniform_grid(LAYOUT, 144).tolist()
     assert set(attention) == {"Q", "mis", "match", "irr"}
     for row in result["rows"]:
         if row["selector"] != "full":

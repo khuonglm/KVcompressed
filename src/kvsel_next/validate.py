@@ -24,7 +24,8 @@ from kvsel.models.layout import Layout
 from kvsel.models.llava_next import NEXT, high_grid, release_cached_memory
 from kvsel.prompts import surface_forms
 from kvsel.runner import NO_CONTEXT, Q, Unit, open_image
-from kvsel.validate import SURFACE, margin_full_forward, margin_incremental, sample_differences
+from kvsel.selectors import Budget, kept_set
+from kvsel.validate import SURFACE, concentrated_set, margin_full_forward, margin_incremental, sample_differences
 
 from .comparative import units
 from .model import greedy_releasing, run_unit
@@ -58,11 +59,10 @@ def _projection_sizes() -> ProjectionSizes:
 def sparse_set(layout: Layout, share: float, kind: str, seed: int) -> np.ndarray:
     """E3's sets, not selection's: k = round(share x feature tokens) feature tokens, random or the first k,
     plus every newline (the Level 2 criteria, written before the run)."""
-    newlines = np.array(layout.newlines, dtype=np.int64)
-    features = np.setdiff1d(np.arange(layout.total), newlines)
-    k = round(share * len(features))
-    chosen = np.random.default_rng(seed).choice(features, k, replace=False) if kind == "random" else features[:k]
-    return np.sort(np.concatenate([chosen, newlines]))
+    k = round(share * len(layout.features))
+    if kind == "concentrated":
+        return concentrated_set(layout, k)
+    return kept_set(layout, kind, Budget(k=k), rng=np.random.default_rng(seed))
 
 
 def _reset_peak(device: torch.device) -> None:

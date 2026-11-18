@@ -14,7 +14,7 @@ from kvsel.models.family import visual_span
 from kvsel.models.layout import Map
 from kvsel.models.llava15 import IMAGE_TOKEN, LLAVA
 from kvsel.models.llava_next import NEXT
-from kvsel_next.selection import SHARES, kept_sets
+from kvsel_next.selection import SHARES, kept_sets_per_share
 
 pytestmark = pytest.mark.network
 
@@ -171,7 +171,7 @@ def level1_kept(layout, share, kind, decoder=None, prefix=None, suffix=None):
     elif kind == "tail":
         chosen = features[-k:]
     else:  # scored: NeXT's PW-attn selection, which keeps the newlines itself
-        return torch.from_numpy(kept_sets(layout, probe(decoder, prefix, suffix))[share])
+        return torch.from_numpy(kept_sets_per_share(layout, probe(decoder, prefix, suffix))[share])
     return torch.cat([chosen, newlines])
 
 
@@ -244,7 +244,7 @@ def test_one_probe_per_context_gives_every_shares_kept_set(bundle, aspect):
     decoder, prefix, layout = bundle.decoder, aspect["prefix"], aspect["layout"]
     for context in ("Q", "mis", "match", "irr"):
         suffix = suffix_of(aspect, context)
-        sets = kept_sets(layout, probe(decoder, prefix, suffix))
+        sets = kept_sets_per_share(layout, probe(decoder, prefix, suffix))
         assert set(sets) == set(SHARES)
         for kept in sets.values():
             state, _ = replay(decoder, prefix, torch.from_numpy(kept), suffix, "compact")

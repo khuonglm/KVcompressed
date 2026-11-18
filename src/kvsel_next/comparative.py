@@ -22,11 +22,12 @@ from kvsel.freeze import sha256_file
 from kvsel.model import Bundle
 from kvsel.models.llava_next import NEXT, high_grid
 from kvsel.runner import NO_CONTEXT, Q, Unit, load_items, open_image, write_json_atomic
+from kvsel.selectors import Budget
 from kvsel.verification import load_decisions
 
 from . import screen
 from .model import run_unit
-from .selection import SHARES, budget, kept_sets
+from .selection import SHARES, kept_sets_per_share
 
 assert screen.SCREENING["surface"] == SURFACE, "kvsel's `checks` scores consistency under its own surface rule"
 
@@ -75,7 +76,7 @@ def run_item(bundle: Bundle, item: dict, image: Image.Image, plan: list[NextUnit
     tokens, inputs = NEXT.contexts(bundle, item, image)
     prefix, layout = NEXT.prefill(bundle, tokens[Q].prefix_ids, inputs)
     contexts = sorted({u.selection for u in plan if u.selector == "pw"})
-    kept = {c: kept_sets(layout, probe(bundle.decoder, prefix, torch.tensor([tokens[c].suffix_ids])))
+    kept = {c: kept_sets_per_share(layout, probe(bundle.decoder, prefix, torch.tensor([tokens[c].suffix_ids])))
             for c in contexts}  # each probe moves its own GPU copy of the prefix, freed when it returns
     record = {"base": layout.maps[0].rows, "grid": list(high_grid(layout)), "total": layout.total}
     rows = []
@@ -83,7 +84,7 @@ def run_item(bundle: Bundle, item: dict, image: Image.Image, plan: list[NextUnit
         if u.selector == "full":
             keep, k = np.arange(layout.total), layout.total
         else:
-            keep, k = kept[u.selection][u.share], budget(layout, u.share)
+            keep, k = kept[u.selection][u.share], Budget(share=u.share).resolve(layout)
         row = run_unit(bundle, item, Unit(u.selector, k, False, u.selection, u.answering), prefix, keep, tokens)
         rows.append({**row, "share": u.share, "layout": record})
     return {"item_id": item["item_id"], "image_id": item["image_id"], "dataset": item["dataset"],

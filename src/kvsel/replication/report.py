@@ -23,11 +23,11 @@ from ..confirm_analysis import (
     _table,
     checks,
     has_cells,
-    jaccard,
     kept_sets,
     load_run,
     wide_margins,
 )
+from ..selectors import jaccard
 from .protocol import ALPHA, CONDITIONS, CONTROL_CONDITIONS, EQUIVALENCE, FAMILY
 
 ALL_CONDITIONS = CONDITIONS + CONTROL_CONDITIONS

@@ -9,7 +9,6 @@ from .models.family import Tokens
 from .selectors import WINDOW_SIZE
 
 
-
 def surface_forms(answer: str) -> dict[str, str]:
     """The exact strings scored for a semantic answer. Each form applies to true and alt alike."""
     return {

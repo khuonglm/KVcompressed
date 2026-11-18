@@ -1,7 +1,9 @@
 """Selection on a layout: scores, budgets and kept sets for every selector. Pure NumPy; no model access.
 
-Scores are 3 x 3-pooled within each map of the layout, never across a map boundary or a newline. Top-k ties
-go to the lower index. Newlines are always kept and are not counted in k. Kept sets are visual-span indices.
+PREREG 2.1: PW-attn's 16-token window, question-span attention, the uniform grid and the coverage reserve.
+PREREG 4.2: scores are 3 x 3-pooled within each map of the layout, never across a map boundary or a newline;
+top-k ties go to the lower index; newlines are always kept and are not counted in k; a share must give a whole k.
+Kept sets are visual-span indices.
 """
 
 from __future__ import annotations
@@ -15,7 +17,6 @@ from .models.layout import Layout
 
 WINDOW_SIZE = 16  # PW-attn: the last suffix tokens of the probe
 RESERVE_FRACTION = 0.10
-UNIFORM_FRACTIONS = (2, 4, 8)  # the uniform grid keeps 1/2, 1/4 or 1/8 of a map: K = 288, 144, 72 on LLaVA-1.5's
 
 
 @dataclass(frozen=True)
@@ -37,6 +38,8 @@ class Budget:
                 raise ValueError(f"k {self.k} is outside 0-{features} feature tokens")
             return self.k
         k = self.share * features
+        # shortcut: exact only for binary-fraction shares (12.5%, 25%, 50%); use fractions.Fraction if another is
+        # ever pre-registered, or 0.1 x 70 = 7.000000000000001 would be refused.
         if k != int(k):
             raise ValueError(f"share {self.share} of {features} feature tokens is not whole")
         return int(k)
@@ -95,7 +98,7 @@ def top_k(scores: np.ndarray, k: int) -> np.ndarray:
     return np.sort(order[:k])
 
 
-# --- Fixed patterns, defined on a single map without newlines (LLaVA-1.5's layout) ------------------------------
+# --- Fixed patterns, defined only on a single map without newlines: LLaVA-1.5's layout ---------------------------
 
 
 def _single_map(layout: Layout, what: str) -> tuple[np.ndarray, np.ndarray]:
@@ -114,7 +117,7 @@ def uniform_grid(layout: Layout, k: int) -> np.ndarray:
         4: (rows % 2 == 0) & (cols % 2 == 0),
         8: (rows % 2 == 0) & (cols % 2 == 0) & ((rows // 2 + cols // 2) % 2 == 0),
     }
-    sizes = {int(lattices[f].sum()): f for f in UNIFORM_FRACTIONS}
+    sizes = {int(keep.sum()): fraction for fraction, keep in lattices.items()}  # K = 288, 144, 72 on LLaVA-1.5's
     if k not in sizes:
         raise ValueError(f"uniform grid is defined for K in {', '.join(map(str, sizes))}; got {k}")
     return np.flatnonzero(lattices[sizes[k]])
@@ -152,6 +155,7 @@ def with_reserve(layout: Layout, scores: np.ndarray, k: int, fraction: float = R
 # --- The one entry point ----------------------------------------------------------------------------------------
 
 SCORED = ("pw", "qspan", "lt")
+NEEDS = {"pw": ("attention",), "qspan": ("attention", "question_span"), "lt": ("layer2",), "random": ("rng",)}
 
 
 def kept_set(layout: Layout, selector: str, budget: Budget, *, attention: np.ndarray | None = None,
@@ -161,11 +165,15 @@ def kept_set(layout: Layout, selector: str, budget: Budget, *, attention: np.nda
 
     full: every position. pw, qspan: the probe's ``attention`` (suffix tokens, visual); lt: ``layer2``, the
     layer-2 attention of the last suffix token. uniform: the fixed lattice. random: ``rng``'s draw.
-    concentrated: the first k feature tokens (validation). ``reserve`` swaps the last 10% of a scored set for the
+    ``reserve`` swaps the last 10% of a scored set for the
     coverage order.
     """
     if selector == "full":
         return np.arange(layout.total)
+    given = {"attention": attention, "question_span": question_span, "layer2": layer2, "rng": rng}
+    missing = [name for name in NEEDS.get(selector, ()) if given[name] is None]
+    if missing:
+        raise ValueError(f"selector {selector!r} needs {', '.join(missing)}")
     k = budget.resolve(layout)
     features = layout.features
     if selector in SCORED:
@@ -184,8 +192,6 @@ def kept_set(layout: Layout, selector: str, budget: Budget, *, attention: np.nda
         chosen = uniform_grid(layout, k)
     elif selector == "random":
         chosen = np.sort(rng.choice(features, size=k, replace=False))
-    elif selector == "concentrated":
-        chosen = features[:k]
     else:
         raise ValueError(f"unknown selector {selector!r}")
     return np.union1d(chosen, np.array(layout.newlines, dtype=np.int64))

@@ -16,7 +16,7 @@ from .model import Bundle, full_forward_logits
 from .models.llava15 import LLAVA, NUM_VISUAL, Llava15
 from .prompts import surface_forms, window_composition
 from .runner import Q, open_image, pilot_units, run_item
-from .selectors import pw_attn, top_k
+from .selectors import Budget, kept_set
 
 SAMPLE_PER_COMPARISON = 20_000
 SURFACE = "capitalized"  # default; `kvsel validate --surface` sets it per run
@@ -131,9 +131,17 @@ def run_e2(bundle: Bundle, loaded, floors: dict[str, dict]) -> dict:
     return {"pass": all(result["pass"] for result in by_suffix.values()), "by_suffix": by_suffix}
 
 
-def kept_sets(k: int, seed: int, attention: np.ndarray) -> dict[str, np.ndarray]:
-    random_set = np.random.default_rng(seed).choice(NUM_VISUAL, k, replace=False)
-    return {"random": np.sort(random_set), "concentrated": np.arange(k), "scored": top_k(pw_attn(attention), k)}
+def concentrated_set(layout, k: int) -> np.ndarray:
+    """A validation kept-set kind, not a selector: the first k feature tokens, plus every newline."""
+    return np.union1d(layout.features[:k], np.array(layout.newlines, dtype=np.int64))
+
+
+def validation_sets(layout, k: int, seed: int, attention: np.ndarray) -> dict[str, np.ndarray]:
+    """E3's kept sets by kind: random, concentrated and probe-scored."""
+    budget = Budget(k=k)
+    return {"random": kept_set(layout, "random", budget, rng=np.random.default_rng(seed)),
+            "concentrated": concentrated_set(layout, k),
+            "scored": kept_set(layout, "pw", budget, attention=attention)}
 
 
 def run_e3_e4(bundle: Bundle, loaded, floor: dict, budgets=(288, 144, 72), progress=None,
@@ -146,7 +154,7 @@ def run_e3_e4(bundle: Bundle, loaded, floor: dict, budgets=(288, 144, 72), progr
         if progress:
             progress(f"  E3 item {position + 1}/{len(loaded)}")
         tokens, pixels = bundle.family.contexts(bundle, item, image)
-        prefix, _ = bundle.family.prefill(bundle, tokens[Q].prefix_ids, pixels)
+        prefix, layout = bundle.family.prefill(bundle, tokens[Q].prefix_ids, pixels)
         before = entries_hash(prefix.entries)
         for name in (Q, "mis"):
             suffix = torch.tensor([tokens[name].suffix_ids])
@@ -154,7 +162,7 @@ def run_e3_e4(bundle: Bundle, loaded, floor: dict, budgets=(288, 144, 72), progr
             if entries_hash(prefix.entries) != before:
                 hash_failures.append(f"{item['item_id']}: changed by probe {name}")
             for k in budgets:
-                for kind, kept in kept_sets(k, position, attention).items():
+                for kind, kept in validation_sets(layout, k, position, attention).items():
                     kept_tensor = torch.from_numpy(kept)
                     state_c, logits_c = replay(bundle.decoder, prefix, kept_tensor, suffix, "compact")
                     state_d, logits_d = replay(bundle.decoder, prefix, kept_tensor, suffix, "dense")
@@ -198,9 +206,9 @@ def run_e5(bundle: Bundle, loaded, floor: dict) -> dict:
     worst, different_answers = 0.0, 0
     for position, (item, image) in enumerate(loaded):
         tokens, pixels = bundle.family.contexts(bundle, item, image)
-        prefix, _ = bundle.family.prefill(bundle, tokens[Q].prefix_ids, pixels)
+        prefix, layout = bundle.family.prefill(bundle, tokens[Q].prefix_ids, pixels)
         suffix = torch.tensor([tokens["mis"].suffix_ids])
-        kept = torch.from_numpy(kept_sets(144, position, probe(bundle.decoder, prefix, suffix))["scored"])
+        kept = torch.from_numpy(validation_sets(layout, 144, position, probe(bundle.decoder, prefix, suffix))["scored"])
         state_b, logits_b = replay(bundle.decoder, prefix, kept, suffix)
         state_c, logits_c = replay(bundle.decoder, prefix, kept.clone(), suffix)
         worst = max(worst, float((logits_b - logits_c).abs().max()))

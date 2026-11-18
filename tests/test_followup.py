@@ -31,11 +31,16 @@ def test_part_units():
 
 
 def test_random_sets_are_seeded_per_item():
-    a = fu.random_set("i1", 0)
+    from kvsel.models.llava15 import LAYOUT
+
+    def random_set(item_id, seed):
+        return fu.kept_for(fu.FUnit("random", 144, False, "none", "Q", seed=seed), item_id, LAYOUT, {}, {})
+
+    a = random_set("i1", 0)
     assert len(a) == 144 == len(set(a.tolist())) and np.all(np.diff(a) > 0) and a.max() < 576
-    assert np.array_equal(a, fu.random_set("i1", 0))
-    assert not np.array_equal(a, fu.random_set("i1", 1))
-    assert not np.array_equal(a, fu.random_set("i2", 0))
+    assert np.array_equal(a, random_set("i1", 0))
+    assert not np.array_equal(a, random_set("i1", 1))
+    assert not np.array_equal(a, random_set("i2", 0))
 
 
 def restoration_case():
@@ -69,12 +74,6 @@ def test_restoration_needs_enough_pushed_out_entries():
     assert fu.restoration_sets("i1", scores_q, scores_mis, set(range(3)), 4) is None  # 3 evidence entries out
     assert fu.restoration_sets("i1", scores_q, scores_mis, set(range(17)), 4) is None  # 3 non-evidence out
     assert fu.restoration_sets("i1", scores_q, scores_q, evidence, 4) is None  # nothing pushed out
-
-
-def test_lt_early_scores_are_unpooled():
-    values = np.zeros(576)
-    values[5] = 1.0
-    assert fu.top_k(fu.lt_early(values), 1).tolist() == [5]
 
 
 def confirm_fixture(tmp_path, n=20, n_control=8):

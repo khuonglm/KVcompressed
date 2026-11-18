@@ -11,10 +11,10 @@ from kvsel.confirm_analysis import (
     clustered_ols,
     confirm_report,
     dataset_results,
-    jaccard,
     margin_variant,
 )
 from kvsel.runner import cell_name, pilot_units
+from kvsel.selectors import jaccard
 
 FORMS = ("lower", "capitalized", "upper")
 

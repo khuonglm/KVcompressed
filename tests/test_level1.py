@@ -6,7 +6,8 @@ import torch
 
 from kvsel.cache import compact, dropped_columns, entries_hash
 from kvsel.engine import Prefix, State, advance, greedy, probe, replay, score_sequence
-from kvsel.selectors import pw_attn, top_k
+from kvsel.models.llava15 import LAYOUT
+from kvsel.selectors import Budget, kept_set
 
 LIMIT = 1e-5
 SUFFIX = torch.randint(0, 500, (1, 50), generator=torch.Generator().manual_seed(3))
@@ -24,7 +25,7 @@ def random_set(k, seed):
 
 
 def scored_set(decoder, prefix, k):
-    return torch.from_numpy(top_k(pw_attn(probe(decoder, prefix, SUFFIX)), k))
+    return torch.from_numpy(kept_set(LAYOUT, "pw", Budget(k=k), attention=probe(decoder, prefix, SUFFIX)))
 
 
 @pytest.mark.parametrize("k", [288, 144, 72])
