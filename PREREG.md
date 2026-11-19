@@ -365,7 +365,7 @@ Two code reviews (of the NeXT code and of the reorganization) found the problems
     - NeXT runs under its frozen plan (4.1–4.4) unchanged. The run, units, estimands, shares and report are as specified.
     - N1–N4 are reported as **exploratory**, not confirmatory. The report still computes their Holm family of 4 at α = 0.05 and prints the decisions, labelled exploratory. 4.3's statements that a test "supports its hypothesis if Holm rejects" and that the decisions are final do not apply.
     - The report states the E3 failure and this diagnosis. Section 1–3 results and their families are unaffected.
-- **Timing, stated plainly:** written after the first NeXT screen, run and report had finished under the superseded records. [to fill: whether the first report's numbers were seen before this amendment, and by whom.] The corrections came from the two code reviews. Their findings are listed above, and none depends on a NeXT outcome. The report of the rerun says that an earlier, superseded NeXT report exists.
+- **Timing, stated plainly:** written after the first NeXT screen, run and report had finished under the superseded records. The researcher saw the first report's numbers before this amendment was written; no one else did. The corrections came from the two code reviews. Their findings are listed above, and none depends on a NeXT outcome. The report of the rerun says that an earlier, superseded NeXT report exists.
 
 ## 5. Code amendment 4 (18 November 2026): reorganization, no rule changed
 
