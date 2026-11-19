@@ -401,6 +401,8 @@ def test_report_prints_llava15_beside_and_states_the_checks(planted):
     found, out = planted
     text = (out / "report.md").read_text()
     assert "Holm family of 4" in text and "Equivalence: not tested" in text
+    assert "N1–N4, exploratory" in text and "Exploratory, not confirmatory (PREREG 4.6)" in text
+    assert "Confirmatory" not in text
     for share, k, old, same in (("12.5%", 72, "+0.200 [+0.170, +0.230]", "yes"), ("25.0%", 144, "+0.111 [+0.081, +0.141]", "yes"),
                                 ("50.0%", 288, "-0.050 [-0.080, -0.020]", "no")):  # NeXT's S_H^(mis): 0.5, 0.3, 0.1
         row = next(line for line in text.splitlines() if line.startswith(f"| S_H^(mis) | {share} | {k} |"))

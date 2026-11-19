@@ -107,7 +107,11 @@ def render(found: dict) -> str:
              *([f"**Shortfall:** {found['items']} eligible items, not {found['main_size_frozen_at_stage1']}: the whole pool was "
                 "screened, so the main set is every eligible item (PREREG 4.5(d)).", ""]
                if found["items"] < found["main_size_frozen_at_stage1"] else []),
-             f"## Confirmatory: Holm family of {len(family['tests'])} (α = {family['alpha']}), final", "",
+             ("**Exploratory, not confirmatory (PREREG 4.6).** Validation failed E3's logit criterion (p99 0.0380, "
+              "limit 0.0321) because the corrected prompt lowered the noise floor, while compact replay's error stayed "
+              "where it was when E3 passed on 16 November; the margin criterion passed (0.0047 nats, limit 0.01). "
+              "An earlier NeXT report, under the superseded first freeze, exists and is not used."), "",
+             f"## N1–N4, exploratory: Holm family of {len(family['tests'])} (α = {family['alpha']})", "",
              "| Test | Mean (nats) | 95% interval | Two-sided p | Reading | Items / images | Holm |",
              "| --- | ---: | --- | ---: | --- | ---: | --- |"]
     lines += [f"| {test} | {row(result)} {'rejected' if family['reject'][test] else 'not rejected'} |"

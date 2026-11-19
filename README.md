@@ -297,6 +297,13 @@ and is safe to rerun; step 10 needs the replication's report and is skipped once
    `GO` or `NO-GO` (exit code 1). Its last lines also give the time and memory for the steps below: the peak
    GPU memory of a run, and `projected: screen <= X h, comparative run <= Y h` (upper bounds: every unit
    costed as a Full unit on the longest suffix). Stop here on NO-GO.
+
+   **Result, 19 November 2026 (after the PREREG 4.6 corrections): NO-GO on E3's logit criterion only**
+   (p99 0.0380, limit 0.0321; margin mean 0.0047, limit 0.01; E1, E2, E4, E7 pass). The diagnosis and the decision
+   to run NeXT with N1–N4 as exploratory are in PREREG 4.6. Peak GPU memory 16.81 GB at 2,928 visual tokens (with
+   `PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512`, which NeXT now sets itself); per item: prefill 0.65 s, probe
+   0.25 s, Full unit 0.85 s; projected screen <= 1.9 h, run <= 7.2 h. Continue at step 5 once PREREG 4.6's
+   blank is filled and committed.
 4. With me: settle PREREG 4.5, fill in 4.1's model revision and AnyRes cap from step 3's numbers, then
    review section 4 and delete its DRAFT line. Stage 1 refuses while the line or any "[to fill" blank is
    there. No AnyRes cap is implemented yet: if step 3 says one is needed, it needs code before stage 1.

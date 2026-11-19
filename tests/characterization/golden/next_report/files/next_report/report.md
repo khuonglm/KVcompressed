@@ -2,7 +2,9 @@
 
 Surface rule `capitalized`; PW-attn; image-clustered bootstrap (50 resamples), two-sided tests. 2 items on 2 images; 1 control items. LLaVA-1.5's comparative outcomes on many of these items were seen before NeXT's hypotheses were chosen (PREREG 4).
 
-## Confirmatory: Holm family of 4 (α = 0.05), final
+**Exploratory, not confirmatory (PREREG 4.6).** Validation failed E3's logit criterion (p99 0.0380, limit 0.0321) because the corrected prompt lowered the noise floor, while compact replay's error stayed where it was when E3 passed on 16 November; the margin criterion passed (0.0047 nats, limit 0.01). An earlier NeXT report, under the superseded first freeze, exists and is not used.
+
+## N1–N4, exploratory: Holm family of 4 (α = 0.05)
 
 | Test | Mean (nats) | 95% interval | Two-sided p | Reading | Items / images | Holm |
 | --- | ---: | --- | ---: | --- | ---: | --- |
